@@ -26,7 +26,35 @@ O original nunca é alterado e nada sai do computador.
 | VS Code + extensão C# Dev Kit | Editor |
 | Git + GitHub CLI (`gh`) | Versionamento e PRs |
 
-As instruções de build entram aqui na etapa 0b, junto com a solução.
+### Compilar e testar
+
+```bash
+dotnet build Pizza.slnx
+```
+
+```bash
+dotnet test Pizza.slnx
+```
+
+### Gerar o `Pizza.exe` nativo (NativeAOT)
+
+```bash
+dotnet publish src/Pizza.App -c Release -o artifacts/publish/app
+```
+
+Se o publish falhar com `'vswhere.exe' não é reconhecido`, falta a pasta do instalador do Visual Studio no PATH. Adicione `C:\Program Files (x86)\Microsoft Visual Studio\Installer` ao PATH do usuário e abra um terminal novo.
+
+### Estrutura
+
+| Projeto | Papel |
+| --- | --- |
+| `src/Pizza.App` | Residente `Pizza.exe` (NativeAOT): bandeja, hooks, overlay, painel, notificações |
+| `src/Pizza.Core` | Estados, configuração, logs, contratos IPC |
+| `src/Pizza.Worker` | `Pizza.Worker.exe`: conversão sob demanda |
+| `src/Pizza.Converters` | `IConverter` e implementações por família |
+| `tests/*` | Testes xUnit; `tests/samples` guarda arquivos de amostra pequenos |
+
+O CI (GitHub Actions, Windows) compila, testa e publica o `Pizza.exe` nativo a cada PR e a cada push na `main`.
 
 ## Forma de trabalho
 

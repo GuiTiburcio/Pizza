@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Worker (Pizza.Worker.exe): abre sob demanda, converte e fecha quando fica parado (ADR-002). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AssemblyName>Pizza.Worker</AssemblyName>
+    <RootNamespace>Pizza.Worker</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pizza.Core\Pizza.Core.csproj" />
+    <ProjectReference Include="..\Pizza.Converters\Pizza.Converters.csproj" />
+  </ItemGroup>
+
+</Project>
