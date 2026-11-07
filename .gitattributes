@@ -1,0 +1,17 @@
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binários (amostras de teste, ícones, imagens)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.tif binary
+*.tiff binary
+*.pdf binary
+*.docx binary
+*.xlsx binary
+*.pptx binary

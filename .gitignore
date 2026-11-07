@@ -1,0 +1,40 @@
+# Build
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+artifacts/
+publish/
+*.nupkg
+*.snupkg
+
+# Testes e cobertura
+TestResults/
+coverage*/
+*.trx
+BenchmarkDotNet.Artifacts/
+
+# IDEs
+.vs/
+.idea/
+*.user
+*.suo
+*.swp
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Instalador
+installer/Output/
+
+# Sistema
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Segredos (certificados de assinatura nunca entram no repositório)
+*.pfx
+*.p12
+*.snk
+.env
