@@ -42,7 +42,7 @@ internal static unsafe class Overlay
     private static long _lastFrame;
     private static int _frames;
     private static double _longestFrameMs;
-    private static bool _animationsEnabled = true;
+    private static MotionStyle _motion = MotionStyle.Slide;
     private static int _size = DiscSize;
     private static DraggedFiles? _files;
     private static DraggedFiles? _result;
@@ -154,8 +154,9 @@ internal static unsafe class Overlay
         int animations = 1;
         SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, &animations, 0);
 
-        // PIZZA_ANIMATIONS=on força o deslize com as animações do Windows desligadas, até existir a configuração.
-        _animationsEnabled = animations != 0 || Environment.GetEnvironmentVariable("PIZZA_ANIMATIONS") == "on";
+        // Até existirem as Configurações, a opção vem de PIZZA_ANIMATIONS (always, windows ou never).
+        var setting = MotionPolicy.Parse(Environment.GetEnvironmentVariable("PIZZA_ANIMATIONS"));
+        _motion = MotionPolicy.Resolve(setting, animations != 0);
         _files = null;
         _result = null;
         KillTimer(Disc, TimerAfterRelease);
@@ -253,7 +254,7 @@ internal static unsafe class Overlay
 
     private static void StartAnimation()
     {
-        if (!_animationsEnabled)
+        if (_motion == MotionStyle.Instant)
         {
             Carousel.Snap();
             Invalidate();
@@ -398,8 +399,15 @@ internal static unsafe class Overlay
                 continue;
             }
 
-            var brightness = absolute < 1 ? 1 - (0.75 * absolute) : 0.25 * (1.5 - absolute) / 0.5;
-            var x = center + (int)Math.Round(distance * Scale(spacing));
+            if (_motion == MotionStyle.Fade && absolute >= 1)
+            {
+                continue;
+            }
+
+            // Em "menos movimento" a aba não anda: só troca de opacidade no mesmo lugar.
+            var brightness = _motion == MotionStyle.Fade ? 1 - absolute
+                : absolute < 1 ? 1 - (0.75 * absolute) : 0.25 * (1.5 - absolute) / 0.5;
+            var x = _motion == MotionStyle.Fade ? center : center + (int)Math.Round(distance * Scale(spacing));
             var rect = new RECT { Left = x - Scale(halfWidth), Top = Scale(84), Right = x + Scale(halfWidth), Bottom = Scale(128) };
             Draw(hdc, MenuTabs.Names[tab], &rect, 26, FW_BOLD, Mix(DiscColor, Rgb(255, 255, 255), brightness), DT_CENTER | DT_SINGLELINE | DT_VCENTER);
         }

@@ -93,6 +93,22 @@ public class TabCarouselTests
         Assert.Equal(2, _carousel.Target);
     }
 
+    [Fact]
+    public void Mudar_o_destino_no_meio_mantem_o_embalo()
+    {
+        var fromRest = new TabCarousel(4);
+        fromRest.OnWheel(-120);
+        fromRest.Advance(16);
+
+        _carousel.OnWheel(-120);
+        _carousel.Advance(60);
+        var before = _carousel.Position;
+        _carousel.OnWheel(-120);
+        _carousel.Advance(16);
+
+        Assert.True(_carousel.Position - before > fromRest.Position);
+    }
+
     [Theory]
     [InlineData(0, 0, 0)]
     [InlineData(0, 1, 1)]

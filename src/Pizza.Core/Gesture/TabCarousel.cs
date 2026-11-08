@@ -1,22 +1,25 @@
 namespace Pizza.Core.Gesture;
 
 /// <summary>
-/// Posição animada das abas do menu. A posição persegue o alvo com decaimento exponencial:
-/// não depende da taxa de quadros e pode mudar de alvo no meio do caminho sem tranco,
-/// o que mantém o deslize suave mesmo com a roda girando rápido.
+/// Posição animada das abas do menu: uma mola sem quique que persegue o destino.
+/// A mola carrega a velocidade quando o destino muda no meio do caminho, então girar
+/// a roda rápido dá um deslize contínuo, e a fórmula exata não depende da taxa de quadros.
 /// </summary>
 public sealed class TabCarousel(int count)
 {
     /// <summary>Um "dente" da roda. Touchpads e rodas de alta precisão enviam frações disso.</summary>
     private const int WheelNotch = 120;
 
-    /// <summary>Com 45 ms, o deslize chega a 98% do caminho em cerca de 180 ms (token de animação, Parte 4.2).</summary>
-    private const double TimeConstantMs = 45;
+    /// <summary>Duração da animação (token da Parte 4.2). Com esta mola, 98% do caminho sai em cerca de 167 ms.</summary>
+    private const double DurationMs = 180;
 
+    private const double AngularFrequency = 2 * Math.PI / DurationMs;
     private const double SnapDistance = 0.002;
+    private const double SnapVelocity = 0.0005;
 
     private int _accumulatedDelta;
     private int _goal;
+    private double _velocity;
 
     /// <summary>Posição contínua e sem volta: 1,5 é o meio do caminho entre as abas 1 e 2.</summary>
     public double Position { get; private set; }
@@ -30,6 +33,7 @@ public sealed class TabCarousel(int count)
     {
         _accumulatedDelta = 0;
         _goal = 0;
+        _velocity = 0;
         Position = 0;
     }
 
@@ -62,18 +66,28 @@ public sealed class TabCarousel(int count)
         return true;
     }
 
-    /// <summary>Avança a animação pelo tempo decorrido desde o quadro anterior.</summary>
+    /// <summary>Avança a animação pelo tempo decorrido, com a solução exata da mola criticamente amortecida.</summary>
     public void Advance(double elapsedMs)
     {
-        Position += (_goal - Position) * (1 - Math.Exp(-elapsedMs / TimeConstantMs));
-        if (Math.Abs(_goal - Position) < SnapDistance)
+        var offset = Position - _goal;
+        var term = (_velocity + (AngularFrequency * offset)) * elapsedMs;
+        var decay = Math.Exp(-AngularFrequency * elapsedMs);
+
+        Position = _goal + ((offset + term) * decay);
+        _velocity = (_velocity - (AngularFrequency * term)) * decay;
+
+        if (Math.Abs(Position - _goal) < SnapDistance && Math.Abs(_velocity) < SnapVelocity)
         {
-            Position = _goal;
+            Snap();
         }
     }
 
-    /// <summary>Vai direto ao destino, sem animação ("Reduzir animações" do Windows, Parte 2.4).</summary>
-    public void Snap() => Position = _goal;
+    /// <summary>Vai direto ao destino, sem animação.</summary>
+    public void Snap()
+    {
+        Position = _goal;
+        _velocity = 0;
+    }
 
     /// <summary>
     /// Distância com sinal da aba até a posição atual, pelo caminho mais curto do círculo.
