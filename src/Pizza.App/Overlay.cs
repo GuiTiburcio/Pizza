@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Pizza.App.Interop;
 using Pizza.Core.Gesture;
 using static Pizza.App.Interop.Native;
@@ -22,7 +23,9 @@ internal static unsafe class Overlay
     private const nuint TimerAfterRelease = 1;
     private const nuint TimerHideResult = 2;
     private const nuint TimerWatchdog = 3;
+    private const nuint TimerAnimation = 4;
     private const uint WatchdogMs = 250;
+    private const uint AnimationMs = 10;
     private const uint AfterReleaseMs = 400;
     private const uint ResultMs = 3000;
 
@@ -30,11 +33,16 @@ internal static unsafe class Overlay
     private const byte CatcherAlpha = 1;
     private const byte DiscAlpha = 235;
 
+    private static readonly uint DiscColor = Rgb(26, 33, 64);
     private static readonly DropTarget DiscTarget = new(acceptsDrop: true);
     private static readonly DropTarget CatcherTarget = new(acceptsDrop: false);
 
     private static nint _catcher;
-    private static int _tab;
+    private static readonly TabCarousel Carousel = new(MenuTabs.Names.Count);
+    private static long _lastFrame;
+    private static int _frames;
+    private static double _longestFrameMs;
+    private static bool _animationsEnabled = true;
     private static int _size = DiscSize;
     private static DraggedFiles? _files;
     private static DraggedFiles? _result;
@@ -109,7 +117,7 @@ internal static unsafe class Overlay
             return;
         }
 
-        Log.Write($"drop na aba {MenuTabs.Names[_tab]}: {files.Value.First} (total: {files.Value.Count})");
+        Log.Write($"drop na aba {MenuTabs.Names[Carousel.Target]}: {files.Value.First} (total: {files.Value.Count})");
         KillTimer(Disc, TimerAfterRelease);
         KillTimer(Disc, TimerWatchdog);
         _result = files;
@@ -142,7 +150,12 @@ internal static unsafe class Overlay
         var left = Math.Max(info.RcWork.Left, Math.Min(x - (_size / 2), info.RcWork.Right - _size));
         var top = Math.Max(info.RcWork.Top, Math.Min(y - (_size / 2), info.RcWork.Bottom - _size));
 
-        _tab = 0;
+        Carousel.Reset();
+        int animations = 1;
+        SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, &animations, 0);
+
+        // PIZZA_ANIMATIONS=on força o deslize com as animações do Windows desligadas, até existir a configuração.
+        _animationsEnabled = animations != 0 || Environment.GetEnvironmentVariable("PIZZA_ANIMATIONS") == "on";
         _files = null;
         _result = null;
         KillTimer(Disc, TimerAfterRelease);
@@ -171,6 +184,8 @@ internal static unsafe class Overlay
         KillTimer(Disc, TimerAfterRelease);
         KillTimer(Disc, TimerHideResult);
         KillTimer(Disc, TimerWatchdog);
+        KillTimer(Disc, TimerAnimation);
+        _lastFrame = 0;
         ShowWindow(_catcher, SW_HIDE);
         ShowWindow(Disc, SW_HIDE);
         IsVisible = false;
@@ -204,11 +219,10 @@ internal static unsafe class Overlay
                 return 0;
 
             case WmWheel:
-                if (IsVisible && _result is null)
+                if (IsVisible && _result is null && Carousel.OnWheel((int)lParam))
                 {
-                    _tab = MenuTabs.Step(_tab, (int)lParam);
-                    Log.Write($"aba: {MenuTabs.Names[_tab]}");
-                    Invalidate();
+                    Log.Write($"aba: {MenuTabs.Names[Carousel.Target]}");
+                    StartAnimation();
                 }
 
                 return 0;
@@ -237,8 +251,52 @@ internal static unsafe class Overlay
         }
     }
 
+    private static void StartAnimation()
+    {
+        if (!_animationsEnabled)
+        {
+            Carousel.Snap();
+            Invalidate();
+            return;
+        }
+
+        // Já animando: só o destino muda, e o deslize em curso continua sem tranco.
+        if (_lastFrame == 0)
+        {
+            _lastFrame = Stopwatch.GetTimestamp();
+            _frames = 0;
+            _longestFrameMs = 0;
+            SetTimer(Disc, TimerAnimation, AnimationMs, 0);
+        }
+    }
+
+    private static void AnimationFrame()
+    {
+        // O tempo real decorrido, e não o intervalo do timer, mantém a velocidade constante.
+        var now = Stopwatch.GetTimestamp();
+        var elapsedMs = Stopwatch.GetElapsedTime(_lastFrame, now).TotalMilliseconds;
+        _lastFrame = now;
+        _frames++;
+        _longestFrameMs = Math.Max(_longestFrameMs, elapsedMs);
+
+        Carousel.Advance(elapsedMs);
+        Invalidate();
+        if (!Carousel.IsAnimating)
+        {
+            KillTimer(Disc, TimerAnimation);
+            _lastFrame = 0;
+            Log.Write($"deslize: {_frames} quadros, maior intervalo {_longestFrameMs:F1} ms");
+        }
+    }
+
     private static void OnTimer(nuint id)
     {
+        if (id == TimerAnimation)
+        {
+            AnimationFrame();
+            return;
+        }
+
         if (id == TimerWatchdog)
         {
             // A camada cobre a tela inteira: se a soltura do botão se perder, ela não pode ficar presa.
@@ -272,7 +330,15 @@ internal static unsafe class Overlay
         var hdc = BeginPaint(hwnd, &ps);
         if (hwnd == Disc)
         {
-            PaintDisc(hdc);
+            // Desenha fora da tela e copia de uma vez: é o que evita o piscar durante o deslize.
+            var buffer = CreateCompatibleDC(hdc);
+            var bitmap = CreateCompatibleBitmap(hdc, _size, _size);
+            var oldBitmap = SelectObject(buffer, bitmap);
+            PaintDisc(buffer);
+            BitBlt(hdc, 0, 0, _size, _size, buffer, 0, 0, SRCCOPY);
+            SelectObject(buffer, oldBitmap);
+            DeleteObject(bitmap);
+            DeleteDC(buffer);
         }
         else
         {
@@ -288,7 +354,7 @@ internal static unsafe class Overlay
     private static void PaintDisc(nint hdc)
     {
         var whole = new RECT { Right = _size, Bottom = _size };
-        var background = CreateSolidBrush(Rgb(26, 33, 64));
+        var background = CreateSolidBrush(DiscColor);
         FillRect(hdc, &whole, background);
         DeleteObject(background);
 
@@ -309,11 +375,68 @@ internal static unsafe class Overlay
             return;
         }
 
-        DrawLine(hdc, MenuTabs.Names[_tab], 80, 28, FW_BOLD, Rgb(255, 255, 255));
-        DrawLine(hdc, $"aba {_tab + 1} de {MenuTabs.Names.Count}", 122, 13, FW_NORMAL, Rgb(170, 182, 214));
+        DrawTabs(hdc);
+        DrawTabDots(hdc);
         DrawLine(hdc, _files is { } files ? Describe(files, Path.GetFileName(files.First)) : "Solte aqui", 178, 17, FW_SEMIBOLD, Rgb(255, 255, 255));
         DrawLine(hdc, "Role para trocar a aba", 262, 13, FW_NORMAL, Rgb(170, 182, 214));
         DrawLine(hdc, "Esc cancela", 284, 13, FW_NORMAL, Rgb(170, 182, 214));
+    }
+
+    /// <summary>Nomes das abas numa faixa que desliza: a central acesa, as vizinhas apagando nas pontas.</summary>
+    private static void DrawTabs(nint hdc)
+    {
+        const int spacing = 128;
+        const int halfWidth = 90;
+        var center = _size / 2;
+
+        for (var tab = 0; tab < MenuTabs.Names.Count; tab++)
+        {
+            var distance = Carousel.DistanceTo(tab);
+            var absolute = Math.Abs(distance);
+            if (absolute >= 1.5)
+            {
+                continue;
+            }
+
+            var brightness = absolute < 1 ? 1 - (0.75 * absolute) : 0.25 * (1.5 - absolute) / 0.5;
+            var x = center + (int)Math.Round(distance * Scale(spacing));
+            var rect = new RECT { Left = x - Scale(halfWidth), Top = Scale(84), Right = x + Scale(halfWidth), Bottom = Scale(128) };
+            Draw(hdc, MenuTabs.Names[tab], &rect, 26, FW_BOLD, Mix(DiscColor, Rgb(255, 255, 255), brightness), DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+        }
+    }
+
+    /// <summary>Um ponto por aba; o brilho acompanha a posição do deslize.</summary>
+    private static void DrawTabDots(nint hdc)
+    {
+        const int gap = 18;
+        const int radius = 4;
+        var count = MenuTabs.Names.Count;
+        var first = (_size / 2) - (Scale(gap) * (count - 1) / 2);
+        var y = Scale(136);
+        var oldPen = SelectObject(hdc, GetStockObject(NULL_PEN));
+
+        for (var tab = 0; tab < count; tab++)
+        {
+            var lit = Math.Max(0, 1 - Math.Abs(Carousel.DistanceTo(tab)));
+            var brush = CreateSolidBrush(Mix(Rgb(84, 96, 136), Rgb(47, 107, 255), lit));
+            var oldBrush = SelectObject(hdc, brush);
+            var x = first + (tab * Scale(gap));
+            Ellipse(hdc, x - Scale(radius), y - Scale(radius), x + Scale(radius), y + Scale(radius));
+            SelectObject(hdc, oldBrush);
+            DeleteObject(brush);
+        }
+
+        SelectObject(hdc, oldPen);
+    }
+
+    private static uint Mix(uint from, uint to, double amount)
+    {
+        static uint Channel(uint a, uint b, double t) => (uint)Math.Round(a + ((double)b - a) * t);
+
+        var r = Channel(from & 0xFF, to & 0xFF, amount);
+        var g = Channel((from >> 8) & 0xFF, (to >> 8) & 0xFF, amount);
+        var b = Channel((from >> 16) & 0xFF, (to >> 16) & 0xFF, amount);
+        return r | (g << 8) | (b << 16);
     }
 
     private static string Describe(DraggedFiles files, string text) =>

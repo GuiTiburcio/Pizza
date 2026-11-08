@@ -54,9 +54,12 @@ internal static unsafe partial class Native
     public const int IDC_ARROW = 32512;
 
     // GDI
+    public const uint SRCCOPY = 0x00CC0020;
+    public const uint SPI_GETCLIENTAREAANIMATION = 0x1042;
     public const int TRANSPARENT = 1;
     public const int PS_SOLID = 0;
     public const int NULL_BRUSH = 5;
+    public const int NULL_PEN = 8;
     public const int FW_NORMAL = 400;
     public const int FW_SEMIBOLD = 600;
     public const int FW_BOLD = 700;
@@ -276,6 +279,21 @@ internal static unsafe partial class Native
     public static partial int GetDpiForMonitor(nint monitor, int type, uint* dpiX, uint* dpiY);
 
     // gdi32
+    [LibraryImport("user32.dll")]
+    public static partial int SystemParametersInfoW(uint action, uint param, int* value, uint winIni);
+
+    [LibraryImport("gdi32.dll")]
+    public static partial nint CreateCompatibleDC(nint hdc);
+
+    [LibraryImport("gdi32.dll")]
+    public static partial nint CreateCompatibleBitmap(nint hdc, int width, int height);
+
+    [LibraryImport("gdi32.dll")]
+    public static partial int BitBlt(nint target, int x, int y, int width, int height, nint source, int sourceX, int sourceY, uint operation);
+
+    [LibraryImport("gdi32.dll")]
+    public static partial int DeleteDC(nint hdc);
+
     [LibraryImport("gdi32.dll")]
     public static partial nint CreateSolidBrush(uint color);
 
