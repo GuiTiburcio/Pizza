@@ -22,6 +22,7 @@ internal static unsafe class Program
         Marshal.ThrowExceptionForHR(OleInitialize(0));
 
         Overlay.Create();
+        OptionsPanel.Create();
 
         // O ícone é a única saída: sem ele, o programa não fica rodando sem como fechar.
         if (!Tray.Create())

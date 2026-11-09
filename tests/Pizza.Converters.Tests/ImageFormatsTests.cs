@@ -175,6 +175,34 @@ public class ImageFormatsTests
     }
 
     [Theory]
+    [InlineData("image.jpg")]
+    [InlineData("image.png")]
+    [InlineData("image.webp")]
+    public void Manter_metadados_preserva_o_que_o_formato_guarda(string converterId)
+    {
+        // PRIV-32.
+        using var image = Solid(64, 64).Mutate(m => m.Set(GValue.GStrType, "exif-ifd0-Artist", "Fulano de Tal"));
+        var jpeg = image.JpegsaveBuffer(keep: Enums.ForeignKeep.All);
+
+        var (error, output) = Run(converterId, jpeg, (ConverterCatalog.MetadataKey, ConverterCatalog.MetadataKeep));
+
+        Assert.Null(error);
+        Assert.Contains("Fulano", Encoding.Latin1.GetString(output), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("image.pdf")]
+    [InlineData("image.ico")]
+    [InlineData("image.tiff")]
+    [InlineData("image.gif")]
+    public void Formato_sem_a_caixa_recusa_a_opcao_de_metadados(string converterId)
+    {
+        var given = new Dictionary<string, string> { [ConverterCatalog.MetadataKey] = ConverterCatalog.MetadataKeep };
+
+        Assert.Null(ConverterCatalog.ResolveOptions(ConverterCatalog.Find(converterId)!, given));
+    }
+
+    [Theory]
     [InlineData("P3\n1 1\n255\n0 0 0\n")]
     [InlineData("#?RADIANCE\n")]
     public void Decodificador_fora_da_lista_e_recusado(string content)

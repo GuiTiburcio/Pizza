@@ -97,6 +97,7 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | FR-31 (novo, v1.x) | Tipos misturados: o menu abre na aba do primeiro arquivo, só os compatíveis são convertidos e os demais aparecem como "ignorado", sem bloquear o lote | 017 |
 | FR-32 (novo, v1.x) | O painel de opções abre uma vez e vale para todos os compatíveis; cada saída fica ao lado do seu original | 017 |
 | SEC-46 | Sem teto de arquivos; fila com no máximo 2 conversões por núcleo | 017 |
+| FR-23 | "Manter metadados" funciona em JPG, PNG e WEBP. Em PDF e ICO, a caixa aparece desativada, com o aviso de que o formato não guarda metadados | — |
 | Imagem → PDF | Gerador próprio, sem PDFsharp (AGPL desde a 6.5.0). Folha A4 acompanhando a orientação da imagem, margem de 10 mm. A biblioteca das demais operações de PDF será decidida na Fase 6 | 022 |
 | SEC-45 | HEIC fica de fora da lista enquanto o libvips empacotado não trouxer o codec HEVC: o menu não abre para `.heic`. AVIF continua aceito | — |
 | FR-22 | "Usar sempre estas opções" passa para a Fase 8, junto com a tela de Configuração que permite desfazer. Até lá, o painel sempre abre e Enter converte com o padrão | — |

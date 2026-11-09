@@ -13,7 +13,7 @@ public sealed class ImageJpegConverter : ImageConverter
         var quality = Number(options, "quality");
         if (!image.HasAlpha())
         {
-            image.JpegsaveStream(destination, q: quality, keep: Enums.ForeignKeep.Icc);
+            image.JpegsaveStream(destination, q: quality, keep: Keep(options));
             return;
         }
 
@@ -21,7 +21,7 @@ public sealed class ImageJpegConverter : ImageConverter
         // Em 8 bits primeiro, porque em imagens de 16 bits o branco não é 255.
         using var srgb = image.Colourspace(Enums.Interpretation.Srgb);
         using var flattened = srgb.Flatten(background: [255.0]);
-        flattened.JpegsaveStream(destination, q: quality, keep: Enums.ForeignKeep.Icc);
+        flattened.JpegsaveStream(destination, q: quality, keep: Keep(options));
     }
 }
 
@@ -30,7 +30,7 @@ public sealed class ImageWebpConverter : ImageConverter
     public override string Id => "image.webp";
 
     protected override void Encode(Image image, Stream destination, IReadOnlyDictionary<string, string> options) =>
-        image.WebpsaveStream(destination, q: Number(options, "quality"), keep: Enums.ForeignKeep.Icc);
+        image.WebpsaveStream(destination, q: Number(options, "quality"), keep: Keep(options));
 }
 
 public sealed class ImageTiffConverter : ImageConverter

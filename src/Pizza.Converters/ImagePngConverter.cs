@@ -21,11 +21,11 @@ public sealed class ImagePngConverter : ImageConverter
 
         if (options["resolution"] == "original")
         {
-            image.PngsaveStream(destination, compression: compression, keep: Enums.ForeignKeep.Icc);
+            image.PngsaveStream(destination, compression: compression, keep: Keep(options));
             return;
         }
 
         using var resized = image.Resize(Number(options, "resolution") / 100.0);
-        resized.PngsaveStream(destination, compression: compression, keep: Enums.ForeignKeep.Icc);
+        resized.PngsaveStream(destination, compression: compression, keep: Keep(options));
     }
 }

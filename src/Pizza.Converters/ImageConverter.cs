@@ -1,5 +1,6 @@
 using System.Globalization;
 using NetVips;
+using Pizza.Core.Conversions;
 using Image = NetVips.Image;
 
 namespace Pizza.Converters;
@@ -65,6 +66,10 @@ public abstract class ImageConverter : IConverter
     /// <summary>Para formatos que não guardam perfil de cor: aplica o perfil embutido, ou as cores mudariam (PRIV-31).</summary>
     protected static Image ToSrgb(Image image) =>
         image.Contains("icc-profile-data") ? image.IccTransform("srgb", embedded: true) : image.Colourspace(Enums.Interpretation.Srgb);
+
+    /// <summary>PRIV-30 e PRIV-32: só o perfil de cor, a não ser que o usuário marque "Manter metadados".</summary>
+    protected static Enums.ForeignKeep Keep(IReadOnlyDictionary<string, string> options) =>
+        options[ConverterCatalog.MetadataKey] == ConverterCatalog.MetadataKeep ? Enums.ForeignKeep.All : Enums.ForeignKeep.Icc;
 
     protected static int Number(IReadOnlyDictionary<string, string> options, string key) =>
         int.Parse(options[key], CultureInfo.InvariantCulture);
