@@ -36,13 +36,25 @@ public class RadialMenuTests
     }
 
     [Theory]
-    [InlineData("C:\\a\\fachada.jpg")]
-    [InlineData("C:\\a\\FACHADA.JPEG")]
-    public void Jpg_tem_a_fatia_png_na_aba_imagem(string path)
+    [InlineData("C:\\a\\fachada.jpg", "PNG,WEBP,TIFF,ICO,GIF")]
+    [InlineData("C:\\a\\FACHADA.JPEG", "PNG,WEBP,TIFF,ICO,GIF")]
+    [InlineData("a.png", "JPG,WEBP,TIFF,ICO,GIF")]
+    [InlineData("a.webp", "JPG,PNG,TIFF,ICO,GIF")]
+    [InlineData("a.tif", "JPG,PNG,WEBP,ICO,GIF")]
+    [InlineData("a.tiff", "JPG,PNG,WEBP,ICO,GIF")]
+    [InlineData("a.gif", "JPG,PNG,WEBP,TIFF,ICO")]
+    [InlineData("a.avif", "JPG,PNG,WEBP,TIFF,ICO,GIF")]
+    public void Fatias_seguem_a_ordem_sem_o_formato_de_origem(string path, string expected)
     {
-        var slice = Assert.Single(RadialMenu.Slices(0, path));
+        // ADR-012.
+        Assert.Equal(expected, string.Join(',', RadialMenu.Slices(0, path).Select(slice => slice.Label)));
+    }
 
-        Assert.Equal("PNG", slice.Label);
+    [Fact]
+    public void Fatia_png_dispara_a_conversao_png()
+    {
+        var slice = RadialMenu.Slices(0, "a.jpg")[0];
+
         Assert.Equal("image.png", slice.Id);
         Assert.Equal("png", slice.Extension);
     }
@@ -59,6 +71,10 @@ public class RadialMenuTests
     [Theory]
     [InlineData("a.jpg", true)]
     [InlineData("a.JPEG", true)]
+    [InlineData("a.png", true)]
+    [InlineData("a.avif", true)]
+    [InlineData("a.bmp", false)]
+    [InlineData("a.heic", false)]
     [InlineData("a.txt", false)]
     [InlineData("a.exe", false)]
     [InlineData("sem-extensao", false)]
