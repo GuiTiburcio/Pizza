@@ -11,7 +11,7 @@ public sealed class ImagePngConverter : ImageConverter
 
     protected override void Encode(Image image, Stream destination, IReadOnlyDictionary<string, string> options)
     {
-        // Sem perda em qualquer nível. Em 12 MP, o nível 2 gastou 18% menos tempo que o 6, com arquivo 3% maior.
+        // Sem perda em qualquer nível. Em 16 MP, o nível 2 gastou 18% menos tempo que o 6, com arquivo 3% maior.
         var compression = options["compression"] switch
         {
             "fast" => 1,

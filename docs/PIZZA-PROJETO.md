@@ -730,6 +730,7 @@ Cada decisão também tem um arquivo próprio em [`docs/adr/`](adr/).
 | 019 | Simplificações S-01 a S-05 | Menos superfície de ataque | Word por COM, 15 políticas |
 | 020 | Menu do ícone próprio de vidro, com Play/Pause/Stop da fila | Pedido do mantenedor; menu curto | Linhas de texto no menu do Windows |
 | 021 | Pipe sem nome entre residente e Worker | Mais simples e sem como ser aberto por outro processo | Pipe com nome e ACL condicional |
+| 022 | Imagem → PDF com gerador próprio, folha A4 e margem de 10 mm | PDFsharp virou AGPL na 6.5.0; sem dependência nova | PDFsharp 6.2.4 ou AGPL; página do tamanho da imagem |
 
 ---
 

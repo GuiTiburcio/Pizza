@@ -45,7 +45,7 @@ public sealed class ImageGifConverter : ImageConverter
 {
     public override string Id => "image.gif";
 
-    // Em 12 MP, o esforço 1 gastou cerca de 40% menos tempo que o padrão 7, com tamanho quase igual.
+    // Em 16 MP, o esforço 1 gastou cerca de 40% menos tempo que o padrão 7, com tamanho quase igual.
     protected override void Encode(Image image, Stream destination, IReadOnlyDictionary<string, string> options) =>
         image.GifsaveStream(destination, effort: 1, keep: Enums.ForeignKeep.None);
 }

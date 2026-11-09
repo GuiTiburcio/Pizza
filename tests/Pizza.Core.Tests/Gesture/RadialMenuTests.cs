@@ -36,14 +36,14 @@ public class RadialMenuTests
     }
 
     [Theory]
-    [InlineData("C:\\a\\fachada.jpg", "PNG,WEBP,TIFF,ICO,GIF")]
-    [InlineData("C:\\a\\FACHADA.JPEG", "PNG,WEBP,TIFF,ICO,GIF")]
-    [InlineData("a.png", "JPG,WEBP,TIFF,ICO,GIF")]
-    [InlineData("a.webp", "JPG,PNG,TIFF,ICO,GIF")]
-    [InlineData("a.tif", "JPG,PNG,WEBP,ICO,GIF")]
-    [InlineData("a.tiff", "JPG,PNG,WEBP,ICO,GIF")]
-    [InlineData("a.gif", "JPG,PNG,WEBP,TIFF,ICO")]
-    [InlineData("a.avif", "JPG,PNG,WEBP,TIFF,ICO,GIF")]
+    [InlineData("C:\\a\\fachada.jpg", "PNG,WEBP,PDF,TIFF,ICO,GIF")]
+    [InlineData("C:\\a\\FACHADA.JPEG", "PNG,WEBP,PDF,TIFF,ICO,GIF")]
+    [InlineData("a.png", "JPG,WEBP,PDF,TIFF,ICO,GIF")]
+    [InlineData("a.webp", "JPG,PNG,PDF,TIFF,ICO,GIF")]
+    [InlineData("a.tif", "JPG,PNG,WEBP,PDF,ICO,GIF")]
+    [InlineData("a.tiff", "JPG,PNG,WEBP,PDF,ICO,GIF")]
+    [InlineData("a.gif", "JPG,PNG,WEBP,PDF,TIFF,ICO")]
+    [InlineData("a.avif", "JPG,PNG,WEBP,PDF,TIFF,ICO")] // Mais de 6: o último da ordem fica de fora.
     public void Fatias_seguem_a_ordem_sem_o_formato_de_origem(string path, string expected)
     {
         // ADR-012.
