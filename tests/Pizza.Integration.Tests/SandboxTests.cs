@@ -6,7 +6,8 @@ using Pizza.Core.Ipc;
 namespace Pizza.Integration.Tests;
 
 /// <summary>TST-05: o processo isolado não acessa rede nem arquivos e não cria processos.</summary>
-public sealed class SandboxTests(SandboxFixture fixture) : IClassFixture<SandboxFixture>, IDisposable
+[Collection(SandboxCollection.Name)]
+public sealed class SandboxTests(SandboxFixture fixture) : IDisposable
 {
     private const string Secret = "conteudo secreto";
 
@@ -72,7 +73,7 @@ public sealed class SandboxTests(SandboxFixture fixture) : IClassFixture<Sandbox
 
         IpcFraming.WriteFrame(worker.Input, IpcCodec.Serialize(new IpcMessage(IpcType.Convert, "0123456789ab")
         {
-            ConverterId = "image.png",
+            ConverterId = "image.bmp",
             SrcHandle = 4,
             DstHandle = 8,
             Options = new Dictionary<string, string>(),

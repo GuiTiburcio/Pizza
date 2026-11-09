@@ -143,6 +143,7 @@ internal static unsafe partial class FileNative
     private const int FileIdInfo = 18;
     private const int StatusObjectNameCollision = unchecked((int)0xC0000035);
     private const int ErrorFileNotFound = 2;
+    private const int ErrorAccessDenied = 5;
     private const int ErrorInvalidParameter = 87;
     private const int ExtendedFileIdType = 2;
     private const int FileNameOffset = 20;
@@ -156,7 +157,13 @@ internal static unsafe partial class FileNative
         var handle = CreateFileW(ToExtended(path), GenericReadWrite | Delete, 0, 0, CreateNew, AttributeHidden, 0);
         if (handle.IsInvalid)
         {
-            throw new IOException("Não foi possível criar o arquivo temporário.", Marshal.GetLastPInvokeError());
+            var error = Marshal.GetLastPInvokeError();
+            if (error == ErrorAccessDenied)
+            {
+                throw new UnauthorizedAccessException("Sem permissão para gravar nesta pasta.");
+            }
+
+            throw new IOException("Não foi possível criar o arquivo temporário.", unchecked((int)(0x80070000 | (uint)error)));
         }
 
         return handle;

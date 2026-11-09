@@ -60,3 +60,10 @@ public sealed class SandboxFixture : IDisposable
         }
     }
 }
+
+/// <summary>Um único perfil de teste, compartilhado e sem execução em paralelo.</summary>
+[CollectionDefinition(Name)]
+public sealed class SandboxCollection : ICollectionFixture<SandboxFixture>
+{
+    public const string Name = "Sandbox";
+}

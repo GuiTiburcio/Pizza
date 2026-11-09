@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using Microsoft.Win32.SafeHandles;
 
 // Argumentos: --in <handle> --out <handle> --forbidden <arquivo>; ou --stdio --forbidden <arquivo>.
@@ -12,6 +13,26 @@ using Stream input = stdio ? Stream.Null : OpenHandle(args[Array.IndexOf(args, "
 using Stream output = stdio ? Console.OpenStandardOutput() : OpenHandle(args[Array.IndexOf(args, "--out") + 1], FileAccess.Write);
 using var reader = new StreamReader(input);
 using var writer = new StreamWriter(output) { AutoFlush = true };
+
+var act = Array.IndexOf(args, "--act");
+if (act >= 0)
+{
+    // Worker sabotado, para testar como o residente reage.
+    var jobId = Regex.Match(reader.ReadLine()!, "\"jobId\":\"([0-9a-f]{12})\"").Groups[1].Value;
+    switch (args[act + 1])
+    {
+        case "exit":
+            return 1;
+        case "hang-after-done":
+            writer.Write(Done(jobId));
+            break;
+        case "wrong-job":
+            writer.Write(Done("ffffffffffff"));
+            return 0;
+    }
+
+    Thread.Sleep(Timeout.Infinite);
+}
 
 OpenProcessToken(GetCurrentProcess(), 8 /* TOKEN_QUERY */, out var token);
 GetTokenInformation(token, 29 /* TokenIsAppContainer */, out var isAppContainer, sizeof(int), out _);
@@ -58,6 +79,8 @@ void Attempt(string name, Action action)
         writer.WriteLine(name + "=denied");
     }
 }
+
+static string Done(string jobId) => "{\"v\":1,\"type\":\"done\",\"jobId\":\"" + jobId + "\",\"elapsedMs\":1}\n";
 
 static FileStream OpenHandle(string value, FileAccess access) =>
     new(new SafeFileHandle(nint.Parse(value, System.Globalization.CultureInfo.InvariantCulture), ownsHandle: true), access, 0, false);

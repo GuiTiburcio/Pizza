@@ -9,6 +9,12 @@
     <ProjectReference Include="..\Pizza.Core\Pizza.Core.csproj" />
   </ItemGroup>
 
+  <!-- ADR-004: conversão de imagens. NetVips é MIT; a libvips nativa é LGPL, usada como biblioteca dinâmica. -->
+  <ItemGroup>
+    <PackageReference Include="NetVips" Version="3.2.0" />
+    <PackageReference Include="NetVips.Native.win-x64" Version="8.18.7" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="Pizza.Converters.Tests" />
   </ItemGroup>
