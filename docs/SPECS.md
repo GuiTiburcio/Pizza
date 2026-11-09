@@ -97,6 +97,7 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | FR-31 (novo, v1.x) | Tipos misturados: o menu abre na aba do primeiro arquivo, só os compatíveis são convertidos e os demais aparecem como "ignorado", sem bloquear o lote | 017 |
 | FR-32 (novo, v1.x) | O painel de opções abre uma vez e vale para todos os compatíveis; cada saída fica ao lado do seu original | 017 |
 | SEC-46 | Sem teto de arquivos; fila com no máximo 2 conversões por núcleo | 017 |
+| FR-22 | "Usar sempre estas opções" passa para a Fase 8, junto com a tela de Configuração que permite desfazer. Até lá, o painel sempre abre e Enter converte com o padrão | — |
 | FR-40 a FR-42 | Notificação em janela própria no canto inferior direito, com o design do Pizza. Respeita "Não perturbe" e é anunciada ao leitor de tela. Sucesso some em 5 s, e o mouse em cima pausa; erro fica até fechar. No máximo 3 empilhadas e um cartão "+N" que abre o painel | 018 |
 | FR-43 (novo) | Som leve em WAV, tocado pelo Windows, só ao concluir e no erro; "Não perturbe" silencia. Os sons são originais do projeto | 018 |
 | FR-44 (novo, Fase 3) | Painel "Arquivos...", no clique direito do ícone da bandeja: só em memória, desde que o Pizza abriu, com "Abrir" e "Mostrar na pasta". Na v1.x, também cancelar o lote ou um arquivo e pausar/continuar | 018 |

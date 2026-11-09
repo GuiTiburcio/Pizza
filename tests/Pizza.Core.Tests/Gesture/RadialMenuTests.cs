@@ -43,7 +43,7 @@ public class RadialMenuTests
         var slice = Assert.Single(RadialMenu.Slices(0, path));
 
         Assert.Equal("PNG", slice.Label);
-        Assert.Equal("image.png", slice.ConverterId);
+        Assert.Equal("image.png", slice.Id);
         Assert.Equal("png", slice.Extension);
     }
 

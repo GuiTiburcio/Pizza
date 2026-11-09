@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Text;
 using NetVips;
 using Pizza.Converters;
+using Pizza.Core.Conversions;
 using Image = NetVips.Image;
 
 namespace Pizza.Converters.Tests;
@@ -101,11 +102,60 @@ public class ImagePngConverterTests
         Assert.Empty(png);
     }
 
-    private static (string? Error, byte[] Png) Convert(byte[] source)
+    [Theory]
+    [InlineData("75", 48, 36)]
+    [InlineData("50", 32, 24)]
+    public void Resolucao_reduz_as_dimensoes(string resolution, int width, int height)
     {
+        var (error, png) = Convert(Jpeg(64, 48), ("resolution", resolution));
+
+        Assert.Null(error);
+        Assert.Equal((width, height), Dimensions(png));
+    }
+
+    [Fact]
+    public void Resolucao_vale_tambem_para_foto_girada()
+    {
+        using var image = Solid(40, 20).Mutate(m => m.Set(GValue.GIntType, "orientation", 6));
+
+        var (_, png) = Convert(image.JpegsaveBuffer(keep: Enums.ForeignKeep.All), ("resolution", "50"));
+
+        Assert.Equal((10, 20), Dimensions(png));
+    }
+
+    [Theory]
+    [InlineData("fast")]
+    [InlineData("balanced")]
+    [InlineData("maximum")]
+    public void Compressao_nao_muda_os_pixels(string compression)
+    {
+        var (error, png) = Convert(Jpeg(32, 24, [200, 40, 90]), ("compression", compression));
+
+        Assert.Null(error);
+        Operation.Block("VipsForeignLoadPng", false);
+        using var result = Image.NewFromBuffer(png);
+        Assert.InRange(result[0].Avg(), 194, 206);
+        Assert.Equal((32, 24), Dimensions(png));
+    }
+
+    [Fact]
+    public void Compressao_maxima_nao_gera_arquivo_maior_que_a_rapida()
+    {
+        using var noise = Image.Gaussnoise(128, 128, sigma: 20, mean: 128).Cast(Enums.BandFormat.Uchar);
+        var jpeg = noise.JpegsaveBuffer(q: 90);
+
+        var (_, fast) = Convert(jpeg, ("compression", "fast"));
+        var (_, maximum) = Convert(jpeg, ("compression", "maximum"));
+
+        Assert.True(maximum.Length <= fast.Length);
+    }
+
+    private static (string? Error, byte[] Png) Convert(byte[] source, params (string Key, string Value)[] options)
+    {
+        var given = options.ToDictionary(o => o.Key, o => o.Value);
         using var input = new MemoryStream(source);
         using var output = new MemoryStream();
-        var error = ImagePngConverter.Convert(input, output);
+        var error = new ImagePngConverter().Convert(input, output, ConverterCatalog.ResolveOptions(ConverterCatalog.Find(ImagePngConverter.ConverterId)!, given)!);
         return (error, output.ToArray());
     }
 

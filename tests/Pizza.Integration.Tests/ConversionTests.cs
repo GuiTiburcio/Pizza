@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Security.Cryptography;
 using Pizza.Core.Ipc;
 using Pizza.Core.Output;
@@ -30,6 +31,28 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
         Assert.True(output.AsSpan().StartsWith((byte[])[0x89, 0x50, 0x4E, 0x47]));
         Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
         AssertNoTemporaries();
+    }
+
+    [Fact]
+    public void Opcao_escolhida_chega_ao_conversor_isolado()
+    {
+        var source = CopySample();
+
+        var result = Runner().Run(source, "image.png", "png", new Dictionary<string, string> { ["resolution"] = "50" });
+
+        Assert.Null(result.ErrorCode);
+        var output = File.ReadAllBytes(Path.Combine(_folder, "fachada.png"));
+        Assert.Equal(32, BinaryPrimitives.ReadInt32BigEndian(output.AsSpan(16)));
+        Assert.Equal(24, BinaryPrimitives.ReadInt32BigEndian(output.AsSpan(20)));
+    }
+
+    [Fact]
+    public void Opcao_fora_do_esquema_nao_gera_saida()
+    {
+        var result = Runner().Run(CopySample(), "image.png", "png", new Dictionary<string, string> { ["resolution"] = "200" });
+
+        Assert.Equal("UNSUPPORTED", result.ErrorCode);
+        AssertNothingWritten();
     }
 
     [Fact]

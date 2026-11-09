@@ -1,7 +1,6 @@
-namespace Pizza.Core.Gesture;
+using Pizza.Core.Conversions;
 
-/// <summary>Uma fatia do menu: o formato de saída e a conversão que ela dispara.</summary>
-public sealed record MenuSlice(string Label, string Caption, string ConverterId, string Extension);
+namespace Pizza.Core.Gesture;
 
 /// <summary>Geometria das fatias (WF-1) e o que cada arquivo pode virar. Medidas no disco de 380 px.</summary>
 public static class RadialMenu
@@ -13,9 +12,6 @@ public static class RadialMenu
 
     private const double SlotDegrees = 360.0 / SlotCount;
     private const double TopDegrees = -90;
-
-    private static readonly string[] JpegExtensions = [".jpg", ".jpeg"];
-    private static readonly MenuSlice[] ImageSlices = [new("PNG", "Sem perda", "image.png", "png")];
 
     /// <summary>Ângulo do centro de uma fatia, em graus, com a primeira no topo e as demais em sentido horário.</summary>
     public static double SlotAngle(int slot) => TopDegrees + (SlotDegrees * slot);
@@ -36,10 +32,15 @@ public static class RadialMenu
     }
 
     /// <summary>Se existe alguma conversão para o arquivo; sem nenhuma, o menu não abre (FR-09).</summary>
-    public static bool CanConvert(string path) =>
-        JpegExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
+    public static bool CanConvert(string path) => Available(path).Any();
 
-    /// <summary>Fatias de uma aba para o arquivo. As conversões novas entram aqui, na ordem do ADR-012.</summary>
-    public static IReadOnlyList<MenuSlice> Slices(int tab, string path) =>
-        tab == 0 && CanConvert(path) ? ImageSlices : [];
+    /// <summary>Fatias de uma aba para o arquivo, na ordem do catálogo. O que passar de seis fica de fora.</summary>
+    public static IReadOnlyList<ConverterInfo> Slices(int tab, string path) =>
+        Available(path).Where(converter => converter.Tab == tab).Take(SlotCount).ToArray();
+
+    private static IEnumerable<ConverterInfo> Available(string path)
+    {
+        var extension = Path.GetExtension(path);
+        return ConverterCatalog.All.Where(converter => converter.InputExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase));
+    }
 }

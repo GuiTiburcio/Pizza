@@ -2,6 +2,7 @@
 using System.Globalization;
 using Microsoft.Win32.SafeHandles;
 using Pizza.Converters;
+using Pizza.Core.Conversions;
 using Pizza.Core.Ipc;
 
 namespace Pizza.Worker;
@@ -49,7 +50,10 @@ internal static class Program
 
     private static IpcMessage Convert(IpcMessage request)
     {
-        if (request.ConverterId != ImagePngConverter.Id)
+        // SPECS §10.3: só o que está no registro, e só com opções dentro do esquema.
+        if (ConverterRegistry.Find(request.ConverterId!) is not { } converter
+            || ConverterCatalog.Find(converter.Id) is not { } info
+            || ConverterCatalog.ResolveOptions(info, request.Options!) is not { } options)
         {
             return new IpcMessage(IpcType.Error, request.JobId) { Code = "UNSUPPORTED" };
         }
@@ -61,7 +65,7 @@ internal static class Program
         using (var source = OpenHandle(request.SrcHandle!.Value, FileAccess.Read))
         using (var destination = OpenHandle(request.DstHandle!.Value, FileAccess.Write, DestinationBufferBytes))
         {
-            error = ImagePngConverter.Convert(source, destination);
+            error = converter.Convert(source, destination, options);
         }
 
         return error is null
