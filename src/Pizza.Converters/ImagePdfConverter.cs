@@ -21,7 +21,7 @@ public sealed class ImagePdfConverter : ImageConverter
 
     protected override void Encode(Image image, Stream destination, IReadOnlyDictionary<string, string> options)
     {
-        using var srgb = image.Colourspace(Enums.Interpretation.Srgb);
+        using var srgb = ToSrgb(image);
         using var opaque = srgb.HasAlpha() ? srgb.Flatten(background: [255.0]) : srgb.Copy();
 
         var landscape = opaque.Width > opaque.Height;

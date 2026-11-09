@@ -103,6 +103,20 @@ public class ImagePdfConverterTests
     }
 
     [Fact]
+    public void Perfil_de_cor_e_aplicado_antes_de_ser_descartado()
+    {
+        // PRIV-31: o PDF declara DeviceRGB, então os pixels precisam já estar em sRGB.
+        using var black = Image.Black(64, 64, bands: 3);
+        using var srgb = (black + new[] { 40.0, 200.0, 60.0 }).Cast(Enums.BandFormat.Uchar).Copy(interpretation: Enums.Interpretation.Srgb);
+
+        var jpeg = EmbeddedJpeg(Convert(srgb.IccTransform("p3", inputProfile: "srgb")));
+
+        using var image = Image.NewFromBuffer(jpeg);
+        Assert.InRange(image[0].Avg(), 30, 52);
+        Assert.InRange(image[1].Avg(), 190, 210);
+    }
+
+    [Fact]
     public void Pdf_nao_tem_bloco_de_autoria()
     {
         // PRIV-30.
@@ -125,7 +139,7 @@ public class ImagePdfConverterTests
         {
             var given = resolution is null ? new Dictionary<string, string>() : new Dictionary<string, string> { ["resolution"] = resolution };
             var options = ConverterCatalog.ResolveOptions(ConverterCatalog.Find("image.pdf")!, given)!;
-            using var input = new MemoryStream(image.PngsaveBuffer());
+            using var input = new MemoryStream(image.PngsaveBuffer(keep: Enums.ForeignKeep.Icc));
             using var output = new MemoryStream();
             Assert.Null(ConverterRegistry.Find("image.pdf")!.Convert(input, output, options));
             return output.ToArray();
