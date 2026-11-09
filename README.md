@@ -2,7 +2,7 @@
 
 Conversor de arquivos para Windows que funciona no gesto: **segure Ctrl, arraste o arquivo e solte no formato** num menu circular de vidro. Tudo offline, leve e rápido.
 
-> **Status:** Fase 1, etapa 1b: o Pizza fica nos ícones ocultos da barra de tarefas. Ctrl + arrastar abre um disco simples que recebe o arquivo; ainda não converte nada. Para encerrar, clique com o botão direito no ícone e escolha **Sair**.
+> **Status:** Fase 2: a primeira conversão funciona. Ctrl + arrastar um JPG abre o menu, e soltar na fatia PNG gera o arquivo ao lado do original, num processo isolado. O visual ainda é provisório. Para encerrar, clique com o botão direito no ícone nos ícones ocultos e escolha **Sair**.
 
 ## Como funciona
 
@@ -37,10 +37,12 @@ dotnet build Pizza.slnx
 dotnet test Pizza.slnx
 ```
 
-### Gerar o `Pizza.exe` nativo (NativeAOT)
+### Gerar uma cópia local para testar
+
+Publica o `Pizza.exe` nativo e o Worker juntos, e dá ao Worker isolado a permissão de ler a própria pasta:
 
 ```bash
-dotnet publish src/Pizza.App -c Release -o artifacts/publish/app
+.\tools\publicar-dev.ps1
 ```
 
 Se o publish falhar com `'vswhere.exe' não é reconhecido`, falta a pasta do instalador do Visual Studio no PATH. Adicione `C:\Program Files (x86)\Microsoft Visual Studio\Installer` ao PATH do usuário e abra um terminal novo.

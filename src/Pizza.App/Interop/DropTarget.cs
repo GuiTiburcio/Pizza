@@ -27,7 +27,7 @@ internal readonly record struct DraggedFiles(string First, int Count);
 
 /// <summary>Recebe os eventos de arraste de uma janela do overlay e repassa para o <see cref="Overlay"/>.</summary>
 /// <param name="acceptsDrop">
-/// Verdadeiro para o disco (aceita o drop como cópia); falso para a camada que cobre a tela,
+/// Verdadeiro para o disco (aceita o drop nas fatias, como cópia); falso para a camada que cobre a tela,
 /// que recusa o drop para que soltar fora do menu nunca chegue ao Explorer (Parte 14.1).
 /// </param>
 [GeneratedComClass]
@@ -40,13 +40,13 @@ internal sealed partial class DropTarget(bool acceptsDrop) : IDropTarget
     {
         var files = ReadFiles(dataObject);
         Overlay.OnDragEnter(files, pt.X, pt.Y);
-        effect = files is not null && acceptsDrop ? effect & DROPEFFECT_COPY : DROPEFFECT_NONE;
-        return S_OK;
+        return DragOver(keyState, pt, ref effect);
     }
 
     public int DragOver(int keyState, POINT pt, ref int effect)
     {
-        effect = acceptsDrop ? effect & DROPEFFECT_COPY : DROPEFFECT_NONE;
+        // SEC-05: só cópia, e só com o cursor sobre uma fatia.
+        effect = acceptsDrop && Overlay.OnDragOver(pt.X, pt.Y) ? effect & DROPEFFECT_COPY : DROPEFFECT_NONE;
         return S_OK;
     }
 
@@ -58,9 +58,8 @@ internal sealed partial class DropTarget(bool acceptsDrop) : IDropTarget
 
     public int Drop(nint dataObject, int keyState, POINT pt, ref int effect)
     {
-        if (acceptsDrop)
+        if (acceptsDrop && Overlay.OnDrop(ReadFiles(dataObject), pt.X, pt.Y))
         {
-            Overlay.OnDrop(ReadFiles(dataObject));
             effect &= DROPEFFECT_COPY;
         }
         else

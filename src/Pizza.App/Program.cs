@@ -31,6 +31,7 @@ internal static unsafe class Program
             return 1;
         }
 
+        Conversion.Initialize();
         GestureHook.Install();
         Log.Write(LogEvent.AppStarted);
 
