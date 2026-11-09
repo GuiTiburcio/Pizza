@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Pizza.App.Interop;
 using Pizza.Core.Diagnostics;
 using Pizza.Core.Gesture;
+using Pizza.Core.Ipc;
 using static Pizza.App.Interop.Native;
 
 namespace Pizza.App;
@@ -16,6 +17,7 @@ internal static unsafe class Overlay
     public const uint WmGestureStarted = WM_APP + 1;
     public const uint WmGestureReleased = WM_APP + 2;
     public const uint WmWheel = WM_APP + 3;
+    private const uint WmConversionDone = WM_APP + 4;
 
     private const string ClassName = "PizzaOverlay";
     private const int DiscSize = 380;
@@ -28,7 +30,8 @@ internal static unsafe class Overlay
     private const uint WatchdogMs = 250;
     private const uint AnimationMs = 10;
     private const uint AfterReleaseMs = 400;
-    private const uint ResultMs = 3000;
+    private const uint SuccessResultMs = 800;
+    private const uint ErrorResultMs = 3000; // A mensagem de erro precisa de tempo para ser lida.
 
     // A camada precisa de alfa maior que zero, senão o Windows deixa o mouse atravessar.
     private const byte CatcherAlpha = 1;
@@ -44,8 +47,12 @@ internal static unsafe class Overlay
     private static long _lastFrame;
     private static MotionStyle _motion = MotionStyle.Slide;
     private static int _size = DiscSize;
+    private static int _left;
+    private static int _top;
+    private static int? _hoverSlot;
+    private static readonly DisplayedConversion Displayed = new();
     private static DraggedFiles? _files;
-    private static DraggedFiles? _result;
+    private static Outcome? _outcome;
 
     /// <summary>Janela do disco; também recebe as mensagens enviadas pelos hooks.</summary>
     public static nint Disc { get; private set; }
@@ -88,10 +95,10 @@ internal static unsafe class Overlay
     public static void OnDragEnter(DraggedFiles? files, int x, int y)
     {
         KillTimer(Disc, TimerLeave);
-        var action = Session.OnDragEnter(files is not null);
+        var action = Session.OnDragEnter(files is { } candidate && RadialMenu.CanConvert(candidate.First));
         if (action == SessionAction.Close)
         {
-            // O gesto não era de arquivo (texto, por exemplo): sai da frente e deixa o arraste seguir.
+            // Texto, ou arquivo sem conversão (FR-09): sai da frente e deixa o arraste seguir normal.
             Log.Write(LogEvent.NotAFile);
             Hide();
             return;
@@ -117,12 +124,25 @@ internal static unsafe class Overlay
         }
     }
 
-    public static void OnDrop(DraggedFiles? files)
+    /// <summary>Atualiza o destaque e diz se o cursor está sobre uma fatia que aceita o arquivo.</summary>
+    public static bool OnDragOver(int x, int y)
     {
-        if (files is null)
+        var slot = TargetSlot(x, y);
+        if (slot != _hoverSlot)
         {
-            Hide();
-            return;
+            _hoverSlot = slot;
+            Invalidate();
+        }
+
+        return slot is not null;
+    }
+
+    /// <summary>Inicia a conversão se o arquivo caiu numa fatia. Devolve falso se o drop não vale.</summary>
+    public static bool OnDrop(DraggedFiles? files, int x, int y)
+    {
+        if (files is not { Count: 1 } file || TargetSlot(x, y) is not { } slot)
+        {
+            return false;
         }
 
         Log.Write(LogEvent.FileDropped);
@@ -130,10 +150,49 @@ internal static unsafe class Overlay
         KillTimer(Disc, TimerAfterRelease);
         KillTimer(Disc, TimerWatchdog);
         KillTimer(Disc, TimerLeave);
-        _result = files;
         ShowWindow(_catcher, SW_HIDE);
+
+        _hoverSlot = null;
+        _outcome = new Outcome("Convertendo…", Path.GetFileName(file.First), Succeeded: true);
         Invalidate();
-        SetTimer(Disc, TimerHideResult, ResultMs, 0);
+        Conversion.Start(Displayed.Begin(), file.First, RadialMenu.Slices(Carousel.Target, file.First)[slot], Disc, WmConversionDone);
+        return true;
+    }
+
+    /// <summary>Fatia sob o cursor, se houver uma disponível para o arquivo arrastado.</summary>
+    private static int? TargetSlot(int x, int y)
+    {
+        // FR-30: por enquanto, um arquivo por vez.
+        if (_files is not { Count: 1 } file || !IsVisible)
+        {
+            return null;
+        }
+
+        var center = _size / 2.0;
+        var scale = DiscSize / (double)_size;
+        var slot = RadialMenu.SlotAt((x - _left - center) * scale, (y - _top - center) * scale);
+        return slot < RadialMenu.Slices(Carousel.Target, file.First).Count ? slot : null;
+    }
+
+    private static void OnConversionDone()
+    {
+        if (Conversion.TakeResult() is not { } finished)
+        {
+            return;
+        }
+
+        var result = finished.Result;
+        Log.Write(result.ErrorCode is null ? LogEvent.ConversionDone : LogEvent.ConversionFailed);
+        if (!Displayed.TryFinish(finished.Id))
+        {
+            return; // O usuário já começou outro gesto ou outra conversão.
+        }
+
+        _outcome = result.ErrorCode is { } code
+            ? new Outcome("Não foi possível converter", ConversionMessages.For(code), Succeeded: false)
+            : new Outcome("Pronto", result.OutputName!, Succeeded: true);
+        Invalidate();
+        SetTimer(Disc, TimerHideResult, result.ErrorCode is null ? SuccessResultMs : ErrorResultMs, 0);
     }
 
     public static void OnDropOutside()
@@ -150,7 +209,9 @@ internal static unsafe class Overlay
         ShowWindow(Disc, SW_HIDE);
         IsVisible = false;
         _files = null;
-        _result = null;
+        _outcome = null;
+        Displayed.Clear();
+        _hoverSlot = null;
         Session.Begin();
 
         SetWindowPos(
@@ -179,8 +240,8 @@ internal static unsafe class Overlay
 
         // Perto da borda, desloca para o disco caber inteiro na tela (WF-1, nota 5).
         _size = DiscSize * (int)dpiX / 96;
-        var left = Math.Max(info.RcWork.Left, Math.Min(x - (_size / 2), info.RcWork.Right - _size));
-        var top = Math.Max(info.RcWork.Top, Math.Min(y - (_size / 2), info.RcWork.Bottom - _size));
+        _left = Math.Max(info.RcWork.Left, Math.Min(x - (_size / 2), info.RcWork.Right - _size));
+        _top = Math.Max(info.RcWork.Top, Math.Min(y - (_size / 2), info.RcWork.Bottom - _size));
 
         Carousel.Reset();
         int animations = 1;
@@ -191,7 +252,7 @@ internal static unsafe class Overlay
         _motion = MotionPolicy.Resolve(setting, animations != 0);
 
         // A posição e o tamanho são definidos antes da região, que é relativa à janela.
-        SetWindowPos(Disc, HWND_TOPMOST, left, top, _size, _size, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        SetWindowPos(Disc, HWND_TOPMOST, _left, _top, _size, _size, SWP_NOACTIVATE | SWP_SHOWWINDOW);
         SetWindowRgn(Disc, CreateEllipticRgn(0, 0, _size + 1, _size + 1), 1);
 
         IsVisible = true;
@@ -212,7 +273,9 @@ internal static unsafe class Overlay
         ShowWindow(Disc, SW_HIDE);
         IsVisible = false;
         _files = null;
-        _result = null;
+        _outcome = null;
+        Displayed.Clear();
+        _hoverSlot = null;
     }
 
     private static void Invalidate() => InvalidateRect(Disc, null, 0);
@@ -231,11 +294,16 @@ internal static unsafe class Overlay
                 return 0;
 
             case WmWheel:
-                if (IsVisible && _result is null && Carousel.OnWheel((int)lParam))
+                if (IsVisible && _outcome is null && Carousel.OnWheel((int)lParam))
                 {
+                    _hoverSlot = null;
                     StartAnimation();
                 }
 
+                return 0;
+
+            case WmConversionDone:
+                OnConversionDone();
                 return 0;
 
             case WM_TIMER:
@@ -289,7 +357,7 @@ internal static unsafe class Overlay
 
     private static void OnButtonReleased()
     {
-        if (_result is not null)
+        if (_outcome is not null)
         {
             return;
         }
@@ -382,7 +450,12 @@ internal static unsafe class Overlay
         DeleteObject(background);
 
         var margin = Scale(3);
-        var ring = CreatePen(PS_SOLID, Scale(4), _result is null ? Rgb(47, 107, 255) : Rgb(64, 200, 130));
+        var ring = CreatePen(PS_SOLID, Scale(4), _outcome switch
+        {
+            null => Rgb(47, 107, 255),
+            { Succeeded: true } => Rgb(64, 200, 130),
+            _ => Rgb(232, 90, 90),
+        });
         var oldPen = SelectObject(hdc, ring);
         var oldBrush = SelectObject(hdc, GetStockObject(NULL_BRUSH));
         Ellipse(hdc, margin, margin, _size - margin, _size - margin);
@@ -391,26 +464,108 @@ internal static unsafe class Overlay
         DeleteObject(ring);
 
         SetBkMode(hdc, TRANSPARENT);
-        if (_result is { } result)
+        if (_outcome is { } outcome)
         {
-            DrawLine(hdc, "Recebido", 110, 24, FW_BOLD, Rgb(120, 225, 165));
-            DrawBlock(hdc, Describe(result, result.First), 150, 230, 14, FW_NORMAL, Rgb(255, 255, 255));
+            DrawLine(hdc, outcome.Title, 120, 22, FW_BOLD, outcome.Succeeded ? Rgb(120, 225, 165) : Rgb(255, 150, 150));
+            DrawBlock(hdc, outcome.Detail, 170, 250, 15, FW_NORMAL, Rgb(255, 255, 255));
             return;
         }
 
+        DrawSlices(hdc);
         DrawTabs(hdc);
         DrawTabDots(hdc);
-        DrawLine(hdc, _files is { } files ? Describe(files, Path.GetFileName(files.First)) : "Solte aqui", 178, 17, FW_SEMIBOLD, Rgb(255, 255, 255));
-        DrawLine(hdc, "Role para trocar a aba", 262, 13, FW_NORMAL, Rgb(170, 182, 214));
-        DrawLine(hdc, "Solte o Ctrl e aperte Esc para cancelar", 284, 13, FW_NORMAL, Rgb(170, 182, 214));
+        DrawCenter(hdc);
+        DrawLine(hdc, "Role para trocar a aba", 292, 13, FW_NORMAL, Rgb(170, 182, 214));
+        DrawLine(hdc, "Solte o Ctrl e aperte Esc para cancelar", 314, 13, FW_NORMAL, Rgb(170, 182, 214));
+    }
+
+    /// <summary>Fatias da aba atual. Sem vidro: o visual final é da Fase 4.</summary>
+    private static void DrawSlices(nint hdc)
+    {
+        if (_files is not { } file)
+        {
+            return;
+        }
+
+        var slices = RadialMenu.Slices(Carousel.Target, file.First);
+        for (var slot = 0; slot < slices.Count; slot++)
+        {
+            var active = slot == _hoverSlot;
+            var fill = CreateSolidBrush(active ? Rgb(47, 107, 255) : Rgb(62, 72, 112));
+            var oldBrush = SelectObject(hdc, fill);
+            var oldPen = SelectObject(hdc, GetStockObject(NULL_PEN));
+            DrawSliceShape(hdc, RadialMenu.SlotAngle(slot));
+            SelectObject(hdc, oldPen);
+            SelectObject(hdc, oldBrush);
+            DeleteObject(fill);
+
+            // FR e Parte 2.4: a cor nunca é o único sinal da fatia ativa.
+            var angle = RadialMenu.SlotAngle(slot) * Math.PI / 180;
+            var labelRadius = (RadialMenu.InnerRadius + RadialMenu.OuterRadius) / 2;
+            var cx = (int)(190 + (labelRadius * Math.Cos(angle)));
+            var cy = (int)(190 + (labelRadius * Math.Sin(angle)));
+            DrawAt(hdc, slices[slot].Label, cx, cy - 10, active ? 18 : 15, active ? FW_BOLD : FW_SEMIBOLD, Rgb(255, 255, 255));
+            DrawAt(hdc, slices[slot].Caption, cx, cy + 12, 10, FW_NORMAL, Rgb(214, 222, 240));
+        }
+    }
+
+    private static void DrawSliceShape(nint hdc, double centerDegrees)
+    {
+        const int steps = 11;
+        var points = stackalloc POINT[(steps + 1) * 2];
+        for (var i = 0; i <= steps; i++)
+        {
+            var degrees = centerDegrees - RadialMenu.HalfSliceDegrees + (2 * RadialMenu.HalfSliceDegrees * i / steps);
+            points[i] = PointAt(degrees, RadialMenu.OuterRadius);
+            points[((steps + 1) * 2) - 1 - i] = PointAt(degrees, RadialMenu.InnerRadius);
+        }
+
+        Polygon(hdc, points, (steps + 1) * 2);
+    }
+
+    private static POINT PointAt(double degrees, double radius)
+    {
+        var angle = degrees * Math.PI / 180;
+        return new POINT { X = Scale(190) + (int)Math.Round(Scale(1000) * radius * Math.Cos(angle) / 1000), Y = Scale(190) + (int)Math.Round(Scale(1000) * radius * Math.Sin(angle) / 1000) };
+    }
+
+    private static void DrawCenter(nint hdc)
+    {
+        if (_files is not { } file)
+        {
+            return;
+        }
+
+        if (file.Count > 1)
+        {
+            DrawAt(hdc, $"{file.Count} arquivos", 190, 196, 13, FW_SEMIBOLD, Rgb(255, 255, 255));
+            DrawAt(hdc, "Por enquanto,", 190, 218, 10, FW_NORMAL, Rgb(214, 222, 240));
+            DrawAt(hdc, "um arquivo por vez", 190, 232, 10, FW_NORMAL, Rgb(214, 222, 240));
+            return;
+        }
+
+        var rect = new RECT { Left = Scale(122), Top = Scale(186), Right = Scale(258), Bottom = Scale(212) };
+        Draw(hdc, Path.GetFileName(file.First), &rect, 12, FW_SEMIBOLD, Rgb(255, 255, 255), DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
+    }
+
+    private static void DrawAt(nint hdc, string text, int centerX, int centerY, int fontSize, int weight, uint color)
+    {
+        var rect = new RECT { Left = Scale(centerX - 70), Top = Scale(centerY - fontSize), Right = Scale(centerX + 70), Bottom = Scale(centerY + fontSize) };
+        Draw(hdc, text, &rect, fontSize, weight, color, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
     }
 
     /// <summary>Nomes das abas numa faixa que desliza: a central acesa, as vizinhas apagando nas pontas.</summary>
     private static void DrawTabs(nint hdc)
     {
-        const int spacing = 128;
-        const int halfWidth = 90;
+        const int spacing = 118;
+        const int halfWidth = 70;
+        const int centerRadius = 76;
         var center = _size / 2;
+
+        // As abas deslizam dentro do miolo e somem na borda dele, sem invadir as fatias.
+        var clip = CreateEllipticRgn(center - Scale(centerRadius), center - Scale(centerRadius), center + Scale(centerRadius), center + Scale(centerRadius));
+        SelectClipRgn(hdc, clip);
+        DeleteObject(clip);
 
         for (var tab = 0; tab < MenuTabs.Names.Count; tab++)
         {
@@ -430,9 +585,11 @@ internal static unsafe class Overlay
             var brightness = _motion == MotionStyle.Fade ? 1 - absolute
                 : absolute < 1 ? 1 - (0.75 * absolute) : 0.25 * (1.5 - absolute) / 0.5;
             var x = _motion == MotionStyle.Fade ? center : center + (int)Math.Round(distance * Scale(spacing));
-            var rect = new RECT { Left = x - Scale(halfWidth), Top = Scale(84), Right = x + Scale(halfWidth), Bottom = Scale(128) };
-            Draw(hdc, MenuTabs.Names[tab], &rect, 26, FW_BOLD, Mix(DiscColor, Rgb(255, 255, 255), brightness), DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+            var rect = new RECT { Left = x - Scale(halfWidth), Top = Scale(128), Right = x + Scale(halfWidth), Bottom = Scale(162) };
+            Draw(hdc, MenuTabs.Names[tab], &rect, 20, FW_BOLD, Mix(DiscColor, Rgb(255, 255, 255), brightness), DT_CENTER | DT_SINGLELINE | DT_VCENTER);
         }
+
+        SelectClipRgn(hdc, 0);
     }
 
     /// <summary>Um ponto por aba; o brilho acompanha a posição do deslize.</summary>
@@ -442,7 +599,7 @@ internal static unsafe class Overlay
         const int radius = 4;
         var count = MenuTabs.Names.Count;
         var first = (_size / 2) - (Scale(gap) * (count - 1) / 2);
-        var y = Scale(136);
+        var y = Scale(172);
         var oldPen = SelectObject(hdc, GetStockObject(NULL_PEN));
 
         for (var tab = 0; tab < count; tab++)
@@ -469,9 +626,6 @@ internal static unsafe class Overlay
         return r | (g << 8) | (b << 16);
     }
 
-    private static string Describe(DraggedFiles files, string text) =>
-        files.Count > 1 ? $"{text} (+{files.Count - 1})" : text;
-
     private static void DrawLine(nint hdc, string text, int top, int fontSize, int weight, uint color)
     {
         var rect = new RECT { Left = Scale(46), Top = Scale(top), Right = _size - Scale(46), Bottom = Scale(top + (fontSize * 2)) };
@@ -495,4 +649,7 @@ internal static unsafe class Overlay
     }
 
     private static int Scale(int value) => value * _size / DiscSize;
+
+    /// <summary>O que o disco mostra depois do drop.</summary>
+    private readonly record struct Outcome(string Title, string Detail, bool Succeeded);
 }

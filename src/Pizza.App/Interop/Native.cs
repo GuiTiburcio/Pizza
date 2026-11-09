@@ -356,6 +356,12 @@ internal static unsafe partial class Native
     public static partial int Ellipse(nint hdc, int left, int top, int right, int bottom);
 
     [LibraryImport("gdi32.dll")]
+    public static partial int Polygon(nint hdc, POINT* points, int count);
+
+    [LibraryImport("gdi32.dll")]
+    public static partial int SelectClipRgn(nint hdc, nint region);
+
+    [LibraryImport("gdi32.dll")]
     public static partial uint SetTextColor(nint hdc, uint color);
 
     [LibraryImport("gdi32.dll")]

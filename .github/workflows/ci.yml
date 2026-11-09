@@ -43,6 +43,9 @@ jobs:
       - name: Publicar residente (NativeAOT)
         run: dotnet publish src/Pizza.App -c Release -o artifacts/publish/app
 
+      - name: Publicar Worker
+        run: dotnet publish src/Pizza.Worker -c Release -o artifacts/publish/app
+
       - name: Tamanho do Pizza.exe
         shell: pwsh
         run: |
@@ -57,9 +60,11 @@ jobs:
           path: TestResults
           if-no-files-found: ignore
 
-      - name: Guardar Pizza.exe
+      - name: Guardar Pizza e Worker
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: pizza-win-x64
-          path: artifacts/publish/app/Pizza.exe
+          path: |
+            artifacts/publish/app
+            !artifacts/publish/app/*.pdb
           retention-days: 14

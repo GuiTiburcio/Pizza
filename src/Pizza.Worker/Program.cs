@@ -11,6 +11,9 @@ internal static class Program
     private const int InvalidArguments = 2;
     private const int ProtocolViolation = 3;
 
+    // Se a gravação final falhar ao fechar, o Worker cai antes de responder "done" e a saída é descartada.
+    private const int DestinationBufferBytes = 1024 * 1024;
+
     /// <summary>
     /// Worker isolado: fala só pelos dois pipes herdados, converte um único arquivo e encerra (SEC-29).
     /// Qualquer mensagem fora do contrato também o encerra (SEC-13).
@@ -56,7 +59,7 @@ internal static class Program
 
         // O destino é fechado antes da resposta: depois de "done", o Worker não tem como escrever.
         using (var source = OpenHandle(request.SrcHandle!.Value, FileAccess.Read))
-        using (var destination = OpenHandle(request.DstHandle!.Value, FileAccess.Write))
+        using (var destination = OpenHandle(request.DstHandle!.Value, FileAccess.Write, DestinationBufferBytes))
         {
             error = ImagePngConverter.Convert(source, destination);
         }
@@ -66,6 +69,6 @@ internal static class Program
             : new IpcMessage(IpcType.Error, request.JobId) { Code = error };
     }
 
-    private static FileStream OpenHandle(long value, FileAccess access) =>
-        new(new SafeFileHandle((nint)value, ownsHandle: true), access, 0, false);
+    private static FileStream OpenHandle(long value, FileAccess access, int bufferBytes = 0) =>
+        new(new SafeFileHandle((nint)value, ownsHandle: true), access, bufferBytes, false);
 }
