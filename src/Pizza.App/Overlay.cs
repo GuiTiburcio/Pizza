@@ -30,7 +30,8 @@ internal static unsafe class Overlay
     private const uint WatchdogMs = 250;
     private const uint AnimationMs = 10;
     private const uint AfterReleaseMs = 400;
-    private const uint ResultMs = 3000;
+    private const uint SuccessResultMs = 800;
+    private const uint ErrorResultMs = 3000; // A mensagem de erro precisa de tempo para ser lida.
 
     // A camada precisa de alfa maior que zero, senão o Windows deixa o mouse atravessar.
     private const byte CatcherAlpha = 1;
@@ -192,7 +193,7 @@ internal static unsafe class Overlay
             ? new Outcome("Não foi possível converter", ConversionMessages.For(code), Succeeded: false)
             : new Outcome("Pronto", result.OutputName!, Succeeded: true);
         Invalidate();
-        SetTimer(Disc, TimerHideResult, ResultMs, 0);
+        SetTimer(Disc, TimerHideResult, result.ErrorCode is null ? SuccessResultMs : ErrorResultMs, 0);
     }
 
     public static void OnDropOutside()
