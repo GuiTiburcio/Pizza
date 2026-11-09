@@ -7,8 +7,7 @@ namespace Pizza.App;
 internal static unsafe class Program
 {
     /// <summary>
-    /// Ponto de entrada do residente. Na etapa 1a é a prova de conceito do gesto; a bandeja chega na 1b.
-    /// Enquanto não há bandeja, Ctrl + Alt + Shift + P encerra o programa.
+    /// Ponto de entrada do residente: fica nos ícones ocultos e encerra pelo menu do ícone.
     /// </summary>
     [STAThread]
     private static int Main()
@@ -24,8 +23,8 @@ internal static unsafe class Program
 
         Overlay.Create();
 
-        // Sem bandeja, o atalho é a única saída: se não registrar, não fica rodando sem como fechar.
-        if (RegisterHotKey(Overlay.Disc, Overlay.HotkeyQuit, MOD_CONTROL | MOD_ALT | MOD_SHIFT | MOD_NOREPEAT, VK_P) == 0)
+        // O ícone é a única saída: sem ele, o programa não fica rodando sem como fechar.
+        if (!Tray.Create())
         {
             Overlay.Destroy();
             OleUninitialize();
@@ -43,6 +42,7 @@ internal static unsafe class Program
         }
 
         GestureHook.Uninstall();
+        Tray.Remove();
         Overlay.Destroy();
         OleUninitialize();
         Log.Write(LogEvent.AppStopped);

@@ -16,7 +16,6 @@ internal static unsafe class Overlay
     public const uint WmGestureStarted = WM_APP + 1;
     public const uint WmGestureReleased = WM_APP + 2;
     public const uint WmWheel = WM_APP + 3;
-    public const int HotkeyQuit = 1;
 
     private const string ClassName = "PizzaOverlay";
     private const int DiscSize = 380;
@@ -241,14 +240,6 @@ internal static unsafe class Overlay
 
             case WM_TIMER:
                 OnTimer(wParam);
-                return 0;
-
-            case WM_HOTKEY:
-                if ((int)wParam == HotkeyQuit)
-                {
-                    PostQuitMessage(0);
-                }
-
                 return 0;
 
             case WM_ERASEBKGND:
