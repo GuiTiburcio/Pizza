@@ -54,6 +54,16 @@
           "Newtonsoft.Json": "13.0.3"
         }
       },
+      "NetVips": {
+        "type": "Transitive",
+        "resolved": "3.2.0",
+        "contentHash": "ixVatHjsFBBvtKXYwH8jz8nF6OQIhl2e/P0N8ByGaZrlPu9VvcVQxX9zBQ13L8fUpMzKv1WXUybqW8wXZdFsCg=="
+      },
+      "NetVips.Native.win-x64": {
+        "type": "Transitive",
+        "resolved": "8.18.7",
+        "contentHash": "xmJCf4GoVHOSB7nED+/JxP6nxx+a/JZTqv3VQ8ni1LdZb3dewcMwSJPjEItdzNMpKLJL/40HZG42/dP05ifEJA=="
+      },
       "Newtonsoft.Json": {
         "type": "Transitive",
         "resolved": "13.0.3",
@@ -102,6 +112,8 @@
       "pizza.converters": {
         "type": "Project",
         "dependencies": {
+          "NetVips": "[3.2.0, )",
+          "NetVips.Native.win-x64": "[8.18.7, )",
           "Pizza.Core": "[0.0.1, )"
         }
       },

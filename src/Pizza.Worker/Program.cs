@@ -1,5 +1,7 @@
-﻿using System.Globalization;
+﻿using System.Diagnostics;
+using System.Globalization;
 using Microsoft.Win32.SafeHandles;
+using Pizza.Converters;
 using Pizza.Core.Ipc;
 
 namespace Pizza.Worker;
@@ -10,8 +12,8 @@ internal static class Program
     private const int ProtocolViolation = 3;
 
     /// <summary>
-    /// Worker isolado: fala só pelos dois pipes herdados e encerra diante de qualquer mensagem fora
-    /// do contrato (SEC-13). Os conversores chegam na etapa 2c; até lá, todo convert é recusado.
+    /// Worker isolado: fala só pelos dois pipes herdados, converte um único arquivo e encerra (SEC-29).
+    /// Qualquer mensagem fora do contrato também o encerra (SEC-13).
     /// </summary>
     private static int Main(string[] args)
     {
@@ -20,8 +22,8 @@ internal static class Program
             return InvalidArguments;
         }
 
-        using var reader = OpenPipe(input, FileAccess.Read);
-        using var writer = OpenPipe(output, FileAccess.Write);
+        using var reader = OpenHandle(long.Parse(input, CultureInfo.InvariantCulture), FileAccess.Read);
+        using var writer = OpenHandle(long.Parse(output, CultureInfo.InvariantCulture), FileAccess.Write);
         try
         {
             while (IpcFraming.ReadFrame(reader) is { } frame)
@@ -29,7 +31,8 @@ internal static class Program
                 var message = IpcCodec.Parse(frame);
                 if (message.Type == IpcType.Convert)
                 {
-                    IpcFraming.WriteFrame(writer, IpcCodec.Serialize(new IpcMessage(IpcType.Error, message.JobId) { Code = "UNSUPPORTED" }));
+                    IpcFraming.WriteFrame(writer, IpcCodec.Serialize(Convert(message)));
+                    return 0;
                 }
             }
 
@@ -41,6 +44,28 @@ internal static class Program
         }
     }
 
-    private static FileStream OpenPipe(string value, FileAccess access) =>
-        new(new SafeFileHandle(nint.Parse(value, CultureInfo.InvariantCulture), ownsHandle: true), access, 0, false);
+    private static IpcMessage Convert(IpcMessage request)
+    {
+        if (request.ConverterId != ImagePngConverter.Id)
+        {
+            return new IpcMessage(IpcType.Error, request.JobId) { Code = "UNSUPPORTED" };
+        }
+
+        var clock = Stopwatch.StartNew();
+        string? error;
+
+        // O destino é fechado antes da resposta: depois de "done", o Worker não tem como escrever.
+        using (var source = OpenHandle(request.SrcHandle!.Value, FileAccess.Read))
+        using (var destination = OpenHandle(request.DstHandle!.Value, FileAccess.Write))
+        {
+            error = ImagePngConverter.Convert(source, destination);
+        }
+
+        return error is null
+            ? new IpcMessage(IpcType.Done, request.JobId) { ElapsedMs = clock.ElapsedMilliseconds }
+            : new IpcMessage(IpcType.Error, request.JobId) { Code = error };
+    }
+
+    private static FileStream OpenHandle(long value, FileAccess access) =>
+        new(new SafeFileHandle((nint)value, ownsHandle: true), access, 0, false);
 }
