@@ -42,6 +42,8 @@ public class IpcCodecTests
     [InlineData("[]")]
     [InlineData("""{"v":1}""")]
     [InlineData("""{"v":2,"jobId":"0123456789ab","type":"cancel"}""")] // versão desconhecida
+    [InlineData("""{"v":1,"jobId":"\uD800","type":"cancel"}""")] // Unicode inválido
+    [InlineData("""{"\uD800":1}""")]
     [InlineData("""{"v":1,"jobId":"xyz","type":"cancel"}""")] // jobId fora do formato
     [InlineData("""{"v":1,"jobId":"0123456789AB","type":"cancel"}""")] // só minúsculas
     [InlineData("""{"v":1,"jobId":"0123456789ab","type":"outro"}""")] // tipo desconhecido

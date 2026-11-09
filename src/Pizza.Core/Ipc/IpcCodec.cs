@@ -73,8 +73,9 @@ public static partial class IpcCodec
         {
             values = ReadObject(payload);
         }
-        catch (JsonException)
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
         {
+            // Unicode inválido sai como InvalidOperationException: a mensagem vem de um processo não confiável.
             throw new IpcProtocolException("JSON inválido.");
         }
 
