@@ -46,6 +46,35 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
         Assert.Equal(24, BinaryPrimitives.ReadInt32BigEndian(output.AsSpan(20)));
     }
 
+    [Theory]
+    [InlineData("image.webp", "webp", "52494646")]
+    [InlineData("image.tiff", "tiff", "49492A00")]
+    [InlineData("image.gif", "gif", "47494638")]
+    [InlineData("image.ico", "ico", "00000100")]
+    public void Cada_formato_funciona_dentro_do_sandbox(string converterId, string extension, string signature)
+    {
+        // O destino chega ao Worker só com permissão de escrita.
+        var result = Runner().Run(CopySample(), converterId, extension);
+
+        Assert.Null(result.ErrorCode);
+        var output = File.ReadAllBytes(Path.Combine(_folder, "fachada." + extension));
+        Assert.StartsWith(signature, Convert.ToHexString(output), StringComparison.Ordinal);
+        AssertNoTemporaries();
+    }
+
+    [Fact]
+    public void Png_vira_jpg_dentro_do_sandbox()
+    {
+        var source = CopySample();
+        Runner().Run(source, "image.png", "png");
+        File.Delete(source);
+
+        var result = Runner().Run(Path.Combine(_folder, "fachada.png"), "image.jpg", "jpg");
+
+        Assert.Null(result.ErrorCode);
+        Assert.StartsWith("FFD8FF", Convert.ToHexString(File.ReadAllBytes(Path.Combine(_folder, "fachada.jpg"))), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Opcao_fora_do_esquema_nao_gera_saida()
     {

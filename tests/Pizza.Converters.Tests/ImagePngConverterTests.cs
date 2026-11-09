@@ -81,13 +81,15 @@ public class ImagePngConverterTests
     }
 
     [Fact]
-    public void Png_disfarcado_de_jpg_e_recusado()
+    public void Vale_o_conteudo_dentro_da_aba_imagem()
     {
+        // SEC-45: o formato real precisa estar na lista e corresponder à aba, mesmo com outra extensão.
         using var image = Solid(8, 8);
 
-        var (error, _) = Convert(image.PngsaveBuffer());
+        var (error, png) = Convert(image.PngsaveBuffer());
 
-        Assert.Equal("UNSUPPORTED", error);
+        Assert.Null(error);
+        Assert.True(IsPng(png));
     }
 
     [Fact]
@@ -132,7 +134,6 @@ public class ImagePngConverterTests
         var (error, png) = Convert(Jpeg(32, 24, [200, 40, 90]), ("compression", compression));
 
         Assert.Null(error);
-        Operation.Block("VipsForeignLoadPng", false);
         using var result = Image.NewFromBuffer(png);
         Assert.InRange(result[0].Avg(), 194, 206);
         Assert.Equal((32, 24), Dimensions(png));
