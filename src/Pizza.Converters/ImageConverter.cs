@@ -62,6 +62,10 @@ public abstract class ImageConverter : IConverter
     /// <summary>Grava a imagem já na posição certa. PRIV-30 e PRIV-31: só o perfil de cor pode ser mantido.</summary>
     protected abstract void Encode(Image image, Stream destination, IReadOnlyDictionary<string, string> options);
 
+    /// <summary>Para formatos que não guardam perfil de cor: aplica o perfil embutido, ou as cores mudariam (PRIV-31).</summary>
+    protected static Image ToSrgb(Image image) =>
+        image.Contains("icc-profile-data") ? image.IccTransform("srgb", embedded: true) : image.Colourspace(Enums.Interpretation.Srgb);
+
     protected static int Number(IReadOnlyDictionary<string, string> options, string key) =>
         int.Parse(options[key], CultureInfo.InvariantCulture);
 

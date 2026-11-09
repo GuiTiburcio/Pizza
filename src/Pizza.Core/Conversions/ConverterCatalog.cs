@@ -44,6 +44,14 @@ public static class ConverterCatalog
                 new("compression", "Compressão", "balanced", [new("fast", "Rápida"), new("balanced", "Equilibrada"), new("maximum", "Máxima")]),
             ]),
         new("image.webp", ImageTab, "WEBP", "Para web", "webp", ImagesExcept(".webp"), Quality),
+        new(
+            "image.pdf",
+            ImageTab,
+            "PDF",
+            "Folha A4",
+            "pdf",
+            ImageInputs,
+            [new("resolution", "Resolução", "original", [new("original", "Original"), new("150", "Escritório"), new("96", "Tela")])]),
         new("image.tiff", ImageTab, "TIFF", "Sem perda", "tiff", ImagesExcept(".tif", ".tiff"), []),
         new(
             "image.ico",

@@ -45,9 +45,12 @@ public sealed class ImageGifConverter : ImageConverter
 {
     public override string Id => "image.gif";
 
-    // Em 12 MP, o esforço 1 gastou cerca de 40% menos tempo que o padrão 7, com tamanho quase igual.
-    protected override void Encode(Image image, Stream destination, IReadOnlyDictionary<string, string> options) =>
-        image.GifsaveStream(destination, effort: 1, keep: Enums.ForeignKeep.None);
+    // Em 16 MP, o esforço 1 gastou cerca de 40% menos tempo que o padrão 7, com tamanho quase igual.
+    protected override void Encode(Image image, Stream destination, IReadOnlyDictionary<string, string> options)
+    {
+        using var srgb = ToSrgb(image);
+        srgb.GifsaveStream(destination, effort: 1, keep: Enums.ForeignKeep.None);
+    }
 }
 
 /// <summary>ICO com uma única imagem PNG dentro; o libvips não grava este formato.</summary>
@@ -60,8 +63,8 @@ public sealed class ImageIcoConverter : ImageConverter
     protected override void Encode(Image image, Stream destination, IReadOnlyDictionary<string, string> options)
     {
         var size = Number(options, "size");
-        using var thumbnail = image.ThumbnailImage(size, height: size);
-        using var srgb = thumbnail.Colourspace(Enums.Interpretation.Srgb);
+        using var converted = ToSrgb(image);
+        using var srgb = converted.ThumbnailImage(size, height: size);
         using var withAlpha = srgb.HasAlpha() ? srgb.Copy() : srgb.Bandjoin(255.0);
 
         // Imagem que não é quadrada ganha margens transparentes em vez de ser esticada.

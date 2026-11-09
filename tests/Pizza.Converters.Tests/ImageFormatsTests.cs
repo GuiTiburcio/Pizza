@@ -104,6 +104,27 @@ public class ImageFormatsTests
     }
 
     [Fact]
+    public void Gif_aplica_o_perfil_de_cor_antes_de_descartar()
+    {
+        // PRIV-31: o GIF não guarda perfil, então as cores precisam ser convertidas.
+        var (error, gif) = Run("image.gif", WideGamutGreen());
+
+        Assert.Null(error);
+        using var result = Image.NewFromBuffer(gif);
+        AssertGreen(result);
+    }
+
+    [Fact]
+    public void Ico_aplica_o_perfil_de_cor_antes_de_descartar()
+    {
+        var (error, ico) = Run("image.ico", WideGamutGreen(), ("size", "48"));
+
+        Assert.Null(error);
+        using var result = Image.NewFromBuffer(ico[22..]);
+        AssertGreen(result);
+    }
+
+    [Fact]
     public void Imagem_que_nao_e_quadrada_vira_icone_quadrado_sem_distorcer()
     {
         var (_, ico) = Run("image.ico", Solid(64, 32).PngsaveBuffer(), ("size", "48"));
@@ -178,6 +199,20 @@ public class ImageFormatsTests
     {
         using var black = Image.Black(width, height, bands: 3);
         return (black + new[] { 120.0, 130.0, 140.0 }).Cast(Enums.BandFormat.Uchar).Copy(interpretation: Enums.Interpretation.Srgb);
+    }
+
+    private static byte[] WideGamutGreen()
+    {
+        using var black = Image.Black(64, 64, bands: 3);
+        using var srgb = (black + new[] { 40.0, 200.0, 60.0 }).Cast(Enums.BandFormat.Uchar).Copy(interpretation: Enums.Interpretation.Srgb);
+        using var p3 = srgb.IccTransform("p3", inputProfile: "srgb");
+        return p3.PngsaveBuffer(keep: Enums.ForeignKeep.Icc);
+    }
+
+    private static void AssertGreen(Image result)
+    {
+        Assert.InRange(result[0].Avg(), 30, 52);
+        Assert.InRange(result[1].Avg(), 190, 210);
     }
 
     private static Image Noise() => Image.Gaussnoise(128, 128, sigma: 30, mean: 128).Cast(Enums.BandFormat.Uchar);

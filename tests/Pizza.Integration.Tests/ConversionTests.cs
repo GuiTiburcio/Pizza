@@ -47,6 +47,7 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
     }
 
     [Theory]
+    [InlineData("image.pdf", "pdf", "25504446")]
     [InlineData("image.webp", "webp", "52494646")]
     [InlineData("image.tiff", "tiff", "49492A00")]
     [InlineData("image.gif", "gif", "47494638")]
