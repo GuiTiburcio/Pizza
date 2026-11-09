@@ -50,7 +50,7 @@ internal static unsafe class Overlay
     private static int _left;
     private static int _top;
     private static int? _hoverSlot;
-    private static bool _converting;
+    private static readonly DisplayedConversion Displayed = new();
     private static DraggedFiles? _files;
     private static Outcome? _outcome;
 
@@ -153,10 +153,9 @@ internal static unsafe class Overlay
         ShowWindow(_catcher, SW_HIDE);
 
         _hoverSlot = null;
-        _converting = true;
         _outcome = new Outcome("Convertendo…", Path.GetFileName(file.First), Succeeded: true);
         Invalidate();
-        Conversion.Start(file.First, RadialMenu.Slices(Carousel.Target, file.First)[slot], Disc, WmConversionDone);
+        Conversion.Start(Displayed.Begin(), file.First, RadialMenu.Slices(Carousel.Target, file.First)[slot], Disc, WmConversionDone);
         return true;
     }
 
@@ -177,18 +176,18 @@ internal static unsafe class Overlay
 
     private static void OnConversionDone()
     {
-        if (Conversion.TakeResult() is not { } result)
+        if (Conversion.TakeResult() is not { } finished)
         {
             return;
         }
 
+        var result = finished.Result;
         Log.Write(result.ErrorCode is null ? LogEvent.ConversionDone : LogEvent.ConversionFailed);
-        if (!_converting)
+        if (!Displayed.TryFinish(finished.Id))
         {
-            return; // O usuário já começou outro gesto.
+            return; // O usuário já começou outro gesto ou outra conversão.
         }
 
-        _converting = false;
         _outcome = result.ErrorCode is { } code
             ? new Outcome("Não foi possível converter", ConversionMessages.For(code), Succeeded: false)
             : new Outcome("Pronto", result.OutputName!, Succeeded: true);
@@ -211,7 +210,7 @@ internal static unsafe class Overlay
         IsVisible = false;
         _files = null;
         _outcome = null;
-        _converting = false;
+        Displayed.Clear();
         _hoverSlot = null;
         Session.Begin();
 
@@ -275,7 +274,7 @@ internal static unsafe class Overlay
         IsVisible = false;
         _files = null;
         _outcome = null;
-        _converting = false;
+        Displayed.Clear();
         _hoverSlot = null;
     }
 

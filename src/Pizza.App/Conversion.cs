@@ -12,7 +12,7 @@ internal static class Conversion
 {
     private const string Profile = "Pizza.Worker";
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(2); // SEC-43
-    private static readonly ConcurrentQueue<ConversionResult> Results = new();
+    private static readonly ConcurrentQueue<(long Id, ConversionResult Result)> Results = new();
     private static readonly Lock Gate = new();
     private static ConversionRunner _runner = null!;
 
@@ -33,7 +33,7 @@ internal static class Conversion
         _runner = new ConversionRunner(Path.Combine(AppContext.BaseDirectory, "Pizza.Worker.exe"), Profile, journal, Timeout);
     }
 
-    public static void Start(string sourcePath, MenuSlice slice, nint notifyWindow, uint notifyMessage)
+    public static void Start(long id, string sourcePath, MenuSlice slice, nint notifyWindow, uint notifyMessage)
     {
         Task.Run(() =>
         {
@@ -51,10 +51,10 @@ internal static class Conversion
                 result = ConversionResult.Failed("WORKER_CRASHED");
             }
 
-            Results.Enqueue(result);
+            Results.Enqueue((id, result));
             PostMessageW(notifyWindow, notifyMessage, 0, 0);
         });
     }
 
-    public static ConversionResult? TakeResult() => Results.TryDequeue(out var result) ? result : null;
+    public static (long Id, ConversionResult Result)? TakeResult() => Results.TryDequeue(out var result) ? result : null;
 }
