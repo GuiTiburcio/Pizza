@@ -31,6 +31,10 @@ internal static unsafe class FilesPanel
     private static int _left;
     private static int _height;
 
+    public static bool IsOpen => _open;
+
+    public static nint Window => _window;
+
     public static void Create()
     {
         var instance = GetModuleHandleW(null);
@@ -140,7 +144,9 @@ internal static unsafe class FilesPanel
         }
 
         SetLayeredWindowAttributes(_window, 0, (byte)(PanelAlpha * Alpha.Value), LWA_ALPHA);
-        SetWindowPos(_window, HWND_TOPMOST, _left, (int)Top.Value, Notifications.Scale(FilesPanelState.Width), _height, SWP_SHOWWINDOW);
+
+        // O foco é pedido só uma vez, em Show: aqui não pode voltar a tomá-lo enquanto o painel fecha.
+        SetWindowPos(_window, HWND_TOPMOST, _left, (int)Top.Value, Notifications.Scale(FilesPanelState.Width), _height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
     }
 
     private static void StartClock()

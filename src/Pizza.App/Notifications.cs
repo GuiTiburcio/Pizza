@@ -49,7 +49,7 @@ internal static unsafe class Notifications
     private static int _dpi = 96;
     private static RECT _area;
 
-    public static ConversionHistory History { get; } = new();
+    public static ConversionHistory History { get; } = new() { InUse = Stack.Contains };
 
     public static int Dpi => _dpi;
 
@@ -269,7 +269,10 @@ internal static unsafe class Notifications
             }
 
             SetLayeredWindowAttributes(card.Hwnd, 0, (byte)(CardAlpha * card.Alpha.Value), LWA_ALPHA);
-            SetWindowPos(card.Hwnd, HWND_TOPMOST, left, (int)card.Top.Value, Scale(NotificationCardLayout.Width), card.Height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+
+            // Com o painel "Arquivos..." aberto, os cartões ficam logo abaixo dele, sem cobrir a lista.
+            var after = FilesPanel.IsOpen ? FilesPanel.Window : HWND_TOPMOST;
+            SetWindowPos(card.Hwnd, after, left, (int)card.Top.Value, Scale(NotificationCardLayout.Width), card.Height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
         }
     }
 

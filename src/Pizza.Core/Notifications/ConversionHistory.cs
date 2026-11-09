@@ -39,16 +39,16 @@ public sealed class ConversionHistory
 
     private readonly List<HistoryEntry> _entries = [];
 
+    /// <summary>Diz se uma conversão ainda tem cartão na tela: sem o registro, os botões dele parariam.</summary>
+    public Func<long, bool> InUse { get; init; } = _ => false;
+
     /// <summary>As mais novas primeiro.</summary>
     public IReadOnlyList<HistoryEntry> Items => _entries;
 
     public void Add(long id, string sourcePath, ConverterInfo converter, IReadOnlyDictionary<string, string> options)
     {
         _entries.Insert(0, new HistoryEntry(id, sourcePath, converter, options));
-        if (_entries.Count > MaxEntries)
-        {
-            _entries.RemoveAt(_entries.Count - 1);
-        }
+        Trim();
     }
 
     public HistoryEntry? Find(long id) => _entries.Find(entry => entry.Id == id);
@@ -72,4 +72,16 @@ public sealed class ConversionHistory
     }
 
     public void Remove(long id) => _entries.RemoveAll(entry => entry.Id == id);
+
+    /// <summary>Tira as mais antigas, poupando o que ainda está em andamento ou com cartão na tela.</summary>
+    private void Trim()
+    {
+        for (var index = _entries.Count - 1; index >= 0 && _entries.Count > MaxEntries; index--)
+        {
+            if (_entries[index].State != HistoryState.Running && !InUse(_entries[index].Id))
+            {
+                _entries.RemoveAt(index);
+            }
+        }
+    }
 }

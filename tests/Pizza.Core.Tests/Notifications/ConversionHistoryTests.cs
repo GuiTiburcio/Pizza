@@ -19,6 +19,18 @@ public class ConversionHistoryTests
         return history;
     }
 
+    private static ConversionHistory Finished(int count)
+    {
+        var history = new ConversionHistory();
+        for (var id = 1; id <= count; id++)
+        {
+            history.Add(id, $"C:\\a\\{id}.jpg", Png, new Dictionary<string, string>());
+            history.Complete(id, $"C:\\a\\{id}.png");
+        }
+
+        return history;
+    }
+
     [Fact]
     public void As_mais_novas_vem_primeiro()
     {
@@ -28,12 +40,65 @@ public class ConversionHistoryTests
     [Fact]
     public void Guarda_so_as_100_mais_recentes()
     {
-        var history = With(103);
+        var history = Finished(103);
 
         Assert.Equal(100, history.Items.Count);
         Assert.Equal(103, history.Items[0].Id);
         Assert.Equal(4, history.Items[^1].Id);
         Assert.Null(history.Find(3));
+    }
+
+    [Fact]
+    public void Conversao_em_andamento_nao_sai_da_lista()
+    {
+        // Sem o registro, o resultado dela não teria onde aparecer.
+        var history = With(1);
+
+        for (long id = 2; id <= 102; id++)
+        {
+            history.Add(id, $"C:\\a\\{id}.jpg", Png, new Dictionary<string, string>());
+            history.Complete(id, $"C:\\a\\{id}.png");
+        }
+
+        Assert.NotNull(history.Find(1));
+        Assert.Equal(100, history.Items.Count);
+    }
+
+    [Fact]
+    public void Item_com_cartao_na_tela_nao_sai_da_lista()
+    {
+        // Um cartão de erro antigo precisa continuar com os botões funcionando.
+        var history = new ConversionHistory { InUse = id => id == 1 };
+        history.Add(1, "C:\\a\\1.jpg", Png, new Dictionary<string, string>());
+        history.Fail(1, "motivo");
+
+        for (long id = 2; id <= 102; id++)
+        {
+            history.Add(id, $"C:\\a\\{id}.jpg", Png, new Dictionary<string, string>());
+            history.Complete(id, $"C:\\a\\{id}.png");
+        }
+
+        Assert.NotNull(history.Find(1));
+    }
+
+    [Fact]
+    public void Item_liberado_sai_na_proxima_conversao()
+    {
+        var inUse = true;
+        var history = new ConversionHistory { InUse = _ => inUse };
+        for (long id = 1; id <= 103; id++)
+        {
+            history.Add(id, $"C:\\a\\{id}.jpg", Png, new Dictionary<string, string>());
+            history.Complete(id, $"C:\\a\\{id}.png");
+        }
+
+        Assert.Equal(103, history.Items.Count);
+
+        inUse = false;
+        history.Add(104, "C:\\a\\104.jpg", Png, new Dictionary<string, string>());
+        history.Complete(104, "C:\\a\\104.png");
+
+        Assert.Equal(100, history.Items.Count);
     }
 
     [Fact]
