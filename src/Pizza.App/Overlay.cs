@@ -3,7 +3,6 @@ using Pizza.App.Interop;
 using Pizza.Core.Conversions;
 using Pizza.Core.Diagnostics;
 using Pizza.Core.Gesture;
-using Pizza.Core.Ipc;
 using static Pizza.App.Interop.Native;
 
 namespace Pizza.App;
@@ -18,13 +17,11 @@ internal static unsafe class Overlay
     public const uint WmGestureStarted = WM_APP + 1;
     public const uint WmGestureReleased = WM_APP + 2;
     public const uint WmWheel = WM_APP + 3;
-    private const uint WmConversionDone = WM_APP + 4;
     private const uint WmShowPanel = WM_APP + 5;
 
     private const string ClassName = "PizzaOverlay";
     private const int DiscSize = 380;
     private const nuint TimerAfterRelease = 1;
-    private const nuint TimerHideResult = 2;
     private const nuint TimerWatchdog = 3;
     private const nuint TimerAnimation = 4;
     private const nuint TimerLeave = 5;
@@ -32,8 +29,6 @@ internal static unsafe class Overlay
     private const uint WatchdogMs = 250;
     private const uint AnimationMs = 10;
     private const uint AfterReleaseMs = 400;
-    private const uint SuccessResultMs = 800;
-    private const uint ErrorResultMs = 3000; // A mensagem de erro precisa de tempo para ser lida.
 
     // A camada precisa de alfa maior que zero, senão o Windows deixa o mouse atravessar.
     private const byte CatcherAlpha = 1;
@@ -52,9 +47,7 @@ internal static unsafe class Overlay
     private static int _left;
     private static int _top;
     private static int? _hoverSlot;
-    private static readonly DisplayedConversion Displayed = new();
     private static DraggedFiles? _files;
-    private static Outcome? _outcome;
     private static (string Path, ConverterInfo Converter)? _awaitingOptions;
 
     /// <summary>Janela do disco; também recebe as mensagens enviadas pelos hooks.</summary>
@@ -165,17 +158,11 @@ internal static unsafe class Overlay
         }
         else
         {
-            StartConversion(file.First, converter, new Dictionary<string, string>());
+            Hide();
+            Notifications.Convert(file.First, converter, new Dictionary<string, string>());
         }
 
         return true;
-    }
-
-    private static void StartConversion(string path, ConverterInfo converter, IReadOnlyDictionary<string, string> options)
-    {
-        _outcome = new Outcome("Convertendo…", Path.GetFileName(path), Succeeded: true);
-        Invalidate();
-        Conversion.Start(Displayed.Begin(), path, converter, options, Disc, WmConversionDone);
     }
 
     private static void ShowPanel()
@@ -197,16 +184,14 @@ internal static unsafe class Overlay
         }
 
         _awaitingOptions = null;
+        Hide();
         if (options is null)
         {
             Log.Write(LogEvent.MenuCancelled);
-            Hide();
             return;
         }
 
-        SetWindowPos(Disc, HWND_TOPMOST, _left, _top, _size, _size, SWP_NOACTIVATE | SWP_SHOWWINDOW);
-        IsVisible = true;
-        StartConversion(pending.Path, pending.Converter, options);
+        Notifications.Convert(pending.Path, pending.Converter, options);
     }
 
     /// <summary>Fatia sob o cursor, se houver uma disponível para o arquivo arrastado.</summary>
@@ -224,27 +209,6 @@ internal static unsafe class Overlay
         return slot < RadialMenu.Slices(Carousel.Target, file.First).Count ? slot : null;
     }
 
-    private static void OnConversionDone()
-    {
-        if (Conversion.TakeResult() is not { } finished)
-        {
-            return;
-        }
-
-        var result = finished.Result;
-        Log.Write(result.ErrorCode is null ? LogEvent.ConversionDone : LogEvent.ConversionFailed);
-        if (!Displayed.TryFinish(finished.Id))
-        {
-            return; // O usuário já começou outro gesto ou outra conversão.
-        }
-
-        _outcome = result.ErrorCode is { } code
-            ? new Outcome("Não foi possível converter", ConversionMessages.For(code), Succeeded: false)
-            : new Outcome("Pronto", result.OutputName!, Succeeded: true);
-        Invalidate();
-        SetTimer(Disc, TimerHideResult, result.ErrorCode is null ? SuccessResultMs : ErrorResultMs, 0);
-    }
-
     public static void OnDropOutside()
     {
         Log.Write(LogEvent.MenuCancelled);
@@ -257,12 +221,9 @@ internal static unsafe class Overlay
         OptionsPanel.Close();
         _awaitingOptions = null;
         KillTimer(Disc, TimerAfterRelease);
-        KillTimer(Disc, TimerHideResult);
         ShowWindow(Disc, SW_HIDE);
         IsVisible = false;
         _files = null;
-        _outcome = null;
-        Displayed.Clear();
         _hoverSlot = null;
         Session.Begin();
 
@@ -296,12 +257,7 @@ internal static unsafe class Overlay
         _top = Math.Max(info.RcWork.Top, Math.Min(y - (_size / 2), info.RcWork.Bottom - _size));
 
         Carousel.Reset();
-        int animations = 1;
-        SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, &animations, 0);
-
-        // Até existirem as Configurações, a opção vem de PIZZA_ANIMATIONS (always, windows ou never).
-        var setting = MotionPolicy.Parse(Environment.GetEnvironmentVariable("PIZZA_ANIMATIONS"));
-        _motion = MotionPolicy.Resolve(setting, animations != 0);
+        _motion = ResolveMotion();
 
         // A posição e o tamanho são definidos antes da região, que é relativa à janela.
         SetWindowPos(Disc, HWND_TOPMOST, _left, _top, _size, _size, SWP_NOACTIVATE | SWP_SHOWWINDOW);
@@ -312,12 +268,21 @@ internal static unsafe class Overlay
         Log.Write(LogEvent.MenuOpened);
     }
 
+    public static MotionStyle ResolveMotion()
+    {
+        int animations = 1;
+        SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, &animations, 0);
+
+        // Até existirem as Configurações, a opção vem de PIZZA_ANIMATIONS (always, windows ou never).
+        var setting = MotionPolicy.Parse(Environment.GetEnvironmentVariable("PIZZA_ANIMATIONS"));
+        return MotionPolicy.Resolve(setting, animations != 0);
+    }
+
     private static void Hide()
     {
         Session.End();
         KillTimer(Disc, TimerLeave);
         KillTimer(Disc, TimerAfterRelease);
-        KillTimer(Disc, TimerHideResult);
         KillTimer(Disc, TimerWatchdog);
         KillTimer(Disc, TimerAnimation);
         _lastFrame = 0;
@@ -325,8 +290,6 @@ internal static unsafe class Overlay
         ShowWindow(Disc, SW_HIDE);
         IsVisible = false;
         _files = null;
-        _outcome = null;
-        Displayed.Clear();
         _hoverSlot = null;
     }
 
@@ -346,16 +309,12 @@ internal static unsafe class Overlay
                 return 0;
 
             case WmWheel:
-                if (IsVisible && _outcome is null && Carousel.OnWheel((int)lParam))
+                if (IsVisible && Carousel.OnWheel((int)lParam))
                 {
                     _hoverSlot = null;
                     StartAnimation();
                 }
 
-                return 0;
-
-            case WmConversionDone:
-                OnConversionDone();
                 return 0;
 
             case WmShowPanel:
@@ -413,11 +372,6 @@ internal static unsafe class Overlay
 
     private static void OnButtonReleased()
     {
-        if (_outcome is not null)
-        {
-            return;
-        }
-
         KillTimer(Disc, TimerWatchdog);
         if (Session.OnButtonReleased() == SessionAction.WaitForDrop)
         {
@@ -506,12 +460,7 @@ internal static unsafe class Overlay
         DeleteObject(background);
 
         var margin = Scale(3);
-        var ring = CreatePen(PS_SOLID, Scale(4), _outcome switch
-        {
-            null => Rgb(47, 107, 255),
-            { Succeeded: true } => Rgb(64, 200, 130),
-            _ => Rgb(232, 90, 90),
-        });
+        var ring = CreatePen(PS_SOLID, Scale(4), Rgb(47, 107, 255));
         var oldPen = SelectObject(hdc, ring);
         var oldBrush = SelectObject(hdc, GetStockObject(NULL_BRUSH));
         Ellipse(hdc, margin, margin, _size - margin, _size - margin);
@@ -520,13 +469,6 @@ internal static unsafe class Overlay
         DeleteObject(ring);
 
         SetBkMode(hdc, TRANSPARENT);
-        if (_outcome is { } outcome)
-        {
-            DrawLine(hdc, outcome.Title, 120, 22, FW_BOLD, outcome.Succeeded ? Rgb(120, 225, 165) : Rgb(255, 150, 150));
-            DrawBlock(hdc, outcome.Detail, 170, 250, 15, FW_NORMAL, Rgb(255, 255, 255));
-            return;
-        }
-
         DrawSlices(hdc);
         DrawTabs(hdc);
         DrawTabDots(hdc);
@@ -688,12 +630,6 @@ internal static unsafe class Overlay
         Draw(hdc, text, &rect, fontSize, weight, color, DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
     }
 
-    private static void DrawBlock(nint hdc, string text, int top, int bottom, int fontSize, int weight, uint color)
-    {
-        var rect = new RECT { Left = Scale(46), Top = Scale(top), Right = _size - Scale(46), Bottom = Scale(bottom) };
-        Draw(hdc, text, &rect, fontSize, weight, color, DT_CENTER | DT_WORDBREAK);
-    }
-
     private static void Draw(nint hdc, string text, RECT* rect, int fontSize, int weight, uint color, uint format)
     {
         var font = CreateFontW(-Scale(fontSize), 0, 0, 0, weight, 0, 0, 0, 1, 0, 0, CLEARTYPE_QUALITY, 0, "Segoe UI");
@@ -705,7 +641,4 @@ internal static unsafe class Overlay
     }
 
     private static int Scale(int value) => value * _size / DiscSize;
-
-    /// <summary>O que o disco mostra depois do drop.</summary>
-    private readonly record struct Outcome(string Title, string Detail, bool Succeeded);
 }

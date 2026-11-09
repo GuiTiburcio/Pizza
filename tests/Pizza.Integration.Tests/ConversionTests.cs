@@ -77,6 +77,30 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
     }
 
     [Fact]
+    public void Cancelar_para_o_worker_e_nao_deixa_resto()
+    {
+        // FR-29.
+        using var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+
+        var result = Runner(fixture.ProbePath, "--act hang", TimeSpan.FromSeconds(60)).Run(CopySample(), "image.png", "png", cancellation: cancel.Token);
+
+        Assert.Equal("CANCELLED", result.ErrorCode);
+        AssertNothingWritten();
+    }
+
+    [Fact]
+    public void Cancelada_antes_de_comecar_nem_abre_o_worker()
+    {
+        using var cancel = new CancellationTokenSource();
+        cancel.Cancel();
+
+        var result = Runner().Run(CopySample(), "image.png", "png", cancellation: cancel.Token);
+
+        Assert.Equal("CANCELLED", result.ErrorCode);
+        AssertNothingWritten();
+    }
+
+    [Fact]
     public void Opcao_fora_do_esquema_nao_gera_saida()
     {
         var result = Runner().Run(CopySample(), "image.png", "png", new Dictionary<string, string> { ["resolution"] = "200" });

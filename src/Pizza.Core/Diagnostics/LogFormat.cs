@@ -16,6 +16,7 @@ public enum LogEvent
     FileDropped,
     ConversionDone,
     ConversionFailed,
+    ConversionCancelled,
 }
 
 /// <summary>Formato e retenção do log local (PRIV-10, PRIV-14).</summary>
@@ -36,6 +37,7 @@ public static class LogFormat
         LogEvent.FileDropped => "menu.dropped",
         LogEvent.ConversionDone => "conversion.done",
         LogEvent.ConversionFailed => "conversion.failed",
+        LogEvent.ConversionCancelled => "conversion.cancelled",
         _ => throw new ArgumentOutOfRangeException(nameof(logEvent)),
     };
 

@@ -87,7 +87,7 @@ internal static unsafe class Tray
         DestroyMenu(menu);
     }
 
-    private static void OpenLogs()
+    public static void OpenLogs()
     {
         try
         {
