@@ -5,7 +5,7 @@
 | Campo | Valor |
 | --- | --- |
 | Nome do produto | Pizza |
-| Repositório | [`github.com/GuiTiburcio/Pizza`](https://github.com/GuiTiburcio/Pizza) (privado até o v1.0, ver ADR-013) |
+| Repositório | [`github.com/GuiTiburcio/Pizza`](https://github.com/GuiTiburcio/Pizza) (privado até corrigir os desvios da auditoria, ver ADR-014) |
 | Plataforma | Windows 10 (21H2+) e Windows 11, x64 |
 | Linguagem | C# / .NET 10 (ver ADR-011) |
 | Status | Especificação e design aprovados; Fase 0 (ambiente) em andamento |
@@ -612,7 +612,7 @@ Arquivo `.ico` com 16, 20, 24, 32, 48, 64 e 256 px.
 
 ### 12.1 GitHub
 
-- Nome: **Pizza** (`GuiTiburcio/Pizza`), **privado** até a decisão do v1.0 (ADR-013).
+- Nome: **Pizza** (`GuiTiburcio/Pizza`), gratuito e GPL-3.0 (ADR-014). Privado até corrigir os desvios da auditoria.
 - Branch principal `main`; trabalho em `feat/…`, `fix/…`, `docs/…`. Regras de proteção de branch em repositório privado exigem plano pago do GitHub; até lá, a regra é seguida por disciplina.
 - Pull request para tudo, mesmo trabalhando sozinho (histórico e revisão).
 - Commits no padrão Conventional Commits, em português: `feat(overlay): destaca fatia no hover`.
@@ -697,7 +697,7 @@ A etapa 1a vem antes de tudo porque receber o arraste do Explorer numa janela pr
 
 - [ ] Preço: licença única ou assinatura
 - [ ] Vender pela empresa ou por conta própria
-- [ ] Licença do repositório e se ele vira público (decidir no v1.0, ADR-013)
+- [x] Licença: gratuito e GPL-3.0 (ADR-014)
 - [x] Ordem das fatias da aba Imagem (ADR-012); as demais abas decidem na sua fase
 - [ ] Nome final do produto (o nome de trabalho é "Pizza")
 
@@ -722,6 +722,12 @@ Cada decisão também tem um arquivo próprio em [`docs/adr/`](adr/).
 | 011 | .NET 10 em vez de .NET 8 | .NET 10 é o LTS atual; o suporte do .NET 8 termina em 10/11/2026 | .NET 8 |
 | 012 | Ordem das fatias da aba Imagem: JPG, PNG, WEBP, Imagem → PDF, TIFF, ICO, GIF, sem a origem | Formatos mais usados primeiro; regra fixa e previsível | Ordem do canvas sem GIF |
 | 013 | Repositório privado; decidir abrir junto com a licença no v1.0 | Produto será vendido; histórico público não pode ser desfeito | Público desde o início |
+| 014 | Gratuito e GPL-3.0; substitui o ADR-013 | Transparência e confiança | Privado e venda |
+| 015 | Animações: Sempre / Seguir o Windows / Nunca, padrão Sempre | Windows com animações desligadas escondia o deslize | Seguir sempre o Windows |
+| 016 | Esc sem hook de teclado | Promessa do SEC-01 | Hook durante o gesto |
+| 017 | Lote na v1.x, sem teto, fila de 2 por núcleo | MVP menor | Lote no MVP, teto de 500 |
+| 018 | Notificação e painel próprios | Visual e privacidade | Notificação nativa |
+| 019 | Simplificações S-01 a S-05 | Menos superfície de ataque | Word por COM, 15 políticas |
 
 ---
 

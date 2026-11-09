@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Pizza.App.Interop;
+using Pizza.Core.Diagnostics;
 using Pizza.Core.Gesture;
 using static Pizza.App.Interop.Native;
 
@@ -13,8 +15,7 @@ internal static unsafe class Overlay
 {
     public const uint WmGestureStarted = WM_APP + 1;
     public const uint WmGestureReleased = WM_APP + 2;
-    public const uint WmGestureCancelled = WM_APP + 3;
-    public const uint WmWheel = WM_APP + 4;
+    public const uint WmWheel = WM_APP + 3;
     public const int HotkeyQuit = 1;
 
     private const string ClassName = "PizzaOverlay";
@@ -22,7 +23,11 @@ internal static unsafe class Overlay
     private const nuint TimerAfterRelease = 1;
     private const nuint TimerHideResult = 2;
     private const nuint TimerWatchdog = 3;
+    private const nuint TimerAnimation = 4;
+    private const nuint TimerLeave = 5;
+    private const uint LeaveGraceMs = 80;
     private const uint WatchdogMs = 250;
+    private const uint AnimationMs = 10;
     private const uint AfterReleaseMs = 400;
     private const uint ResultMs = 3000;
 
@@ -30,11 +35,15 @@ internal static unsafe class Overlay
     private const byte CatcherAlpha = 1;
     private const byte DiscAlpha = 235;
 
+    private static readonly uint DiscColor = Rgb(26, 33, 64);
     private static readonly DropTarget DiscTarget = new(acceptsDrop: true);
     private static readonly DropTarget CatcherTarget = new(acceptsDrop: false);
 
     private static nint _catcher;
-    private static int _tab;
+    private static readonly TabCarousel Carousel = new(MenuTabs.Names.Count);
+    private static readonly GestureSession Session = new();
+    private static long _lastFrame;
+    private static MotionStyle _motion = MotionStyle.Slide;
     private static int _size = DiscSize;
     private static DraggedFiles? _files;
     private static DraggedFiles? _result;
@@ -42,11 +51,8 @@ internal static unsafe class Overlay
     /// <summary>Janela do disco; também recebe as mensagens enviadas pelos hooks.</summary>
     public static nint Disc { get; private set; }
 
+    /// <summary>Verdadeiro com o menu na tela; só a camada invisível não conta.</summary>
     public static bool IsVisible { get; private set; }
-
-    public static int GestureX { get; set; }
-
-    public static int GestureY { get; set; }
 
     public static void Create()
     {
@@ -80,24 +86,35 @@ internal static unsafe class Overlay
         RevokeDragDrop(_catcher);
     }
 
-    public static void OnDragEnter(DraggedFiles? files)
+    public static void OnDragEnter(DraggedFiles? files, int x, int y)
     {
-        if (files is null)
+        KillTimer(Disc, TimerLeave);
+        var action = Session.OnDragEnter(files is not null);
+        if (action == SessionAction.Close)
         {
             // O gesto não era de arquivo (texto, por exemplo): sai da frente e deixa o arraste seguir.
-            if (IsVisible && _result is null)
-            {
-                Log.Write("arraste sem arquivos: overlay fechado");
-                Hide();
-            }
-
+            Log.Write(LogEvent.NotAFile);
+            Hide();
             return;
         }
 
-        if (_files?.First != files.Value.First)
+        if (action == SessionAction.ShowMenu)
+        {
+            ShowMenu(x, y);
+        }
+
+        if (files is { } dragged && _files?.First != dragged.First)
         {
             _files = files;
             Invalidate();
+        }
+    }
+
+    public static void OnDragLeave()
+    {
+        if (Session.OnDragLeave() == SessionAction.WaitForReentry)
+        {
+            SetTimer(Disc, TimerLeave, LeaveGraceMs, 0);
         }
     }
 
@@ -109,9 +126,11 @@ internal static unsafe class Overlay
             return;
         }
 
-        Log.Write($"drop na aba {MenuTabs.Names[_tab]}: {files.Value.First} (total: {files.Value.Count})");
+        Log.Write(LogEvent.FileDropped);
+        Session.End();
         KillTimer(Disc, TimerAfterRelease);
         KillTimer(Disc, TimerWatchdog);
+        KillTimer(Disc, TimerLeave);
         _result = files;
         ShowWindow(_catcher, SW_HIDE);
         Invalidate();
@@ -120,11 +139,33 @@ internal static unsafe class Overlay
 
     public static void OnDropOutside()
     {
-        Log.Write("drop fora do menu: cancelado");
+        Log.Write(LogEvent.MenuCancelled);
         Hide();
     }
 
-    private static void Show(int x, int y)
+    /// <summary>Estado 2: só a camada invisível, até o OLE confirmar que o arraste é de arquivos.</summary>
+    private static void BeginGesture()
+    {
+        KillTimer(Disc, TimerAfterRelease);
+        KillTimer(Disc, TimerHideResult);
+        ShowWindow(Disc, SW_HIDE);
+        IsVisible = false;
+        _files = null;
+        _result = null;
+        Session.Begin();
+
+        SetWindowPos(
+            _catcher,
+            HWND_TOPMOST,
+            GetSystemMetrics(SM_XVIRTUALSCREEN),
+            GetSystemMetrics(SM_YVIRTUALSCREEN),
+            GetSystemMetrics(SM_CXVIRTUALSCREEN),
+            GetSystemMetrics(SM_CYVIRTUALSCREEN),
+            SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        SetTimer(Disc, TimerWatchdog, WatchdogMs, 0);
+    }
+
+    private static void ShowMenu(int x, int y)
     {
         var point = new POINT { X = x, Y = y };
         var monitor = MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST);
@@ -142,35 +183,32 @@ internal static unsafe class Overlay
         var left = Math.Max(info.RcWork.Left, Math.Min(x - (_size / 2), info.RcWork.Right - _size));
         var top = Math.Max(info.RcWork.Top, Math.Min(y - (_size / 2), info.RcWork.Bottom - _size));
 
-        _tab = 0;
-        _files = null;
-        _result = null;
-        KillTimer(Disc, TimerAfterRelease);
-        KillTimer(Disc, TimerHideResult);
+        Carousel.Reset();
+        int animations = 1;
+        SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, &animations, 0);
+
+        // Até existirem as Configurações, a opção vem de PIZZA_ANIMATIONS (always, windows ou never).
+        var setting = MotionPolicy.Parse(Environment.GetEnvironmentVariable("PIZZA_ANIMATIONS"));
+        _motion = MotionPolicy.Resolve(setting, animations != 0);
 
         // A posição e o tamanho são definidos antes da região, que é relativa à janela.
-        SetWindowPos(
-            _catcher,
-            HWND_TOPMOST,
-            GetSystemMetrics(SM_XVIRTUALSCREEN),
-            GetSystemMetrics(SM_YVIRTUALSCREEN),
-            GetSystemMetrics(SM_CXVIRTUALSCREEN),
-            GetSystemMetrics(SM_CYVIRTUALSCREEN),
-            SWP_NOACTIVATE | SWP_SHOWWINDOW);
         SetWindowPos(Disc, HWND_TOPMOST, left, top, _size, _size, SWP_NOACTIVATE | SWP_SHOWWINDOW);
         SetWindowRgn(Disc, CreateEllipticRgn(0, 0, _size + 1, _size + 1), 1);
 
         IsVisible = true;
         Invalidate();
-        SetTimer(Disc, TimerWatchdog, WatchdogMs, 0);
-        Log.Write($"menu aberto em {x},{y} (disco {_size}px, dpi {dpiX})");
+        Log.Write(LogEvent.MenuOpened);
     }
 
     private static void Hide()
     {
+        Session.End();
+        KillTimer(Disc, TimerLeave);
         KillTimer(Disc, TimerAfterRelease);
         KillTimer(Disc, TimerHideResult);
         KillTimer(Disc, TimerWatchdog);
+        KillTimer(Disc, TimerAnimation);
+        _lastFrame = 0;
         ShowWindow(_catcher, SW_HIDE);
         ShowWindow(Disc, SW_HIDE);
         IsVisible = false;
@@ -186,29 +224,17 @@ internal static unsafe class Overlay
         switch (msg)
         {
             case WmGestureStarted:
-                Show(GestureX, GestureY);
+                BeginGesture();
                 return 0;
 
             case WmGestureReleased:
-                // O hook vê o botão subir antes de o Explorer chamar Drop: espera um pouco antes de fechar.
-                if (IsVisible && _result is null)
-                {
-                    SetTimer(Disc, TimerAfterRelease, AfterReleaseMs, 0);
-                }
-
-                return 0;
-
-            case WmGestureCancelled:
-                Log.Write("cancelado com Esc");
-                Hide();
+                OnButtonReleased();
                 return 0;
 
             case WmWheel:
-                if (IsVisible && _result is null)
+                if (IsVisible && _result is null && Carousel.OnWheel((int)lParam))
                 {
-                    _tab = MenuTabs.Step(_tab, (int)lParam);
-                    Log.Write($"aba: {MenuTabs.Names[_tab]}");
-                    Invalidate();
+                    StartAnimation();
                 }
 
                 return 0;
@@ -237,15 +263,85 @@ internal static unsafe class Overlay
         }
     }
 
+    private static void StartAnimation()
+    {
+        if (_motion == MotionStyle.Instant)
+        {
+            Carousel.Snap();
+            Invalidate();
+            return;
+        }
+
+        // Já animando: só o destino muda, e o deslize em curso continua sem tranco.
+        if (_lastFrame == 0)
+        {
+            _lastFrame = Stopwatch.GetTimestamp();
+            SetTimer(Disc, TimerAnimation, AnimationMs, 0);
+        }
+    }
+
+    private static void AnimationFrame()
+    {
+        // O tempo real decorrido, e não o intervalo do timer, mantém a velocidade constante.
+        var now = Stopwatch.GetTimestamp();
+        var elapsedMs = Stopwatch.GetElapsedTime(_lastFrame, now).TotalMilliseconds;
+        _lastFrame = now;
+
+        Carousel.Advance(elapsedMs);
+        Invalidate();
+        if (!Carousel.IsAnimating)
+        {
+            KillTimer(Disc, TimerAnimation);
+            _lastFrame = 0;
+        }
+    }
+
+    private static void OnButtonReleased()
+    {
+        if (_result is not null)
+        {
+            return;
+        }
+
+        KillTimer(Disc, TimerWatchdog);
+        if (Session.State == GestureState.WaitingForFile)
+        {
+            // Nenhum arraste OLE chegou (Ctrl + arraste de texto ou de células, por exemplo).
+            Hide();
+        }
+        else if (Session.State == GestureState.Menu)
+        {
+            // O hook vê o botão subir antes de o Explorer chamar Drop: espera um pouco antes de fechar.
+            SetTimer(Disc, TimerAfterRelease, AfterReleaseMs, 0);
+        }
+    }
+
     private static void OnTimer(nuint id)
     {
+        if (id == TimerAnimation)
+        {
+            AnimationFrame();
+            return;
+        }
+
         if (id == TimerWatchdog)
         {
             // A camada cobre a tela inteira: se a soltura do botão se perder, ela não pode ficar presa.
-            if (_result is null && !IsPrimaryButtonDown())
+            if (!IsPrimaryButtonDown())
             {
-                KillTimer(Disc, TimerWatchdog);
-                SetTimer(Disc, TimerAfterRelease, AfterReleaseMs, 0);
+                OnButtonReleased();
+            }
+
+            return;
+        }
+
+        if (id == TimerLeave)
+        {
+            KillTimer(Disc, TimerLeave);
+            if (Session.OnLeaveTimeout() == SessionAction.Close)
+            {
+                Log.Write(LogEvent.MenuCancelled);
+                Hide();
             }
 
             return;
@@ -253,7 +349,7 @@ internal static unsafe class Overlay
 
         if (id == TimerAfterRelease && _result is null)
         {
-            Log.Write("botão solto sem drop: overlay fechado");
+            Log.Write(LogEvent.MenuCancelled);
         }
 
         Hide();
@@ -272,7 +368,15 @@ internal static unsafe class Overlay
         var hdc = BeginPaint(hwnd, &ps);
         if (hwnd == Disc)
         {
-            PaintDisc(hdc);
+            // Desenha fora da tela e copia de uma vez: é o que evita o piscar durante o deslize.
+            var buffer = CreateCompatibleDC(hdc);
+            var bitmap = CreateCompatibleBitmap(hdc, _size, _size);
+            var oldBitmap = SelectObject(buffer, bitmap);
+            PaintDisc(buffer);
+            BitBlt(hdc, 0, 0, _size, _size, buffer, 0, 0, SRCCOPY);
+            SelectObject(buffer, oldBitmap);
+            DeleteObject(bitmap);
+            DeleteDC(buffer);
         }
         else
         {
@@ -288,7 +392,7 @@ internal static unsafe class Overlay
     private static void PaintDisc(nint hdc)
     {
         var whole = new RECT { Right = _size, Bottom = _size };
-        var background = CreateSolidBrush(Rgb(26, 33, 64));
+        var background = CreateSolidBrush(DiscColor);
         FillRect(hdc, &whole, background);
         DeleteObject(background);
 
@@ -309,11 +413,75 @@ internal static unsafe class Overlay
             return;
         }
 
-        DrawLine(hdc, MenuTabs.Names[_tab], 80, 28, FW_BOLD, Rgb(255, 255, 255));
-        DrawLine(hdc, $"aba {_tab + 1} de {MenuTabs.Names.Count}", 122, 13, FW_NORMAL, Rgb(170, 182, 214));
+        DrawTabs(hdc);
+        DrawTabDots(hdc);
         DrawLine(hdc, _files is { } files ? Describe(files, Path.GetFileName(files.First)) : "Solte aqui", 178, 17, FW_SEMIBOLD, Rgb(255, 255, 255));
         DrawLine(hdc, "Role para trocar a aba", 262, 13, FW_NORMAL, Rgb(170, 182, 214));
-        DrawLine(hdc, "Esc cancela", 284, 13, FW_NORMAL, Rgb(170, 182, 214));
+        DrawLine(hdc, "Solte o Ctrl e aperte Esc para cancelar", 284, 13, FW_NORMAL, Rgb(170, 182, 214));
+    }
+
+    /// <summary>Nomes das abas numa faixa que desliza: a central acesa, as vizinhas apagando nas pontas.</summary>
+    private static void DrawTabs(nint hdc)
+    {
+        const int spacing = 128;
+        const int halfWidth = 90;
+        var center = _size / 2;
+
+        for (var tab = 0; tab < MenuTabs.Names.Count; tab++)
+        {
+            var distance = Carousel.DistanceTo(tab);
+            var absolute = Math.Abs(distance);
+            if (absolute >= 1.5)
+            {
+                continue;
+            }
+
+            if (_motion == MotionStyle.Fade && absolute >= 1)
+            {
+                continue;
+            }
+
+            // Em "menos movimento" a aba não anda: só troca de opacidade no mesmo lugar.
+            var brightness = _motion == MotionStyle.Fade ? 1 - absolute
+                : absolute < 1 ? 1 - (0.75 * absolute) : 0.25 * (1.5 - absolute) / 0.5;
+            var x = _motion == MotionStyle.Fade ? center : center + (int)Math.Round(distance * Scale(spacing));
+            var rect = new RECT { Left = x - Scale(halfWidth), Top = Scale(84), Right = x + Scale(halfWidth), Bottom = Scale(128) };
+            Draw(hdc, MenuTabs.Names[tab], &rect, 26, FW_BOLD, Mix(DiscColor, Rgb(255, 255, 255), brightness), DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+        }
+    }
+
+    /// <summary>Um ponto por aba; o brilho acompanha a posição do deslize.</summary>
+    private static void DrawTabDots(nint hdc)
+    {
+        const int gap = 18;
+        const int radius = 4;
+        var count = MenuTabs.Names.Count;
+        var first = (_size / 2) - (Scale(gap) * (count - 1) / 2);
+        var y = Scale(136);
+        var oldPen = SelectObject(hdc, GetStockObject(NULL_PEN));
+
+        for (var tab = 0; tab < count; tab++)
+        {
+            var lit = Math.Max(0, 1 - Math.Abs(Carousel.DistanceTo(tab)));
+            var brush = CreateSolidBrush(Mix(Rgb(84, 96, 136), Rgb(47, 107, 255), lit));
+            var oldBrush = SelectObject(hdc, brush);
+            var x = first + (tab * Scale(gap));
+            Ellipse(hdc, x - Scale(radius), y - Scale(radius), x + Scale(radius), y + Scale(radius));
+            SelectObject(hdc, oldBrush);
+            DeleteObject(brush);
+        }
+
+        SelectObject(hdc, oldPen);
+    }
+
+    private static uint Mix(uint from, uint to, double amount)
+    {
+        static uint Channel(uint a, uint b, double t) => (uint)Math.Round(a + ((double)b - a) * t);
+
+        var r = Channel(from & 0xFF, to & 0xFF, amount);
+        var g = Channel((from >> 8) & 0xFF, (to >> 8) & 0xFF, amount);
+        var b = Channel((from >> 16) & 0xFF, (to >> 16) & 0xFF, amount);
+        return r | (g << 8) | (b << 16);
     }
 
     private static string Describe(DraggedFiles files, string text) =>

@@ -24,12 +24,13 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
 
+      # Com CI=true o restore usa o lockfile: dependência fora dele quebra o build (TST-24).
       - name: Restaurar
         run: dotnet restore Pizza.slnx
 
@@ -50,14 +51,14 @@ jobs:
 
       - name: Guardar resultados dos testes
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: test-results
           path: TestResults
           if-no-files-found: ignore
 
       - name: Guardar Pizza.exe
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: pizza-win-x64
           path: artifacts/publish/app/Pizza.exe

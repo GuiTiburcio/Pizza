@@ -1,6 +1,6 @@
 # ADR-013 — Repositório privado até o v1.0
 
-- **Status:** Aceita
+- **Status:** Substituída por ADR-014
 - **Data:** 2026-11-07
 
 ## Contexto

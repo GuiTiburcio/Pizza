@@ -4,20 +4,4 @@ namespace Pizza.Core.Gesture;
 public static class MenuTabs
 {
     public static IReadOnlyList<string> Names { get; } = ["Imagem", "PDF", "Documento", "Áudio"];
-
-    /// <summary>
-    /// Aba seguinte para um giro da roda do mouse. Rolar para baixo (delta negativo) avança,
-    /// para cima volta; nas pontas, dá a volta.
-    /// </summary>
-    public static int Step(int current, int wheelDelta)
-    {
-        if (wheelDelta == 0)
-        {
-            return current;
-        }
-
-        var count = Names.Count;
-        var next = wheelDelta < 0 ? current + 1 : current - 1;
-        return ((next % count) + count) % count;
-    }
 }

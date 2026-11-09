@@ -9,9 +9,13 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <Deterministic>true</Deterministic>
 
+    <!-- Dependências travadas por lockfile; no CI, qualquer divergência quebra o build (SPECS §11). -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
+
     <Product>Pizza</Product>
     <Company>Guilherme Tiburcio</Company>
-    <Copyright>© 2026 Guilherme Tiburcio. Todos os direitos reservados.</Copyright>
+    <Copyright>© 2026 Guilherme Tiburcio. Licenciado sob a GPL-3.0.</Copyright>
     <Version>0.0.1</Version>
     <NeutralLanguage>pt-BR</NeutralLanguage>
   </PropertyGroup>

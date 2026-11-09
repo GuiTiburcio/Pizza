@@ -1,18 +1,15 @@
 namespace Pizza.Core.Gesture;
 
-/// <summary>O que o detector concluiu a partir de um evento de mouse ou teclado.</summary>
+/// <summary>O que o detector concluiu a partir de um evento de mouse.</summary>
 public enum GestureEvent
 {
     None,
 
-    /// <summary>Ctrl + arraste passou do limiar: o menu deve abrir.</summary>
+    /// <summary>Ctrl + arraste passou do limiar: o gesto começou.</summary>
     Started,
 
     /// <summary>O botão foi solto com o gesto ativo.</summary>
     Released,
-
-    /// <summary>Esc com o gesto ativo.</summary>
-    Cancelled,
 }
 
 /// <summary>
@@ -24,17 +21,17 @@ public enum GestureEvent
 public sealed class DragGestureDetector(int thresholdX, int thresholdY)
 {
     private bool _buttonDown;
-    private bool _cancelled;
+    private bool _decided;
     private int _startX;
     private int _startY;
 
-    /// <summary>Verdadeiro entre <see cref="GestureEvent.Started"/> e o fim do gesto.</summary>
+    /// <summary>Verdadeiro entre <see cref="GestureEvent.Started"/> e a soltura do botão.</summary>
     public bool IsActive { get; private set; }
 
     public GestureEvent OnButtonDown(int x, int y)
     {
         _buttonDown = true;
-        _cancelled = false;
+        _decided = false;
         IsActive = false;
         _startX = x;
         _startY = y;
@@ -42,19 +39,23 @@ public sealed class DragGestureDetector(int thresholdX, int thresholdY)
     }
 
     /// <summary>
-    /// Movimento do mouse. O gesto começa quando o botão está pressionado, o cursor passou do limiar
-    /// e o Ctrl está pressionado. Ctrl apertado no meio do arraste também abre, a menos que o
-    /// usuário tenha cancelado com Esc neste mesmo arraste.
+    /// Movimento do mouse. Quando o cursor passa do limiar, decide uma única vez: o Ctrl é lido
+    /// nesse instante e nunca mais neste arraste (SEC-02).
     /// </summary>
-    public GestureEvent OnMove(int x, int y, bool ctrlDown)
+    public GestureEvent OnMove(int x, int y, Func<bool> isCtrlDown)
     {
-        if (!_buttonDown || IsActive || _cancelled || !ctrlDown)
+        if (!_buttonDown || _decided)
         {
             return GestureEvent.None;
         }
 
-        var passed = Math.Abs(x - _startX) > thresholdX || Math.Abs(y - _startY) > thresholdY;
-        if (!passed)
+        if (Math.Abs(x - _startX) <= thresholdX && Math.Abs(y - _startY) <= thresholdY)
+        {
+            return GestureEvent.None;
+        }
+
+        _decided = true;
+        if (!isCtrlDown())
         {
             return GestureEvent.None;
         }
@@ -66,7 +67,6 @@ public sealed class DragGestureDetector(int thresholdX, int thresholdY)
     public GestureEvent OnButtonUp()
     {
         _buttonDown = false;
-        _cancelled = false;
         if (!IsActive)
         {
             return GestureEvent.None;
@@ -74,17 +74,5 @@ public sealed class DragGestureDetector(int thresholdX, int thresholdY)
 
         IsActive = false;
         return GestureEvent.Released;
-    }
-
-    public GestureEvent OnEscape()
-    {
-        if (!IsActive)
-        {
-            return GestureEvent.None;
-        }
-
-        IsActive = false;
-        _cancelled = true;
-        return GestureEvent.Cancelled;
     }
 }
