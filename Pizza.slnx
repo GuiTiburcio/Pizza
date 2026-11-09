@@ -8,5 +8,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Pizza.Converters.Tests/Pizza.Converters.Tests.csproj" />
     <Project Path="tests/Pizza.Core.Tests/Pizza.Core.Tests.csproj" />
+    <Project Path="tests/Pizza.Integration.Tests/Pizza.Integration.Tests.csproj" />
+    <Project Path="tests/Pizza.Sandbox.Probe/Pizza.Sandbox.Probe.csproj" />
   </Folder>
 </Solution>

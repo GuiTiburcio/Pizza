@@ -107,6 +107,7 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | SEC-58, PRIV-03 | Nenhum download além da atualização. O Pizza detecta o LibreOffice instalado e, se não houver, mostra o link oficial | 019 |
 | §9 | Políticas do v1: POL-02, 03, 04, 05, 06, 12 e 15. A POL-12 fica sem efeito enquanto não houver downloads | 019 |
 | §10.1 | Saem `showHint` e `accentColor` | 019 |
+| SEC-10, 11, 12, 14, 16, TST-06, TST-27 | Removidos: o canal com o Worker usa pipes sem nome, entregues só a ele. SEC-13 e SEC-15 continuam valendo | 021 |
 | SEC-57 | Confirmado: o MSI só avisa que há versão nova | — |
 
 ---
