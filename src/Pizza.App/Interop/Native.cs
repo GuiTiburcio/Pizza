@@ -10,8 +10,10 @@ internal static unsafe partial class Native
     public const uint WM_PAINT = 0x000F;
     public const uint WM_ERASEBKGND = 0x0014;
     public const uint WM_TIMER = 0x0113;
-    public const uint WM_HOTKEY = 0x0312;
+    public const uint WM_NULL = 0x0000;
+    public const uint WM_COMMAND = 0x0111;
     public const uint WM_APP = 0x8000;
+    public const int WM_CONTEXTMENU = 0x007B;
     public const int WM_MOUSEMOVE = 0x0200;
     public const int WM_LBUTTONDOWN = 0x0201;
     public const int WM_LBUTTONUP = 0x0202;
@@ -22,11 +24,24 @@ internal static unsafe partial class Native
     public const int VK_LBUTTON = 0x01;
     public const int VK_RBUTTON = 0x02;
     public const int VK_CONTROL = 0x11;
-    public const uint VK_P = 0x50;
-    public const uint MOD_ALT = 0x1;
-    public const uint MOD_CONTROL = 0x2;
-    public const uint MOD_SHIFT = 0x4;
-    public const uint MOD_NOREPEAT = 0x4000;
+
+    // Bandeja e menu
+    public const uint NIM_ADD = 0;
+    public const uint NIM_DELETE = 2;
+    public const uint NIM_SETVERSION = 4;
+    public const uint NIF_MESSAGE = 0x01;
+    public const uint NIF_ICON = 0x02;
+    public const uint NIF_TIP = 0x04;
+    public const uint NIF_SHOWTIP = 0x80;
+    public const uint NOTIFYICON_VERSION_4 = 4;
+    public const uint MF_STRING = 0x0000;
+    public const uint MF_GRAYED = 0x0001;
+    public const uint MF_SEPARATOR = 0x0800;
+    public const uint TPM_RIGHTBUTTON = 0x0002;
+    public const uint IMAGE_ICON = 1;
+    public const int SM_CXSMICON = 49;
+    public const int SM_CYSMICON = 50;
+    public const int SW_SHOWNORMAL = 1;
 
     // Janelas
     public const uint WS_POPUP = 0x80000000;
@@ -169,6 +184,26 @@ internal static unsafe partial class Native
         public nint PUnkForRelease;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct NOTIFYICONDATAW
+    {
+        public uint CbSize;
+        public nint HWnd;
+        public uint UID;
+        public uint UFlags;
+        public uint UCallbackMessage;
+        public nint HIcon;
+        public fixed char SzTip[128];
+        public uint DwState;
+        public uint DwStateMask;
+        public fixed char SzInfo[256];
+        public uint UVersion;
+        public fixed char SzInfoTitle[64];
+        public uint DwInfoFlags;
+        public Guid GuidItem;
+        public nint HBalloonIcon;
+    }
+
     /// <summary>COLORREF a partir de RGB.</summary>
     public static uint Rgb(byte r, byte g, byte b) => r | ((uint)g << 8) | ((uint)b << 16);
 
@@ -247,7 +282,25 @@ internal static unsafe partial class Native
     public static partial int GetSystemMetrics(int index);
 
     [LibraryImport("user32.dll")]
-    public static partial int RegisterHotKey(nint hwnd, int id, uint modifiers, uint vk);
+    public static partial nint LoadImageW(nint instance, nint name, uint type, int width, int height, uint flags);
+
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial uint RegisterWindowMessageW(string name);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint CreatePopupMenu();
+
+    [LibraryImport("user32.dll")]
+    public static partial int DestroyMenu(nint menu);
+
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial int AppendMenuW(nint menu, uint flags, nuint id, string? text);
+
+    [LibraryImport("user32.dll")]
+    public static partial int TrackPopupMenu(nint menu, uint flags, int x, int y, int reserved, nint hwnd, RECT* rect);
+
+    [LibraryImport("user32.dll")]
+    public static partial int SetForegroundWindow(nint hwnd);
 
     [LibraryImport("user32.dll")]
     public static partial nint LoadCursorW(nint instance, nint name);
@@ -335,4 +388,10 @@ internal static unsafe partial class Native
 
     [LibraryImport("shell32.dll")]
     public static partial uint DragQueryFileW(nint hDrop, uint index, char* buffer, uint size);
+
+    [LibraryImport("shell32.dll")]
+    public static partial int Shell_NotifyIconW(uint message, NOTIFYICONDATAW* data);
+
+    [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial nint ShellExecuteW(nint hwnd, string operation, string file, string? parameters, string? directory, int show);
 }

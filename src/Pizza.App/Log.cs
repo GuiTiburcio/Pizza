@@ -6,8 +6,9 @@ namespace Pizza.App;
 /// <summary>Log local em <c>%LOCALAPPDATA%\Pizza\logs</c>: um arquivo por dia, por 30 dias (PRIV-14, PRIV-16).</summary>
 internal static class Log
 {
-    private static readonly string Folder = Path.Combine(ProductInfo.DataFolder, "logs");
     private static DateOnly _lastPurge;
+
+    public static string Folder { get; } = Path.Combine(ProductInfo.DataFolder, "logs");
 
     public static void Write(LogEvent logEvent)
     {

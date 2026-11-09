@@ -2,7 +2,7 @@
 
 Conversor de arquivos para Windows que funciona no gesto: **segure Ctrl, arraste o arquivo e solte no formato** num menu circular de vidro. Tudo offline, leve e rápido.
 
-> **Status:** Fase 1, etapa 1a: prova de conceito do gesto. Ctrl + arrastar abre um disco simples que recebe o arquivo; ainda não converte nada. Enquanto não há bandeja, **Ctrl + Alt + Shift + P** encerra o programa.
+> **Status:** Fase 1, etapa 1b: o Pizza fica nos ícones ocultos da barra de tarefas. Ctrl + arrastar abre um disco simples que recebe o arquivo; ainda não converte nada. Para encerrar, clique com o botão direito no ícone e escolha **Sair**.
 
 ## Como funciona
 
