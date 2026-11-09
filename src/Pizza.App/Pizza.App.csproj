@@ -20,4 +20,9 @@
     <ProjectReference Include="..\Pizza.Core\Pizza.Core.csproj" />
   </ItemGroup>
 
+  <!-- FR-43: sons originais, gerados por tools/gerar-sons.ps1. -->
+  <ItemGroup>
+    <None Include="Assets\*.wav" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

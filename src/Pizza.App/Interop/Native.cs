@@ -20,6 +20,18 @@ internal static unsafe partial class Native
     public const int WM_LBUTTONDOWN = 0x0201;
     public const int WM_LBUTTONUP = 0x0202;
     public const int WM_MOUSEWHEEL = 0x020A;
+    public const int WM_MOUSELEAVE = 0x02A3;
+    public const uint WM_WTSSESSION_CHANGE = 0x02B1;
+    public const uint TME_LEAVE = 0x2;
+    public const uint NOTIFY_FOR_THIS_SESSION = 0;
+    public const nuint WTS_SESSION_LOCK = 7;
+    public const nuint WTS_SESSION_UNLOCK = 8;
+    public const int QUNS_ACCEPTS_NOTIFICATIONS = 5;
+    public const uint EVENT_SYSTEM_ALERT = 0x0002;
+    public const int OBJID_ALERT = -10;
+    public const uint SND_ASYNC = 0x1;
+    public const uint SND_NODEFAULT = 0x2;
+    public const uint SND_FILENAME = 0x20000;
 
     // Hooks e teclas
     public const int WH_MOUSE_LL = 14;
@@ -72,6 +84,7 @@ internal static unsafe partial class Native
     public const int SM_YVIRTUALSCREEN = 77;
     public const int SM_CXVIRTUALSCREEN = 78;
     public const int SM_CYVIRTUALSCREEN = 79;
+    public const uint MONITOR_DEFAULTTOPRIMARY = 1;
     public const uint MONITOR_DEFAULTTONEAREST = 2;
     public static readonly nint DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4;
     public const int IDC_ARROW = 32512;
@@ -90,6 +103,7 @@ internal static unsafe partial class Native
     public const uint DT_CENTER = 0x1;
     public const uint DT_VCENTER = 0x4;
     public const uint DT_WORDBREAK = 0x10;
+    public const uint DT_EDITCONTROL = 0x2000;
     public const uint DT_SINGLELINE = 0x20;
     public const uint DT_END_ELLIPSIS = 0x8000;
     public const uint DT_PATH_ELLIPSIS = 0x4000;
@@ -215,6 +229,15 @@ internal static unsafe partial class Native
         public nint HBalloonIcon;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct TRACKMOUSEEVENT
+    {
+        public uint CbSize;
+        public uint DwFlags;
+        public nint HwndTrack;
+        public uint DwHoverTime;
+    }
+
     /// <summary>COLORREF a partir de RGB.</summary>
     public static uint Rgb(byte r, byte g, byte b) => r | ((uint)g << 8) | ((uint)b << 16);
 
@@ -314,6 +337,18 @@ internal static unsafe partial class Native
     public static partial int SetForegroundWindow(nint hwnd);
 
     [LibraryImport("user32.dll")]
+    public static partial int DestroyWindow(nint hwnd);
+
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial int SetWindowTextW(nint hwnd, string text);
+
+    [LibraryImport("user32.dll")]
+    public static partial void NotifyWinEvent(uint eventId, nint hwnd, int objectId, int childId);
+
+    [LibraryImport("user32.dll")]
+    public static partial int TrackMouseEvent(TRACKMOUSEEVENT* track);
+
+    [LibraryImport("user32.dll")]
     public static partial nint GetForegroundWindow();
 
     [LibraryImport("user32.dll")]
@@ -382,6 +417,12 @@ internal static unsafe partial class Native
     public static partial nint CreateEllipticRgn(int left, int top, int right, int bottom);
 
     [LibraryImport("gdi32.dll")]
+    public static partial nint CreateRoundRectRgn(int left, int top, int right, int bottom, int widthEllipse, int heightEllipse);
+
+    [LibraryImport("gdi32.dll")]
+    public static partial int RoundRect(nint hdc, int left, int top, int right, int bottom, int width, int height);
+
+    [LibraryImport("gdi32.dll")]
     public static partial int Ellipse(nint hdc, int left, int top, int right, int bottom);
 
     [LibraryImport("gdi32.dll")]
@@ -426,6 +467,24 @@ internal static unsafe partial class Native
 
     [LibraryImport("shell32.dll")]
     public static partial uint DragQueryFileW(nint hDrop, uint index, char* buffer, uint size);
+
+    [LibraryImport("wtsapi32.dll")]
+    public static partial int WTSRegisterSessionNotification(nint hwnd, uint flags);
+
+    [LibraryImport("winmm.dll", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial int PlaySoundW(string sound, nint module, uint flags);
+
+    [LibraryImport("ole32.dll")]
+    public static partial void CoTaskMemFree(nint memory);
+
+    [LibraryImport("shell32.dll")]
+    public static partial int SHQueryUserNotificationState(out int state);
+
+    [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial int SHParseDisplayName(string name, nint bindContext, out nint item, uint attributesIn, out uint attributesOut);
+
+    [LibraryImport("shell32.dll")]
+    public static partial int SHOpenFolderAndSelectItems(nint folder, uint count, nint* items, uint flags);
 
     [LibraryImport("shell32.dll")]
     public static partial int Shell_NotifyIconW(uint message, NOTIFYICONDATAW* data);

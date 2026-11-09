@@ -13,6 +13,7 @@ internal static class Conversion
     private const string Profile = "Pizza.Worker";
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(2); // SEC-43
     private static readonly ConcurrentQueue<(long Id, ConversionResult Result)> Results = new();
+    private static readonly ConcurrentDictionary<long, CancellationTokenSource> Running = new();
     private static readonly Lock Gate = new();
     private static ConversionRunner _runner = null!;
 
@@ -35,6 +36,8 @@ internal static class Conversion
 
     public static void Start(long id, string sourcePath, ConverterInfo converter, IReadOnlyDictionary<string, string> options, nint notifyWindow, uint notifyMessage)
     {
+        var cancellation = new CancellationTokenSource();
+        Running[id] = cancellation;
         Task.Run(() =>
         {
             ConversionResult result;
@@ -42,18 +45,27 @@ internal static class Conversion
             {
                 lock (Gate)
                 {
-                    result = _runner.Run(sourcePath, converter.Id, converter.Extension, options);
+                    result = _runner.Run(sourcePath, converter.Id, converter.Extension, options, cancellation.Token);
                 }
             }
             catch (Exception)
             {
-                // Sem isto, um erro inesperado deixaria o menu preso em "Convertendo".
+                // Sem isto, um erro inesperado deixaria o aviso preso em "Convertendo".
                 result = ConversionResult.Failed("WORKER_CRASHED");
             }
 
+            Running.TryRemove(id, out _);
             Results.Enqueue((id, result));
             PostMessageW(notifyWindow, notifyMessage, 0, 0);
         });
+    }
+
+    public static void Cancel(long id)
+    {
+        if (Running.TryGetValue(id, out var cancellation))
+        {
+            cancellation.Cancel();
+        }
     }
 
     public static (long Id, ConversionResult Result)? TakeResult() => Results.TryDequeue(out var result) ? result : null;

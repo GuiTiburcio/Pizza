@@ -23,6 +23,7 @@ internal static unsafe class Program
 
         Overlay.Create();
         OptionsPanel.Create();
+        Notifications.Create();
 
         // O ícone é a única saída: sem ele, o programa não fica rodando sem como fechar.
         if (!Tray.Create())

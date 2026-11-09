@@ -102,6 +102,7 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | SEC-45 | HEIC fica de fora da lista enquanto o libvips empacotado não trouxer o codec HEVC: o menu não abre para `.heic`. AVIF continua aceito | — |
 | FR-22 | "Usar sempre estas opções" passa para a Fase 8, junto com a tela de Configuração que permite desfazer. Até lá, o painel sempre abre e Enter converte com o padrão | — |
 | FR-40 a FR-42 | Notificação em janela própria no canto inferior direito, com o design do Pizza. Respeita "Não perturbe" e é anunciada ao leitor de tela. Sucesso some em 5 s, e o mouse em cima pausa; erro fica até fechar. No máximo 3 empilhadas e um cartão "+N" que abre o painel | 018 |
+| FR-40 a FR-43 (detalhes) | O disco fecha ao soltar ou confirmar o painel. Com a sessão bloqueada ou em "Não perturbe", o aviso fica guardado e aparece depois, sem som. Em erro, "Tentar de novo" repete com as mesmas opções e "Ver detalhes" abre a pasta de logs. O cartão "+N" passa a abrir o painel na etapa 3e | — |
 | FR-43 (novo) | Som leve em WAV, tocado pelo Windows, só ao concluir e no erro; "Não perturbe" silencia. Os sons são originais do projeto | 018 |
 | FR-44 (novo, Fase 3) | Painel "Arquivos...", no clique direito do ícone da bandeja: só em memória, desde que o Pizza abriu, com "Abrir" e "Mostrar na pasta". Na v1.x, também cancelar o lote ou um arquivo e pausar/continuar | 018 |
 | PRIV-18 | Com a sessão bloqueada, a notificação espera o desbloqueio. Como a janela é própria, não há histórico nem espelhamento do Windows | 018 |

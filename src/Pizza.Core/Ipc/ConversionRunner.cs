@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using Microsoft.Win32.SafeHandles;
 using Pizza.Core.Output;
@@ -17,20 +18,29 @@ public sealed record ConversionResult(string? OutputName, string? ErrorCode)
 /// </summary>
 public sealed class ConversionRunner(string workerPath, string profile, TempJournal journal, TimeSpan timeout, string workerArguments = "")
 {
+    /// <summary>Não é erro do Worker nem vai ao usuário: o cartão só some.</summary>
+    public const string Cancelled = "CANCELLED";
+
     private const uint GenericWrite = 0x40000000;
     private const int ErrorHandleDiskFull = unchecked((int)0x80070027);
     private const int ErrorDiskFull = unchecked((int)0x80070070);
+    private const int ExitPollMs = 50;
     private static readonly TimeSpan ExitGrace = TimeSpan.FromSeconds(5);
 
-    public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null)
+    public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null, CancellationToken cancellation = default)
     {
+        if (cancellation.IsCancellationRequested)
+        {
+            return ConversionResult.Failed(Cancelled);
+        }
+
         try
         {
             using var source = PendingOutput.OpenSource(sourcePath);
             using var output = PendingOutput.Create(source, Path.GetDirectoryName(Path.GetFullPath(sourcePath))!, journal);
             output.CopyZoneFrom(sourcePath);
 
-            var error = RunWorker(source, output.Handle, converterId, options ?? new Dictionary<string, string>());
+            var error = RunWorker(source, output.Handle, converterId, options ?? new Dictionary<string, string>(), cancellation);
             return error is null
                 ? new ConversionResult(output.Commit(OutputNaming.Candidates(sourcePath, extension)), null)
                 : ConversionResult.Failed(error);
@@ -57,7 +67,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         }
     }
 
-    private string? RunWorker(SafeFileHandle source, SafeFileHandle destination, string converterId, IReadOnlyDictionary<string, string> options)
+    private string? RunWorker(SafeFileHandle source, SafeFileHandle destination, string converterId, IReadOnlyDictionary<string, string> options, CancellationToken cancellation)
     {
         using var worker = SandboxedProcess.Start(workerPath, profile, workerArguments);
         var jobId = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(6));
@@ -72,10 +82,19 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
 
         // A leitura bloqueia; encerrar o Worker fecha o canal e a libera.
         var reply = Task.Run(() => ReadOutcome(worker.Output, jobId));
-        if (!reply.Wait(timeout))
+        try
         {
+            if (!reply.Wait((int)timeout.TotalMilliseconds, cancellation))
+            {
+                worker.Kill();
+                return "TIMEOUT";
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // FR-29: há um Worker por arquivo, então cancelar é encerrá-lo. A saída temporária é descartada.
             worker.Kill();
-            return "TIMEOUT";
+            return Cancelled;
         }
 
         if (reply.Result is { } error)
@@ -84,13 +103,29 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
             return error;
         }
 
-        if (!worker.WaitForExit((int)ExitGrace.TotalMilliseconds))
+        return AwaitExit(worker, cancellation);
+    }
+
+    /// <summary>A saída só é confirmada com o Worker encerrado (SEC-29), e cancelar vale até esse instante (FR-29).</summary>
+    private static string? AwaitExit(SandboxedProcess worker, CancellationToken cancellation)
+    {
+        var clock = Stopwatch.StartNew();
+        while (!worker.WaitForExit(ExitPollMs))
         {
-            worker.Kill();
-            return "WORKER_CRASHED";
+            if (cancellation.IsCancellationRequested)
+            {
+                worker.Kill();
+                return Cancelled;
+            }
+
+            if (clock.Elapsed >= ExitGrace)
+            {
+                worker.Kill();
+                return "WORKER_CRASHED";
+            }
         }
 
-        return null;
+        return cancellation.IsCancellationRequested ? Cancelled : null;
     }
 
     /// <summary>Lê até o resultado. Tudo que vem do Worker é não confiável (SEC-13, SEC-24).</summary>
