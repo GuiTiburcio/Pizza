@@ -16,6 +16,9 @@ public enum SessionAction
 
     /// <summary>Saiu de uma janela nossa: espera um instante para ver se entrou na outra.</summary>
     WaitForReentry,
+
+    /// <summary>O botão subiu: a camada fica mais um instante, até o Windows concluir o arraste.</summary>
+    WaitForDrop,
     Close,
 }
 
@@ -26,6 +29,7 @@ public enum SessionAction
 public sealed class GestureSession
 {
     private bool _waitingReentry;
+    private bool _released;
 
     public GestureState State { get; private set; }
 
@@ -33,17 +37,40 @@ public sealed class GestureSession
     {
         State = GestureState.WaitingForFile;
         _waitingReentry = false;
+        _released = false;
     }
 
     public void End()
     {
         State = GestureState.Idle;
         _waitingReentry = false;
+        _released = false;
+    }
+
+    /// <summary>
+    /// O hook vê o botão subir antes de o Windows concluir o arraste. Em qualquer estado ativo,
+    /// a camada precisa continuar na tela para o drop não cair na janela de baixo.
+    /// </summary>
+    public SessionAction OnButtonReleased()
+    {
+        if (State == GestureState.Idle)
+        {
+            return SessionAction.None;
+        }
+
+        _released = true;
+        return SessionAction.WaitForDrop;
     }
 
     public SessionAction OnDragEnter(bool hasFiles)
     {
         if (State == GestureState.Idle)
+        {
+            return SessionAction.None;
+        }
+
+        // Com o botão já solto, não faz sentido abrir o menu: o arraste está terminando.
+        if (_released && State == GestureState.WaitingForFile)
         {
             return SessionAction.None;
         }

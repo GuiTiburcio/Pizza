@@ -22,9 +22,10 @@ internal static unsafe partial class Native
     public const int VK_LBUTTON = 0x01;
     public const int VK_RBUTTON = 0x02;
     public const int VK_CONTROL = 0x11;
-    public const uint VK_F12 = 0x7B;
+    public const uint VK_P = 0x50;
     public const uint MOD_ALT = 0x1;
     public const uint MOD_CONTROL = 0x2;
+    public const uint MOD_SHIFT = 0x4;
     public const uint MOD_NOREPEAT = 0x4000;
 
     // Janelas

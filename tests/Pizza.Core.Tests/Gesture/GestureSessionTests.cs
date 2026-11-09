@@ -84,6 +84,52 @@ public class GestureSessionTests
     }
 
     [Fact]
+    public void Soltar_antes_da_confirmacao_mantem_a_camada_durante_a_espera()
+    {
+        // Se a camada saísse agora, o drop cairia na pasta de baixo e viraria cópia.
+        _session.Begin();
+
+        Assert.Equal(SessionAction.WaitForDrop, _session.OnButtonReleased());
+        Assert.Equal(GestureState.WaitingForFile, _session.State);
+    }
+
+    [Fact]
+    public void Soltar_com_o_menu_aberto_espera_o_drop()
+    {
+        _session.Begin();
+        _session.OnDragEnter(hasFiles: true);
+
+        Assert.Equal(SessionAction.WaitForDrop, _session.OnButtonReleased());
+    }
+
+    [Fact]
+    public void Confirmacao_que_chega_depois_de_soltar_nao_abre_o_menu()
+    {
+        _session.Begin();
+        _session.OnButtonReleased();
+
+        Assert.Equal(SessionAction.None, _session.OnDragEnter(hasFiles: true));
+        Assert.Equal(GestureState.WaitingForFile, _session.State);
+    }
+
+    [Fact]
+    public void Soltar_sem_gesto_nao_faz_nada()
+    {
+        Assert.Equal(SessionAction.None, _session.OnButtonReleased());
+    }
+
+    [Fact]
+    public void Um_novo_gesto_depois_de_soltar_volta_a_abrir_o_menu()
+    {
+        _session.Begin();
+        _session.OnButtonReleased();
+        _session.End();
+        _session.Begin();
+
+        Assert.Equal(SessionAction.ShowMenu, _session.OnDragEnter(hasFiles: true));
+    }
+
+    [Fact]
     public void Terminar_volta_ao_repouso()
     {
         _session.Begin();

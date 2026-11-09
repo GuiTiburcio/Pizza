@@ -8,7 +8,7 @@ internal static unsafe class Program
 {
     /// <summary>
     /// Ponto de entrada do residente. Na etapa 1a é a prova de conceito do gesto; a bandeja chega na 1b.
-    /// Enquanto não há bandeja, Ctrl + Alt + F12 encerra o programa.
+    /// Enquanto não há bandeja, Ctrl + Alt + Shift + P encerra o programa.
     /// </summary>
     [STAThread]
     private static int Main()
@@ -23,8 +23,16 @@ internal static unsafe class Program
         Marshal.ThrowExceptionForHR(OleInitialize(0));
 
         Overlay.Create();
+
+        // Sem bandeja, o atalho é a única saída: se não registrar, não fica rodando sem como fechar.
+        if (RegisterHotKey(Overlay.Disc, Overlay.HotkeyQuit, MOD_CONTROL | MOD_ALT | MOD_SHIFT | MOD_NOREPEAT, VK_P) == 0)
+        {
+            Overlay.Destroy();
+            OleUninitialize();
+            return 1;
+        }
+
         GestureHook.Install();
-        RegisterHotKey(Overlay.Disc, Overlay.HotkeyQuit, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_F12);
         Log.Write(LogEvent.AppStarted);
 
         MSG message;

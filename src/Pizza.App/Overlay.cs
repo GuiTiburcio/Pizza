@@ -304,14 +304,8 @@ internal static unsafe class Overlay
         }
 
         KillTimer(Disc, TimerWatchdog);
-        if (Session.State == GestureState.WaitingForFile)
+        if (Session.OnButtonReleased() == SessionAction.WaitForDrop)
         {
-            // Nenhum arraste OLE chegou (Ctrl + arraste de texto ou de células, por exemplo).
-            Hide();
-        }
-        else if (Session.State == GestureState.Menu)
-        {
-            // O hook vê o botão subir antes de o Explorer chamar Drop: espera um pouco antes de fechar.
             SetTimer(Disc, TimerAfterRelease, AfterReleaseMs, 0);
         }
     }
@@ -347,7 +341,7 @@ internal static unsafe class Overlay
             return;
         }
 
-        if (id == TimerAfterRelease && _result is null)
+        if (id == TimerAfterRelease && Session.State == GestureState.Menu)
         {
             Log.Write(LogEvent.MenuCancelled);
         }

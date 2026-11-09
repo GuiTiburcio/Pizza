@@ -10,6 +10,7 @@ public class SecurityInvariantTests
     [InlineData("WH_KEYBOARD")] // SEC-01
     [InlineData("DROPEFFECT_MOVE")] // SEC-05
     [InlineData("HttpClient")] // PRIV-02: nenhuma rede nesta fase
+    [InlineData("VK_F12")] // reservada pelo Windows: não serve para atalho global
     public void Codigo_nao_contem_o_recurso_proibido(string forbidden)
     {
         Assert.DoesNotContain(Sources, source => source.Text.Contains(forbidden, StringComparison.Ordinal));
