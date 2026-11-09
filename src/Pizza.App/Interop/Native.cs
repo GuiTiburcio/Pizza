@@ -7,8 +7,10 @@ internal static unsafe partial class Native
 {
     // Mensagens
     public const uint WM_DESTROY = 0x0002;
+    public const uint WM_CLOSE = 0x0010;
     public const uint WM_PAINT = 0x000F;
     public const uint WM_ERASEBKGND = 0x0014;
+    public const uint WM_KEYDOWN = 0x0100;
     public const uint WM_TIMER = 0x0113;
     public const uint WM_NULL = 0x0000;
     public const uint WM_COMMAND = 0x0111;
@@ -24,6 +26,15 @@ internal static unsafe partial class Native
     public const int VK_LBUTTON = 0x01;
     public const int VK_RBUTTON = 0x02;
     public const int VK_CONTROL = 0x11;
+    public const int VK_TAB = 0x09;
+    public const int VK_RETURN = 0x0D;
+    public const int VK_SHIFT = 0x10;
+    public const int VK_ESCAPE = 0x1B;
+    public const int VK_SPACE = 0x20;
+    public const int VK_LEFT = 0x25;
+    public const int VK_UP = 0x26;
+    public const int VK_RIGHT = 0x27;
+    public const int VK_DOWN = 0x28;
 
     // Bandeja e menu
     public const uint NIM_ADD = 0;
@@ -303,6 +314,24 @@ internal static unsafe partial class Native
     public static partial int SetForegroundWindow(nint hwnd);
 
     [LibraryImport("user32.dll")]
+    public static partial nint GetForegroundWindow();
+
+    [LibraryImport("user32.dll")]
+    public static partial nint SetFocus(nint hwnd);
+
+    [LibraryImport("user32.dll")]
+    public static partial uint GetWindowThreadProcessId(nint hwnd, uint* processId);
+
+    [LibraryImport("user32.dll")]
+    public static partial int AttachThreadInput(uint attach, uint attachTo, int doAttach);
+
+    [LibraryImport("user32.dll")]
+    public static partial short GetKeyState(int key);
+
+    [LibraryImport("user32.dll")]
+    public static partial int FrameRect(nint hdc, RECT* rect, nint brush);
+
+    [LibraryImport("user32.dll")]
     public static partial nint LoadCursorW(nint instance, nint name);
 
     [LibraryImport("user32.dll")]
@@ -375,6 +404,9 @@ internal static unsafe partial class Native
     // kernel32
     [LibraryImport("kernel32.dll")]
     public static partial nint GetModuleHandleW(char* name);
+
+    [LibraryImport("kernel32.dll")]
+    public static partial uint GetCurrentThreadId();
 
     // ole32 / shell32
     [LibraryImport("ole32.dll")]

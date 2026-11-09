@@ -33,7 +33,7 @@ internal static class Conversion
         _runner = new ConversionRunner(Path.Combine(AppContext.BaseDirectory, "Pizza.Worker.exe"), Profile, journal, Timeout);
     }
 
-    public static void Start(long id, string sourcePath, ConverterInfo converter, nint notifyWindow, uint notifyMessage)
+    public static void Start(long id, string sourcePath, ConverterInfo converter, IReadOnlyDictionary<string, string> options, nint notifyWindow, uint notifyMessage)
     {
         Task.Run(() =>
         {
@@ -42,7 +42,7 @@ internal static class Conversion
             {
                 lock (Gate)
                 {
-                    result = _runner.Run(sourcePath, converter.Id, converter.Extension);
+                    result = _runner.Run(sourcePath, converter.Id, converter.Extension, options);
                 }
             }
             catch (Exception)

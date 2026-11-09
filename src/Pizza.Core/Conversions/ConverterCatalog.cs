@@ -14,19 +14,31 @@ public sealed record ConverterInfo(
     string Caption,
     string Extension,
     IReadOnlyList<string> InputExtensions,
-    IReadOnlyList<ConverterOption> Options);
+    IReadOnlyList<ConverterOption> Options)
+{
+    /// <summary>Sem opções, a conversão começa ao soltar (FR-21).</summary>
+    public bool HasPanel => Options.Count > 0;
+}
 
 /// <summary>Lista das conversões. O menu e o painel se montam daqui; a ordem é a das fatias (ADR-012).</summary>
 public static class ConverterCatalog
 {
+    public const string MetadataKey = "metadata";
+    public const string MetadataStrip = "strip";
+    public const string MetadataKeep = "keep";
+
     private const int ImageTab = 0;
 
     // SEC-45. HEIC fica de fora: o libvips empacotado não traz o codec HEVC.
     private static readonly string[] ImageInputs = [".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".gif", ".avif"];
 
+    // FR-23 e PRIV-30: desmarcado por padrão. Só nos formatos em que o Pizza consegue guardar os metadados.
+    private static readonly ConverterOption Metadata = new(MetadataKey, "Manter metadados", MetadataStrip, [new(MetadataStrip, "Não"), new(MetadataKeep, "Sim")]);
+
     private static readonly ConverterOption[] Quality =
     [
         new("quality", "Qualidade", "75", [new("95", "Máxima"), new("85", "Alta"), new("75", "Equilibrada"), new("60", "Compacta")]),
+        Metadata,
     ];
 
     public static IReadOnlyList<ConverterInfo> All { get; } =
@@ -42,6 +54,7 @@ public static class ConverterCatalog
             [
                 new("resolution", "Resolução", "original", [new("original", "Original"), new("75", "75%"), new("50", "50%")]),
                 new("compression", "Compressão", "balanced", [new("fast", "Rápida"), new("balanced", "Equilibrada"), new("maximum", "Máxima")]),
+                Metadata,
             ]),
         new("image.webp", ImageTab, "WEBP", "Para web", "webp", ImagesExcept(".webp"), Quality),
         new(

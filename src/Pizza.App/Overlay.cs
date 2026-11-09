@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Pizza.App.Interop;
+using Pizza.Core.Conversions;
 using Pizza.Core.Diagnostics;
 using Pizza.Core.Gesture;
 using Pizza.Core.Ipc;
@@ -18,6 +19,7 @@ internal static unsafe class Overlay
     public const uint WmGestureReleased = WM_APP + 2;
     public const uint WmWheel = WM_APP + 3;
     private const uint WmConversionDone = WM_APP + 4;
+    private const uint WmShowPanel = WM_APP + 5;
 
     private const string ClassName = "PizzaOverlay";
     private const int DiscSize = 380;
@@ -53,6 +55,7 @@ internal static unsafe class Overlay
     private static readonly DisplayedConversion Displayed = new();
     private static DraggedFiles? _files;
     private static Outcome? _outcome;
+    private static (string Path, ConverterInfo Converter)? _awaitingOptions;
 
     /// <summary>Janela do disco; também recebe as mensagens enviadas pelos hooks.</summary>
     public static nint Disc { get; private set; }
@@ -153,10 +156,57 @@ internal static unsafe class Overlay
         ShowWindow(_catcher, SW_HIDE);
 
         _hoverSlot = null;
-        _outcome = new Outcome("Convertendo…", Path.GetFileName(file.First), Succeeded: true);
-        Invalidate();
-        Conversion.Start(Displayed.Begin(), file.First, RadialMenu.Slices(Carousel.Target, file.First)[slot], Disc, WmConversionDone);
+        var converter = RadialMenu.Slices(Carousel.Target, file.First)[slot];
+        if (converter.HasPanel)
+        {
+            // Abre depois que o Drop retornar: o Explorer fica preso até lá.
+            _awaitingOptions = (file.First, converter);
+            PostMessageW(Disc, WmShowPanel, 0, 0);
+        }
+        else
+        {
+            StartConversion(file.First, converter, new Dictionary<string, string>());
+        }
+
         return true;
+    }
+
+    private static void StartConversion(string path, ConverterInfo converter, IReadOnlyDictionary<string, string> options)
+    {
+        _outcome = new Outcome("Convertendo…", Path.GetFileName(path), Succeeded: true);
+        Invalidate();
+        Conversion.Start(Displayed.Begin(), path, converter, options, Disc, WmConversionDone);
+    }
+
+    private static void ShowPanel()
+    {
+        if (_awaitingOptions is { } pending)
+        {
+            ShowWindow(Disc, SW_HIDE);
+            IsVisible = false;
+            OptionsPanel.Show(pending.Converter, Path.GetFileName(pending.Path), _left + (_size / 2), _top + (_size / 2));
+        }
+    }
+
+    /// <summary>O painel fechou: com as opções escolhidas, ou null se o usuário cancelou.</summary>
+    public static void OnPanelClosed(IReadOnlyDictionary<string, string>? options)
+    {
+        if (_awaitingOptions is not { } pending)
+        {
+            return;
+        }
+
+        _awaitingOptions = null;
+        if (options is null)
+        {
+            Log.Write(LogEvent.MenuCancelled);
+            Hide();
+            return;
+        }
+
+        SetWindowPos(Disc, HWND_TOPMOST, _left, _top, _size, _size, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        IsVisible = true;
+        StartConversion(pending.Path, pending.Converter, options);
     }
 
     /// <summary>Fatia sob o cursor, se houver uma disponível para o arquivo arrastado.</summary>
@@ -204,6 +254,8 @@ internal static unsafe class Overlay
     /// <summary>Estado 2: só a camada invisível, até o OLE confirmar que o arraste é de arquivos.</summary>
     private static void BeginGesture()
     {
+        OptionsPanel.Close();
+        _awaitingOptions = null;
         KillTimer(Disc, TimerAfterRelease);
         KillTimer(Disc, TimerHideResult);
         ShowWindow(Disc, SW_HIDE);
@@ -304,6 +356,10 @@ internal static unsafe class Overlay
 
             case WmConversionDone:
                 OnConversionDone();
+                return 0;
+
+            case WmShowPanel:
+                ShowPanel();
                 return 0;
 
             case WM_TIMER:
