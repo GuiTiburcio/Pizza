@@ -203,6 +203,56 @@ public sealed class OutputFileTests : IDisposable
     }
 
     [Fact]
+    public void Falha_no_diario_nao_deixa_temporario_para_tras()
+    {
+        var unwritable = new TempJournal(Path.Combine(_root, "pasta inexistente", "journal.dat"));
+        using var source = PendingOutput.OpenSource(_source);
+
+        Assert.ThrowsAny<IOException>(() => PendingOutput.Create(source, _folder, unwritable));
+        Assert.Empty(Temporaries());
+    }
+
+    [Fact]
+    public void Orfao_em_uso_continua_no_diario_e_e_limpo_depois()
+    {
+        // Uma falha passageira não pode fazer o diário esquecer o arquivo.
+        var orphan = CreateOrphan();
+        var journal = new TempJournal(Path.Combine(_root, "journal.dat"));
+
+        using (File.OpenHandle(orphan, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            journal.CleanOrphans();
+            Assert.True(File.Exists(orphan));
+        }
+
+        new TempJournal(Path.Combine(_root, "journal.dat")).CleanOrphans();
+
+        Assert.False(File.Exists(orphan));
+    }
+
+    [Fact]
+    public void Registro_de_arquivo_que_nao_existe_mais_sai_do_diario()
+    {
+        var orphan = CreateOrphan();
+        File.Delete(orphan);
+        var journal = new TempJournal(Path.Combine(_root, "journal.dat"));
+
+        journal.CleanOrphans();
+
+        Assert.Equal(0, journal.Count);
+    }
+
+    [Fact]
+    public void Volume_indisponivel_mantem_o_registro()
+    {
+        _journal.Add(new TempJournal.Entry(Path.Combine(_root, "volume desconectado\\"), 1, new byte[16]));
+
+        _journal.CleanOrphans();
+
+        Assert.Equal(1, _journal.Count);
+    }
+
+    [Fact]
     public void Diario_nao_guarda_o_conteudo_em_texto_claro()
     {
         // SEC-37: protegido por DPAPI.

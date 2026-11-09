@@ -41,7 +41,6 @@ public sealed unsafe class PendingOutput : IDisposable
         {
             if (!SameDirectory(FileNative.FinalPath(source), FileNative.FinalPath(handle)))
             {
-                FileNative.MarkForDeletion(handle);
                 throw new UnauthorizedAccessException("A pasta de destino aponta para outro lugar.");
             }
 
@@ -51,6 +50,7 @@ public sealed unsafe class PendingOutput : IDisposable
         }
         catch
         {
+            FileNative.MarkForDeletion(handle);
             handle.Dispose();
             throw;
         }
@@ -142,6 +142,8 @@ internal static unsafe partial class FileNative
     private const int FileDispositionInfo = 4;
     private const int FileIdInfo = 18;
     private const int StatusObjectNameCollision = unchecked((int)0xC0000035);
+    private const int ErrorFileNotFound = 2;
+    private const int ErrorInvalidParameter = 87;
     private const int ExtendedFileIdType = 2;
     private const int FileNameOffset = 20;
     private const int OwnerSecurityInformation = 1;
@@ -181,10 +183,10 @@ internal static unsafe partial class FileNative
         Check(SetFileInformationByHandle(handle, FileBasicInfo, &info, (uint)sizeof(FILE_BASIC_INFO)) != 0);
     }
 
-    public static void MarkForDeletion(SafeFileHandle handle)
+    public static bool MarkForDeletion(SafeFileHandle handle)
     {
         byte delete = 1;
-        SetFileInformationByHandle(handle, FileDispositionInfo, &delete, 1);
+        return SetFileInformationByHandle(handle, FileDispositionInfo, &delete, 1) != 0;
     }
 
     /// <summary>Renomeia na própria pasta, sem substituir. Devolve falso se o nome já existir.</summary>
@@ -219,36 +221,41 @@ internal static unsafe partial class FileNative
         return new TempJournal.Entry(Path.GetPathRoot(Path.GetFullPath(directory))!, info.VolumeSerialNumber, new ReadOnlySpan<byte>(info.FileId, 16).ToArray());
     }
 
-    /// <summary>Apaga pelo File ID, sem seguir reparse point, só se for um temporário nosso (SEC-37).</summary>
-    public static void DeleteOrphan(TempJournal.Entry entry)
+    /// <summary>
+    /// Apaga pelo File ID, sem seguir reparse point, só se for um temporário nosso (SEC-37).
+    /// Devolve verdadeiro se o registro pode sair do diário; falso para tentar de novo depois.
+    /// </summary>
+    public static bool TryResolveOrphan(TempJournal.Entry entry)
     {
         using var volume = CreateFileW(ToExtended(entry.Root), ReadAttributes, ShareAll, 0, OpenExisting, FlagBackupSemantics, 0);
         if (volume.IsInvalid)
         {
-            return;
+            return false;
         }
 
         var descriptor = new FILE_ID_DESCRIPTOR { Size = (uint)sizeof(FILE_ID_DESCRIPTOR), Type = ExtendedFileIdType };
         entry.FileId.CopyTo(new Span<byte>(descriptor.FileId, 16));
         using var file = OpenFileById(volume, &descriptor, ReadControl | ReadAttributes, ShareAll, 0, FlagOpenReparsePoint);
-        if (file.IsInvalid || !IsEntry(file, entry) || !IsOwnedByCurrentUser(file))
+        if (file.IsInvalid)
         {
-            return;
+            return Marshal.GetLastPInvokeError() is ErrorFileNotFound or ErrorInvalidParameter;
+        }
+
+        if (!IsEntry(file, entry))
+        {
+            return false;
         }
 
         var path = FinalPath(file);
-        if (!Path.GetFileName(path).StartsWith(".~pizza-", StringComparison.Ordinal))
+        if (!IsOwnedByCurrentUser(file) || !Path.GetFileName(path).StartsWith(".~pizza-", StringComparison.Ordinal))
         {
-            return;
+            return true;
         }
 
         // O NTFS não apaga por um handle aberto por ID: reabre pelo caminho e confere de novo o ID
         // no handle que de fato vai apagar.
         using var target = CreateFileW(ToExtended(path), Delete | ReadAttributes, ShareAll, 0, OpenExisting, FlagOpenReparsePoint, 0);
-        if (!target.IsInvalid && IsEntry(target, entry))
-        {
-            MarkForDeletion(target);
-        }
+        return !target.IsInvalid && IsEntry(target, entry) && MarkForDeletion(target);
     }
 
     private static bool IsEntry(SafeFileHandle handle, TempJournal.Entry entry)

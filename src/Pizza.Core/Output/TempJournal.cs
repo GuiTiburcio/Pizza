@@ -25,15 +25,15 @@ public sealed class TempJournal(string path)
         Save();
     }
 
-    /// <summary>Apaga os temporários que sobraram de uma execução anterior e esvazia o diário.</summary>
+    internal int Count => _entries.Count;
+
+    /// <summary>
+    /// Apaga os temporários que sobraram de uma execução anterior. Quem não pôde ser resolvido agora
+    /// (volume desconectado, arquivo em uso) fica no diário para a próxima tentativa.
+    /// </summary>
     public void CleanOrphans()
     {
-        foreach (var entry in _entries)
-        {
-            FileNative.DeleteOrphan(entry);
-        }
-
-        _entries.Clear();
+        _entries.RemoveAll(FileNative.TryResolveOrphan);
         Save();
     }
 
