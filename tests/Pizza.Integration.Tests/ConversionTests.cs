@@ -69,6 +69,22 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
     }
 
     [Fact]
+    public void Pasta_sem_permissao_de_escrita_e_avisada()
+    {
+        var source = CopySample();
+        var user = System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value;
+        Icacls($"\"{_folder}\" /deny \"*{user}:(WD)\"");
+        try
+        {
+            Assert.Equal("NO_PERMISSION", Runner().Run(source, "image.png", "png").ErrorCode);
+        }
+        finally
+        {
+            Icacls($"\"{_folder}\" /remove:d \"*{user}\"");
+        }
+    }
+
+    [Fact]
     public void Arquivo_que_sumiu_nao_derruba_o_residente()
     {
         var result = Runner().Run(Path.Combine(_folder, "nao-existe.jpg"), "image.png", "png");
@@ -147,6 +163,18 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
     {
         AssertNoTemporaries();
         Assert.False(File.Exists(Path.Combine(_folder, "fachada.png")));
+    }
+
+    private static void Icacls(string arguments)
+    {
+        using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("icacls.exe", arguments)
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+        })!;
+        process.WaitForExit();
+        Assert.Equal(0, process.ExitCode);
     }
 
     private static string CreateFolder()
