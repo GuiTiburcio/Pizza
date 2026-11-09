@@ -117,6 +117,15 @@ internal static unsafe class OptionsPanel
                 OnClick((short)(lParam & 0xFFFF), (short)((lParam >> 16) & 0xFFFF));
                 return 0;
 
+            case WM_CLOSE:
+                // Alt+F4 vale como cancelar. Sem isto, o Windows destruiria a janela, que é reaproveitada.
+                if (_state is not null)
+                {
+                    Apply(PanelAction.Cancel);
+                }
+
+                return 0;
+
             default:
                 return DefWindowProcW(hwnd, msg, wParam, lParam);
         }
