@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using Microsoft.Win32.SafeHandles;
 using Pizza.Core.Output;
@@ -23,6 +24,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     private const uint GenericWrite = 0x40000000;
     private const int ErrorHandleDiskFull = unchecked((int)0x80070027);
     private const int ErrorDiskFull = unchecked((int)0x80070070);
+    private const int ExitPollMs = 50;
     private static readonly TimeSpan ExitGrace = TimeSpan.FromSeconds(5);
 
     public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null, CancellationToken cancellation = default)
@@ -101,13 +103,29 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
             return error;
         }
 
-        if (!worker.WaitForExit((int)ExitGrace.TotalMilliseconds))
+        return AwaitExit(worker, cancellation);
+    }
+
+    /// <summary>A saída só é confirmada com o Worker encerrado (SEC-29), e cancelar vale até esse instante (FR-29).</summary>
+    private static string? AwaitExit(SandboxedProcess worker, CancellationToken cancellation)
+    {
+        var clock = Stopwatch.StartNew();
+        while (!worker.WaitForExit(ExitPollMs))
         {
-            worker.Kill();
-            return "WORKER_CRASHED";
+            if (cancellation.IsCancellationRequested)
+            {
+                worker.Kill();
+                return Cancelled;
+            }
+
+            if (clock.Elapsed >= ExitGrace)
+            {
+                worker.Kill();
+                return "WORKER_CRASHED";
+            }
         }
 
-        return null;
+        return cancellation.IsCancellationRequested ? Cancelled : null;
     }
 
     /// <summary>Lê até o resultado. Tudo que vem do Worker é não confiável (SEC-13, SEC-24).</summary>

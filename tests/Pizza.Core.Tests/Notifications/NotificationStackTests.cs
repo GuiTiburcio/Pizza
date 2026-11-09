@@ -42,6 +42,19 @@ public class NotificationStackTests
     }
 
     [Fact]
+    public void Informa_quando_ha_cartao_esperando_para_aparecer()
+    {
+        // O residente confere o "Não perturbe" no momento de revelar o cartão.
+        var stack = new NotificationStack();
+        stack.Set(1, NotificationKind.Progress, "Convertendo…", "a.jpg");
+        Assert.True(stack.HasDelayed);
+
+        stack.Advance(1000);
+
+        Assert.False(stack.HasDelayed);
+    }
+
+    [Fact]
     public void Progresso_nao_expira()
     {
         var stack = new NotificationStack();

@@ -132,8 +132,8 @@ internal static unsafe class Notifications
         var quiet = SHQueryUserNotificationState(out var state) == S_OK && state != QUNS_ACCEPTS_NOTIFICATIONS;
         Stack.Held = _locked || quiet;
 
-        // "Não perturbe" não avisa quando termina; só se confere enquanto houver aviso guardado.
-        if (Stack.Held && !Stack.IsEmpty)
+        // "Não perturbe" não avisa quando começa nem quando termina; só se confere enquanto houver aviso.
+        if (!Stack.IsEmpty)
         {
             SetTimer(_host, TimerHeld, HeldCheckMs, 0);
         }
@@ -294,7 +294,13 @@ internal static unsafe class Notifications
         var elapsed = Stopwatch.GetElapsedTime(_lastFrame, now).TotalMilliseconds;
         _lastFrame = now;
 
+        var hadDelayed = Stack.HasDelayed;
         Stack.Advance(elapsed);
+        if (hadDelayed && !Stack.HasDelayed)
+        {
+            RefreshHeld(); // O cartão vai aparecer agora: o "Não perturbe" pode ter sido ligado no último segundo.
+        }
+
         foreach (var card in Cards)
         {
             card.Top.Advance(elapsed);

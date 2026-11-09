@@ -3,12 +3,15 @@ $ErrorActionPreference = 'Stop'
 $assets = Join-Path (Split-Path -Parent $PSScriptRoot) 'src\Pizza.App\Assets'
 $rate = 44100
 
-function New-Tone([double]$start, [double]$frequency, [double]$decay, [double]$level, [double[]]$buffer) {
+function New-Tone([double]$start, [double]$frequency, [double]$decay, [double]$level, [double[]]$buffer, [double]$bright = 0) {
     $first = [int]($start * $rate)
     for ($i = $first; $i -lt $buffer.Length; $i++) {
         $t = ($i - $first) / $rate
         $attack = [Math]::Min(1.0, $t / 0.006)
         $body = [Math]::Sin(2 * [Math]::PI * $frequency * $t) + (0.25 * [Math]::Sin(4 * [Math]::PI * $frequency * $t))
+
+        # Harmônicos agudos: um toque grave puro soa baixo em alto-falantes comuns.
+        $body += $bright * ((0.8 * [Math]::Sin(6 * [Math]::PI * $frequency * $t)) + (0.55 * [Math]::Sin(8 * [Math]::PI * $frequency * $t)) + (0.4 * [Math]::Sin(10 * [Math]::PI * $frequency * $t)))
         $buffer[$i] += $level * $attack * [Math]::Exp(-$t / $decay) * $body
     }
 }
@@ -41,7 +44,7 @@ Save-Wav 'concluido.wav' $done
 
 # Erro: um toque grave e curto.
 $fail = [double[]]::new([int](0.30 * $rate))
-New-Tone 0.00 196.00 0.085 0.34 $fail
+New-Tone 0.00 196.00 0.085 0.42 $fail 0.7
 Save-Wav 'erro.wav' $fail
 
 Write-Host "Sons gerados em $assets"

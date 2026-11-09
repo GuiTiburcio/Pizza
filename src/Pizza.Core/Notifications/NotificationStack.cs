@@ -48,6 +48,8 @@ public sealed class NotificationStack
 
     public bool IsEmpty => _items.Count == 0;
 
+    public bool HasDelayed => _items.Exists(item => item.DelayMs > 0);
+
     public bool Contains(long id) => _items.Exists(item => item.Id == id);
 
     public void Set(long id, NotificationKind kind, string title, string detail)
