@@ -11,6 +11,7 @@ internal static unsafe class Tray
     private const uint IconId = 1;
     private const nuint CommandOpenLogs = 1;
     private const nuint CommandQuit = 2;
+    private const nuint CommandFiles = 3;
 
     // Identificador que o SDK do .NET dá ao ícone definido em ApplicationIcon.
     private const nint IconResourceId = 32512;
@@ -76,6 +77,7 @@ internal static unsafe class Tray
         var menu = CreatePopupMenu();
         AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, "Pizza — ativo");
         AppendMenuW(menu, MF_SEPARATOR, 0, null);
+        AppendMenuW(menu, MF_STRING, CommandFiles, "Arquivos...");
         AppendMenuW(menu, MF_STRING, CommandOpenLogs, "Abrir pasta de logs");
         AppendMenuW(menu, MF_SEPARATOR, 0, null);
         AppendMenuW(menu, MF_STRING, CommandQuit, "Sair");
@@ -121,7 +123,11 @@ internal static unsafe class Tray
                 return 0;
 
             case WM_COMMAND:
-                if ((wParam & 0xFFFF) == CommandOpenLogs)
+                if ((wParam & 0xFFFF) == CommandFiles)
+                {
+                    FilesPanel.Show();
+                }
+                else if ((wParam & 0xFFFF) == CommandOpenLogs)
                 {
                     OpenLogs();
                 }
