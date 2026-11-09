@@ -18,7 +18,9 @@ public sealed class ImageJpegConverter : ImageConverter
         }
 
         // JPG não tem transparência: sem isto, as áreas transparentes sairiam pretas.
-        using var flattened = image.Flatten(background: [255.0]);
+        // Em 8 bits primeiro, porque em imagens de 16 bits o branco não é 255.
+        using var srgb = image.Colourspace(Enums.Interpretation.Srgb);
+        using var flattened = srgb.Flatten(background: [255.0]);
         flattened.JpegsaveStream(destination, q: quality, keep: Enums.ForeignKeep.Icc);
     }
 }

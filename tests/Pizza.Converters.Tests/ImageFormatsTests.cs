@@ -45,6 +45,20 @@ public class ImageFormatsTests
     }
 
     [Fact]
+    public void Transparencia_de_16_bits_tambem_vira_fundo_branco_no_jpg()
+    {
+        using var black = Image.Black(16, 16, bands: 3);
+        using var color = (black + 30000).Cast(Enums.BandFormat.Ushort);
+        using var transparent = color.Bandjoin(0.0).Copy(interpretation: Enums.Interpretation.Rgb16);
+
+        var (error, jpg) = Run("image.jpg", transparent.PngsaveBuffer());
+
+        Assert.Null(error);
+        using var result = Image.NewFromBuffer(jpg);
+        Assert.True(result.Avg() > 250);
+    }
+
+    [Fact]
     public void Webp_tem_a_assinatura_certa()
     {
         var (error, webp) = Run("image.webp", Solid(32, 24).PngsaveBuffer());
