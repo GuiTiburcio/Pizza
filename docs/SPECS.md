@@ -101,7 +101,7 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | FR-43 (novo) | Som leve em WAV, tocado pelo Windows, só ao concluir e no erro; "Não perturbe" silencia. Os sons são originais do projeto | 018 |
 | FR-44 (novo, Fase 3) | Painel "Arquivos...", no clique direito do ícone da bandeja: só em memória, desde que o Pizza abriu, com "Abrir" e "Mostrar na pasta". Na v1.x, também cancelar o lote ou um arquivo e pausar/continuar | 018 |
 | PRIV-18 | Com a sessão bloqueada, a notificação espera o desbloqueio. Como a janela é própria, não há histórico nem espelhamento do Windows | 018 |
-| FR-50, FR-51 | A bandeja ganha "Arquivos..." na Fase 3. Sai "Pausar por 1 hora" | 019 |
+| FR-50, FR-51 | Menu do ícone: Pizza — ativo, Arquivos... (Fase 3), Configuração (Fase 8), Play/Pause/Stop da fila de conversões (v1.x), Abrir pasta de logs e Sair. Cada item só aparece quando funcionar. Vira janela própria de vidro na Fase 4, com uso completo por teclado. Exportar diagnóstico, Limpar dados e Sobre ficam em Configuração. Sai "Pausar por 1 hora" | 019, 020 |
 | SEC-61, SEC-65, SEC-66, POL-08, `OFFICE_UNTRUSTED_SOURCE` | Removidos: no v1, Office só pelo LibreOffice isolado | 019 |
 | SEC-25, SEC-29 | Um Worker por arquivo, sempre. A saída só é finalizada depois que ele termina | 019 |
 | SEC-58, PRIV-03 | Nenhum download além da atualização. O Pizza detecta o LibreOffice instalado e, se não houver, mostra o link oficial | 019 |
