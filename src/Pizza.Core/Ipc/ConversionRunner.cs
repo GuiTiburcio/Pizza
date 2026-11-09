@@ -22,7 +22,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     private const int ErrorDiskFull = unchecked((int)0x80070070);
     private static readonly TimeSpan ExitGrace = TimeSpan.FromSeconds(5);
 
-    public ConversionResult Run(string sourcePath, string converterId, string extension)
+    public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null)
     {
         try
         {
@@ -30,7 +30,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
             using var output = PendingOutput.Create(source, Path.GetDirectoryName(Path.GetFullPath(sourcePath))!, journal);
             output.CopyZoneFrom(sourcePath);
 
-            var error = RunWorker(source, output.Handle, converterId);
+            var error = RunWorker(source, output.Handle, converterId, options ?? new Dictionary<string, string>());
             return error is null
                 ? new ConversionResult(output.Commit(OutputNaming.Candidates(sourcePath, extension)), null)
                 : ConversionResult.Failed(error);
@@ -57,7 +57,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         }
     }
 
-    private string? RunWorker(SafeFileHandle source, SafeFileHandle destination, string converterId)
+    private string? RunWorker(SafeFileHandle source, SafeFileHandle destination, string converterId, IReadOnlyDictionary<string, string> options)
     {
         using var worker = SandboxedProcess.Start(workerPath, profile, workerArguments);
         var jobId = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(6));
@@ -67,7 +67,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
             ConverterId = converterId,
             SrcHandle = worker.DuplicateIntoProcess(source, SandboxedProcess.GenericRead),
             DstHandle = worker.DuplicateIntoProcess(destination, GenericWrite),
-            Options = new Dictionary<string, string>(),
+            Options = options,
         }));
 
         // A leitura bloqueia; encerrar o Worker fecha o canal e a libera.
