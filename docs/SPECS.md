@@ -3,7 +3,7 @@
 | Campo | Valor |
 | --- | --- |
 | Produto | Pizza: conversor de arquivos por Ctrl + arrastar, com menu radial |
-| Versão da especificação | 1.1 (inclui as correções da `AUDITORIA-SEGURANCA.md`) |
+| Versão da especificação | 1.2 (emendas na §2.1, que prevalecem sobre o restante do texto) |
 | Data | 08/11/2026 |
 | Licença do código | GPL-3.0 |
 | Modelo | Gratuito, sem licença, sem conta, sem telemetria |
@@ -81,6 +81,33 @@ Decisões tomadas na entrevista (método *grilling*), em 5 rodadas. Viram ADRs e
 | Q17 | Proteção da saída | Mantém a senha do PDF; se o destino não suporta, avisa e pede confirmação | SEC-74, SEC-75 |
 | Q18 | Kit LGPD | Incluído (Apêndices A, B e C) | §14 |
 | Q19 | Vulnerabilidades | SECURITY.md, reporte privado, prazos | §13 |
+
+### 2.1 Emendas da versão 1.2
+
+Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta tabela prevalece** sobre o restante do documento.
+
+| Requisito | Emenda | ADR |
+| --- | --- | --- |
+| Licença e repositório | Gratuito e GPL-3.0. O repositório fica privado até corrigir os desvios da auditoria | 014 |
+| NFR-06 | Opção Animações: Sempre (padrão) / Seguir o Windows / Nunca. Em Seguir o Windows com animações desligadas, a transição só troca a opacidade | 015 |
+| FR-04 | Um entalhe inteiro = uma aba; frações de touchpad se acumulam. Ao trocar de aba, as fatias giram levemente em volta do miolo enquanto os formatos trocam, em 180 ms | 015 |
+| SEC-01, SEC-02, SEC-03, FR-07 | Sem hook de teclado, para todos. O Ctrl é lido só no início do arraste. O menu orienta "Solte o Ctrl e aperte Esc para cancelar"; Ctrl + Esc abre o Menu Iniciar | 016 |
+| FR-09 (novo) | Arquivo sem conversão disponível não abre o menu; o Ctrl + arrastar segue como cópia normal do Windows | — |
+| FR-28, FR-01 | Lote passa para a v1.x. Antes disso (FR-30, novo), arrastar vários mostra a quantidade, recusa o drop e avisa "Por enquanto, um arquivo por vez", sem copiar nada | 017 |
+| FR-31 (novo, v1.x) | Tipos misturados: o menu abre na aba do primeiro arquivo, só os compatíveis são convertidos e os demais aparecem como "ignorado", sem bloquear o lote | 017 |
+| FR-32 (novo, v1.x) | O painel de opções abre uma vez e vale para todos os compatíveis; cada saída fica ao lado do seu original | 017 |
+| SEC-46 | Sem teto de arquivos; fila com no máximo 2 conversões por núcleo | 017 |
+| FR-40 a FR-42 | Notificação em janela própria no canto inferior direito, com o design do Pizza. Respeita "Não perturbe" e é anunciada ao leitor de tela. Sucesso some em 5 s, e o mouse em cima pausa; erro fica até fechar. No máximo 3 empilhadas e um cartão "+N" que abre o painel | 018 |
+| FR-43 (novo) | Som leve em WAV, tocado pelo Windows, só ao concluir e no erro; "Não perturbe" silencia. Os sons são originais do projeto | 018 |
+| FR-44 (novo, Fase 3) | Painel "Arquivos...", no clique direito do ícone da bandeja: só em memória, desde que o Pizza abriu, com "Abrir" e "Mostrar na pasta". Na v1.x, também cancelar o lote ou um arquivo e pausar/continuar | 018 |
+| PRIV-18 | Com a sessão bloqueada, a notificação espera o desbloqueio. Como a janela é própria, não há histórico nem espelhamento do Windows | 018 |
+| FR-50, FR-51 | A bandeja ganha "Arquivos..." na Fase 3. Sai "Pausar por 1 hora" | 019 |
+| SEC-61, SEC-65, SEC-66, POL-08, `OFFICE_UNTRUSTED_SOURCE` | Removidos: no v1, Office só pelo LibreOffice isolado | 019 |
+| SEC-25, SEC-29 | Um Worker por arquivo, sempre. A saída só é finalizada depois que ele termina | 019 |
+| SEC-58, PRIV-03 | Nenhum download além da atualização. O Pizza detecta o LibreOffice instalado e, se não houver, mostra o link oficial | 019 |
+| §9 | Políticas do v1: POL-02, 03, 04, 05, 06, 12 e 15. A POL-12 fica sem efeito enquanto não houver downloads | 019 |
+| §10.1 | Saem `showHint` e `accentColor` | 019 |
+| SEC-57 | Confirmado: o MSI só avisa que há versão nova | — |
 
 ---
 

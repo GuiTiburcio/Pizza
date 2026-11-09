@@ -5,32 +5,27 @@ using static Pizza.App.Interop.Native;
 namespace Pizza.App;
 
 /// <summary>
-/// Hooks globais de mouse e teclado. Só detectam e avisam o overlay por mensagem: o Windows
-/// desliga hooks lentos, então nada pesado roda aqui dentro.
+/// Hook global de mouse; não existe hook de teclado (SEC-01). Só detecta e avisa o overlay por
+/// mensagem, sem I/O nem registro de coordenadas (SEC-04).
 /// </summary>
 internal static unsafe class GestureHook
 {
+    private static readonly Func<bool> IsCtrlDown = static () => (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+
     private static DragGestureDetector _detector = null!;
     private static nint _mouseHook;
-    private static nint _keyboardHook;
 
     public static void Install()
     {
         _detector = new DragGestureDetector(GetSystemMetrics(SM_CXDRAG), GetSystemMetrics(SM_CYDRAG));
-        var module = GetModuleHandleW(null);
-        _mouseHook = SetWindowsHookExW(WH_MOUSE_LL, &MouseProc, module, 0);
-        _keyboardHook = SetWindowsHookExW(WH_KEYBOARD_LL, &KeyboardProc, module, 0);
-        if (_mouseHook == 0 || _keyboardHook == 0)
+        _mouseHook = SetWindowsHookExW(WH_MOUSE_LL, &MouseProc, GetModuleHandleW(null), 0);
+        if (_mouseHook == 0)
         {
-            throw new InvalidOperationException("Não foi possível instalar os hooks de mouse e teclado.");
+            throw new InvalidOperationException("Não foi possível instalar o hook de mouse.");
         }
     }
 
-    public static void Uninstall()
-    {
-        UnhookWindowsHookEx(_mouseHook);
-        UnhookWindowsHookEx(_keyboardHook);
-    }
+    public static void Uninstall() => UnhookWindowsHookEx(_mouseHook);
 
     [UnmanagedCallersOnly]
     private static nint MouseProc(int code, nuint wParam, nint lParam)
@@ -45,11 +40,8 @@ internal static unsafe class GestureHook
                     break;
 
                 case WM_MOUSEMOVE:
-                    var ctrlDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
-                    if (_detector.OnMove(data->Pt.X, data->Pt.Y, ctrlDown) == GestureEvent.Started)
+                    if (_detector.OnMove(data->Pt.X, data->Pt.Y, IsCtrlDown) == GestureEvent.Started)
                     {
-                        Overlay.GestureX = data->Pt.X;
-                        Overlay.GestureY = data->Pt.Y;
                         PostMessageW(Overlay.Disc, Overlay.WmGestureStarted, 0, 0);
                     }
 
@@ -70,22 +62,6 @@ internal static unsafe class GestureHook
             }
         }
 
-        return CallNextHookEx(0, code, wParam, lParam);
-    }
-
-    [UnmanagedCallersOnly]
-    private static nint KeyboardProc(int code, nuint wParam, nint lParam)
-    {
-        if (code >= 0 && (int)wParam is WM_KEYDOWN or WM_SYSKEYDOWN)
-        {
-            var data = (KBDLLHOOKSTRUCT*)lParam;
-            if (data->VkCode == VK_ESCAPE && _detector.OnEscape() == GestureEvent.Cancelled)
-            {
-                PostMessageW(Overlay.Disc, Overlay.WmGestureCancelled, 0, 0);
-            }
-        }
-
-        // O Esc segue adiante de propósito: é ele que faz o Explorer cancelar o arraste.
         return CallNextHookEx(0, code, wParam, lParam);
     }
 }

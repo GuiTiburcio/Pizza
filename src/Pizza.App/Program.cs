@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using Pizza.Core.Diagnostics;
 using static Pizza.App.Interop.Native;
 
 namespace Pizza.App;
@@ -24,7 +25,7 @@ internal static unsafe class Program
         Overlay.Create();
         GestureHook.Install();
         RegisterHotKey(Overlay.Disc, Overlay.HotkeyQuit, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_F12);
-        Log.Write("residente iniciado");
+        Log.Write(LogEvent.AppStarted);
 
         MSG message;
         while (GetMessageW(&message, 0, 0, 0) > 0)
@@ -36,7 +37,7 @@ internal static unsafe class Program
         GestureHook.Uninstall();
         Overlay.Destroy();
         OleUninitialize();
-        Log.Write("residente encerrado");
+        Log.Write(LogEvent.AppStopped);
         return 0;
     }
 }

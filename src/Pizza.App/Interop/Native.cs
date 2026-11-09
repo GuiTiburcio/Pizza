@@ -12,20 +12,16 @@ internal static unsafe partial class Native
     public const uint WM_TIMER = 0x0113;
     public const uint WM_HOTKEY = 0x0312;
     public const uint WM_APP = 0x8000;
-    public const int WM_KEYDOWN = 0x0100;
-    public const int WM_SYSKEYDOWN = 0x0104;
     public const int WM_MOUSEMOVE = 0x0200;
     public const int WM_LBUTTONDOWN = 0x0201;
     public const int WM_LBUTTONUP = 0x0202;
     public const int WM_MOUSEWHEEL = 0x020A;
 
     // Hooks e teclas
-    public const int WH_KEYBOARD_LL = 13;
     public const int WH_MOUSE_LL = 14;
     public const int VK_LBUTTON = 0x01;
     public const int VK_RBUTTON = 0x02;
     public const int VK_CONTROL = 0x11;
-    public const int VK_ESCAPE = 0x1B;
     public const uint VK_F12 = 0x7B;
     public const uint MOD_ALT = 0x1;
     public const uint MOD_CONTROL = 0x2;
@@ -112,16 +108,6 @@ internal static unsafe partial class Native
     {
         public POINT Pt;
         public uint MouseData;
-        public uint Flags;
-        public uint Time;
-        public nuint ExtraInfo;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct KBDLLHOOKSTRUCT
-    {
-        public uint VkCode;
-        public uint ScanCode;
         public uint Flags;
         public uint Time;
         public nuint ExtraInfo;

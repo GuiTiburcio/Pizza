@@ -14,7 +14,8 @@ O original nunca é alterado e nada sai do computador.
 
 ## Documentação
 
-- [Especificação completa](docs/PIZZA-PROJETO.md): produto, UX, arquitetura, conversores, fases.
+- [SPECS](docs/SPECS.md): fonte da verdade, com requisitos de segurança e privacidade.
+- [Visão geral do projeto](docs/PIZZA-PROJETO.md): produto, UX, arquitetura, conversores, fases.
 - [Registro de decisões (ADRs)](docs/adr/).
 
 ## Ambiente de desenvolvimento
@@ -64,4 +65,4 @@ O CI (GitHub Actions, Windows) compila, testa e publica o `Pizza.exe` nativo a c
 
 ## Licença
 
-Código proprietário. Todos os direitos reservados. A licença final será decidida no v1.0 (ver [ADR-013](docs/adr/013-repositorio-privado.md)).
+Gratuito e de código aberto, sob a [GPL-3.0](LICENSE) (ver [ADR-014](docs/adr/014-gratuito-gpl.md)). Para reportar falhas, veja [SECURITY.md](SECURITY.md).

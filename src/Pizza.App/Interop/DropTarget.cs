@@ -39,7 +39,7 @@ internal sealed partial class DropTarget(bool acceptsDrop) : IDropTarget
     public int DragEnter(nint dataObject, int keyState, POINT pt, ref int effect)
     {
         var files = ReadFiles(dataObject);
-        Overlay.OnDragEnter(files);
+        Overlay.OnDragEnter(files, pt.X, pt.Y);
         effect = files is not null && acceptsDrop ? effect & DROPEFFECT_COPY : DROPEFFECT_NONE;
         return S_OK;
     }
@@ -50,7 +50,11 @@ internal sealed partial class DropTarget(bool acceptsDrop) : IDropTarget
         return S_OK;
     }
 
-    public int DragLeave() => S_OK;
+    public int DragLeave()
+    {
+        Overlay.OnDragLeave();
+        return S_OK;
+    }
 
     public int Drop(nint dataObject, int keyState, POINT pt, ref int effect)
     {
@@ -117,6 +121,12 @@ internal sealed partial class DropTarget(bool acceptsDrop) : IDropTarget
 
         try
         {
+            // A origem do arraste é outro programa: não confiar que devolveu o tipo pedido.
+            if (medium.Tymed != TYMED_HGLOBAL)
+            {
+                return null;
+            }
+
             var count = DragQueryFileW(medium.HGlobal, uint.MaxValue, null, 0);
             if (count == 0)
             {

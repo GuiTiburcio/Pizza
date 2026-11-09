@@ -1,22 +1,43 @@
 using Pizza.Core;
+using Pizza.Core.Diagnostics;
 
 namespace Pizza.App;
 
-/// <summary>Log local em <c>%LOCALAPPDATA%\Pizza\logs</c>. Nunca grava conteúdo de arquivos (Parte 9).</summary>
+/// <summary>Log local em <c>%LOCALAPPDATA%\Pizza\logs</c>: um arquivo por dia, por 30 dias (PRIV-14, PRIV-16).</summary>
 internal static class Log
 {
     private static readonly string Folder = Path.Combine(ProductInfo.DataFolder, "logs");
+    private static DateOnly _lastPurge;
 
-    public static void Write(string message)
+    public static void Write(LogEvent logEvent)
     {
         try
         {
             Directory.CreateDirectory(Folder);
-            File.AppendAllText(Path.Combine(Folder, "pizza.log"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}");
+            var now = DateTimeOffset.Now;
+            var today = DateOnly.FromDateTime(now.DateTime);
+            if (today != _lastPurge)
+            {
+                Purge(today);
+                _lastPurge = today;
+            }
+
+            File.AppendAllText(Path.Combine(Folder, LogFormat.FileName(today)), LogFormat.Line(now, logEvent) + Environment.NewLine);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // Falha ao registrar log nunca pode derrubar o residente.
+        }
+    }
+
+    private static void Purge(DateOnly today)
+    {
+        foreach (var file in Directory.EnumerateFiles(Folder, "pizza-*.log"))
+        {
+            if (LogFormat.IsExpired(Path.GetFileName(file), today))
+            {
+                File.Delete(file);
+            }
         }
     }
 }

@@ -9,6 +9,7 @@
     <RootNamespace>Pizza.App</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <PublishAot>true</PublishAot>
+    <ControlFlowGuard>Guard</ControlFlowGuard>
     <InvariantGlobalization>true</InvariantGlobalization>
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
     <OptimizationPreference>Size</OptimizationPreference>
