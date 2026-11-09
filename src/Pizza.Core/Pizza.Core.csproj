@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Pizza.Core.Tests" />
+    <InternalsVisibleTo Include="Pizza.Integration.Tests" />
   </ItemGroup>
 
 </Project>
