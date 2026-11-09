@@ -729,6 +729,7 @@ Cada decisão também tem um arquivo próprio em [`docs/adr/`](adr/).
 | 018 | Notificação e painel próprios | Visual e privacidade | Notificação nativa |
 | 019 | Simplificações S-01 a S-05 | Menos superfície de ataque | Word por COM, 15 políticas |
 | 020 | Menu do ícone próprio de vidro, com Play/Pause/Stop da fila | Pedido do mantenedor; menu curto | Linhas de texto no menu do Windows |
+| 021 | Pipe sem nome entre residente e Worker | Mais simples e sem como ser aberto por outro processo | Pipe com nome e ACL condicional |
 
 ---
 
