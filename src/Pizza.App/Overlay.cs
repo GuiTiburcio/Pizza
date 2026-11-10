@@ -488,6 +488,16 @@ internal static unsafe class Overlay
                 KeepPicking();
                 return 0;
 
+            case WM_CLOSE:
+                // Alt+F4 durante a escolha vale como cancelar. Sem isto, o Windows destruiria a camada ou o
+                // disco, que são criados uma vez só e reaproveitados em todos os gestos.
+                if (_picking)
+                {
+                    CancelPicking();
+                }
+
+                return 0;
+
             case WM_MOUSEACTIVATE when hwnd == Disc:
                 // Com o Pizza em primeiro plano (escolha por clique), o WS_EX_NOACTIVATE não basta: sem isto,
                 // o clique ativa o disco, a camada perde o foco e a escolha é cancelada antes do clique.
