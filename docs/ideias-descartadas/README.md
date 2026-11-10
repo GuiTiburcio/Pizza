@@ -22,7 +22,8 @@ Para reabrir uma ideia, crie um ADR novo que substitui o anterior (veja [`docs/a
 | Soltar fora do disco cancela | Soltar em qualquer lugar mantém o menu para escolher com um clique, sem precisar mirar | [ADR-025](../adr/025-escolha-por-clique-apos-o-gesto.md) |
 | Fechar a escolha em prazo fixo, ou só depois de 30 s | Fecharia enquanto a pessoa navega no touchpad, ou ocuparia demais uma tela pequena: o prazo é de 10 s sem interação | [ADR-025](../adr/025-escolha-por-clique-apos-o-gesto.md) |
 | Texto das fatias na horizontal com arco leve (versão A) | A descrição longa não cabia nas fatias laterais sem quebrar a linha; ficou a curva completa (B) | [Dossiê](../dossie/README.md#referência--texto-das-fatias) |
-| Marca ✓ na fatia escolhida | A fatia só fica em destaque, com vidro fosco e escuro; o ✓ aparece apenas no aviso de concluído | Pedido do mantenedor em 10/11/2026 |
+| Marca ✓ na fatia escolhida | A fatia só fica em destaque, no mesmo vidro do hover; o ✓ aparece apenas no aviso de concluído | Pedido do mantenedor em 10/11/2026 |
+| Vidro fosco e escuro na fatia escolhida | Ficou escuro demais; voltou ao vidro translúcido do hover | Pedido do mantenedor em 10/11/2026 |
 
 ## Visual
 
