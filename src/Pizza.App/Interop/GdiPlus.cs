@@ -17,6 +17,7 @@ internal static unsafe partial class GdiPlus
     public const int AlignCenter = 1;
     public const int TrimmingEllipsis = 3;
     public const int NoWrap = 0x1000;
+    public const int MeasureTrailingSpaces = 0x0800;
     public const int LineJoinRound = 2;
     public const int LineCapRound = 2;
     public const int CombineReplace = 0;
@@ -78,6 +79,12 @@ internal static unsafe partial class GdiPlus
 
     [LibraryImport(Library)]
     public static partial int GdipScaleWorldTransform(nint graphics, float sx, float sy, int order);
+
+    [LibraryImport(Library)]
+    public static partial int GdipTranslateWorldTransform(nint graphics, float dx, float dy, int order);
+
+    [LibraryImport(Library)]
+    public static partial int GdipRotateWorldTransform(nint graphics, float angle, int order);
 
     [LibraryImport(Library)]
     public static partial int GdipResetWorldTransform(nint graphics);
@@ -165,6 +172,19 @@ internal static unsafe partial class GdiPlus
 
     [LibraryImport(Library)]
     public static partial int GdipCreateStringFormat(int flags, ushort language, out nint format);
+
+    /// <summary>Formato tipográfico, sem a folga que o GDI+ põe nas pontas: medir letra a letra fica exato.</summary>
+    [LibraryImport(Library)]
+    public static partial int GdipStringFormatGetGenericTypographic(out nint format);
+
+    [LibraryImport(Library)]
+    public static partial int GdipCloneStringFormat(nint format, out nint clone);
+
+    [LibraryImport(Library)]
+    public static partial int GdipSetStringFormatFlags(nint format, int flags);
+
+    [LibraryImport(Library, StringMarshalling = StringMarshalling.Utf16)]
+    public static partial int GdipMeasureString(nint graphics, string text, int length, nint font, RectF* layout, nint format, RectF* bounds, int* codepointsFitted, int* linesFilled);
 
     [LibraryImport(Library)]
     public static partial int GdipSetStringFormatAlign(nint format, int align);

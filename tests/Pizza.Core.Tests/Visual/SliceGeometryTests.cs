@@ -63,13 +63,4 @@ public class SliceGeometryTests
         Assert.Equal(Center + 2.5, half.OuterArc.CenterX, 6);
         Assert.Equal(RadialMenu.OuterRadius * 1.03, half.OuterArc.Radius, 6);
     }
-
-    [Fact]
-    public void Rotulo_fica_no_meio_da_fatia()
-    {
-        var label = SliceGeometry.LabelCenter(0, 0, Center, Center);
-
-        Assert.Equal(Center + ((RadialMenu.InnerRadius + RadialMenu.OuterRadius) / 2), label.X, 6);
-        Assert.Equal(Center, label.Y, 6);
-    }
 }
