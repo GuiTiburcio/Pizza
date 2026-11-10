@@ -14,8 +14,20 @@ public class GestureSessionTests
         _session.OnDragEnter(hasFiles: true);
         _session.OnButtonReleased();
 
-        Assert.Equal(SessionAction.Pick, _session.OnReleaseSettled());
+        Assert.Equal(SessionAction.Pick, _session.OnReleaseSettled(canPick: true));
         Assert.Equal(GestureState.Picking, _session.State);
+    }
+
+    [Fact]
+    public void Sem_como_escolher_soltar_fora_fecha()
+    {
+        // Vários arquivos (FR-30) ou menu fora da tela: não há o que escolher.
+        _session.Begin();
+        _session.OnDragEnter(hasFiles: true);
+        _session.OnButtonReleased();
+
+        Assert.Equal(SessionAction.Close, _session.OnReleaseSettled(canPick: false));
+        Assert.Equal(GestureState.Idle, _session.State);
     }
 
     [Fact]
@@ -28,7 +40,7 @@ public class GestureSessionTests
         _session.OnDragLeave();
 
         Assert.Equal(SessionAction.None, _session.OnLeaveTimeout());
-        Assert.Equal(SessionAction.Pick, _session.OnReleaseSettled());
+        Assert.Equal(SessionAction.Pick, _session.OnReleaseSettled(canPick: true));
     }
 
     [Fact]
@@ -49,7 +61,7 @@ public class GestureSessionTests
         _session.Begin();
         _session.OnButtonReleased();
 
-        Assert.Equal(SessionAction.Close, _session.OnReleaseSettled());
+        Assert.Equal(SessionAction.Close, _session.OnReleaseSettled(canPick: true));
         Assert.Equal(GestureState.Idle, _session.State);
     }
 
@@ -59,7 +71,7 @@ public class GestureSessionTests
         _session.Begin();
         _session.OnDragEnter(hasFiles: true);
         _session.OnButtonReleased();
-        _session.OnReleaseSettled();
+        _session.OnReleaseSettled(canPick: true);
 
         Assert.Equal(SessionAction.None, _session.OnDragLeave());
         Assert.Equal(SessionAction.None, _session.OnDragEnter(hasFiles: true));

@@ -25,6 +25,8 @@ internal static unsafe class Overlay
     private const nuint TimerAnimation = 4;
     private const nuint TimerLeave = 5;
     private const nuint TimerPulse = 6;
+    private const nuint TimerPicking = 7;
+    private const uint PickingTimeoutMs = 30_000; // ADR-025: sem escolha em 30 s, o menu fecha.
     private const uint LeaveGraceMs = 80;
     private const uint WatchdogMs = 250;
     private const uint AnimationMs = 10;
@@ -51,6 +53,7 @@ internal static unsafe class Overlay
     private static int? _hoverSlot;
     private static int? _pulseSlot;
     private static bool _picking;
+    private static bool _cancelOnRelease;
     private static DraggedFiles? _files;
     private static (string Path, ConverterInfo Converter)? _dropped;
     private static (string Path, ConverterInfo Converter)? _awaitingOptions;
@@ -147,20 +150,30 @@ internal static unsafe class Overlay
             return false;
         }
 
-        Log.Write(LogEvent.FileDropped);
-        Session.End();
         KillTimer(Disc, TimerAfterRelease);
         KillTimer(Disc, TimerWatchdog);
         KillTimer(Disc, TimerLeave);
         ShowWindow(_catcher, SW_HIDE);
 
         // O resto acontece depois que o Drop retornar: o Explorer fica preso até lá.
-        _dropped = (file.First, RadialMenu.Slices(Carousel.Target, file.First)[slot]);
+        StartPulse(file.First, slot);
+        return true;
+    }
+
+    /// <summary>Fatia escolhida, por drop ou clique: o gesto termina e o pulso confirma antes de seguir.</summary>
+    private static void StartPulse(string path, int slot)
+    {
+        Log.Write(LogEvent.FileDropped);
+        Session.End();
+        KillTimer(Disc, TimerPicking);
+        _dropped = (path, RadialMenu.Slices(Carousel.Target, path)[slot]);
         _pulseSlot = slot;
         Render();
         SetTimer(Disc, TimerPulse, _motion == MotionStyle.Instant ? 1 : PulseMs, 0);
-        return true;
     }
+
+    /// <summary>Dá para escolher com um clique: menu na tela e um arquivo só (FR-30).</summary>
+    private static bool CanPick => _files is { Count: 1 } && IsVisible;
 
     private static void FinishDrop()
     {
@@ -235,7 +248,7 @@ internal static unsafe class Overlay
     /// </summary>
     public static void OnDropOutside()
     {
-        if (Session.State == GestureState.Menu && _files is { Count: 1 } && IsVisible)
+        if (Session.State == GestureState.Menu && CanPick)
         {
             return;
         }
@@ -323,6 +336,7 @@ internal static unsafe class Overlay
         KillTimer(Disc, TimerAfterRelease);
         KillTimer(Disc, TimerWatchdog);
         KillTimer(Disc, TimerPulse);
+        KillTimer(Disc, TimerPicking);
         ExitPicking();
         ShowWindow(_catcher, SW_HIDE);
         HideWindow();
@@ -401,7 +415,12 @@ internal static unsafe class Overlay
         switch (msg)
         {
             case WmGestureStarted:
-                BeginGesture();
+                // Clique numa fatia com o Ctrl ainda apertado: o pulso já confirmou, não é um gesto novo.
+                if (_dropped is null)
+                {
+                    BeginGesture();
+                }
+
                 return 0;
 
             case WmGestureReleased:
@@ -436,24 +455,29 @@ internal static unsafe class Overlay
 
                 return 0;
 
-            case WM_LBUTTONDOWN or WM_RBUTTONDOWN when _picking:
-                if (hwnd == Disc)
-                {
-                    var (clickX, clickY) = ScreenPoint(hwnd, lParam);
-                    PickAt(clickX, clickY);
-                }
-                else
-                {
-                    CancelPicking();
-                }
+            case WM_LBUTTONDOWN when _picking && hwnd == Disc:
+                var (clickX, clickY) = ScreenPoint(hwnd, lParam);
+                PickAt(clickX, clickY);
+                return 0;
 
+            case WM_LBUTTONDOWN or WM_RBUTTONDOWN when _picking:
+                // Clique fora, ou com o botão direito: cancela quando o botão subir, para a soltura também
+                // ficar com a camada e não abrir nada na janela de baixo.
+                _cancelOnRelease = true;
+                SetCapture(hwnd);
+                return 0;
+
+            case WM_LBUTTONUP or WM_RBUTTONUP when _cancelOnRelease:
+                _cancelOnRelease = false;
+                ReleaseCapture();
+                CancelPicking();
                 return 0;
 
             case WM_KEYDOWN when _picking && (int)wParam == VK_ESCAPE:
                 CancelPicking();
                 return 0;
 
-            case WM_ACTIVATE when _picking && hwnd == _catcher && (wParam & 0xFFFF) == 0:
+            case WM_ACTIVATE when (_picking || _cancelOnRelease) && hwnd == _catcher && (wParam & 0xFFFF) == 0:
                 // Outra janela tomou o foco (Alt+Tab, tecla Windows): a escolha termina.
                 CancelPicking();
                 return 0;
@@ -556,13 +580,24 @@ internal static unsafe class Overlay
             KillTimer(Disc, TimerAfterRelease);
 
             // ADR-025: soltou fora de uma fatia, com um arquivo só: o menu fica para a escolha por clique.
-            if (Session.OnReleaseSettled() == SessionAction.Pick && _files is { Count: 1 } && IsVisible)
+            if (Session.OnReleaseSettled(CanPick) == SessionAction.Pick)
             {
                 EnterPicking();
                 return;
             }
 
-            Log.Write(LogEvent.MenuCancelled);
+            // Só houve cancelamento se o menu chegou a abrir.
+            if (IsVisible)
+            {
+                Log.Write(LogEvent.MenuCancelled);
+            }
+        }
+
+        if (id == TimerPicking)
+        {
+            // Ninguém escolheu: o menu e a cópia da tela não ficam abertos para sempre (ADR-023).
+            CancelPicking();
+            return;
         }
 
         Hide();
@@ -577,11 +612,19 @@ internal static unsafe class Overlay
         _picking = true;
         SetWindowLongPtrW(_catcher, GWL_EXSTYLE, GetWindowLongPtrW(_catcher, GWL_EXSTYLE) & ~(nint)WS_EX_NOACTIVATE);
         OptionsPanel.TakeFocus(_catcher);
+        SetTimer(Disc, TimerPicking, PickingTimeoutMs, 0);
         Render();
     }
 
     private static void ExitPicking()
     {
+        KillTimer(Disc, TimerPicking);
+        if (_cancelOnRelease)
+        {
+            _cancelOnRelease = false;
+            ReleaseCapture();
+        }
+
         if (_picking)
         {
             _picking = false;
@@ -598,16 +641,10 @@ internal static unsafe class Overlay
     /// <summary>Clique no menu durante a escolha: a fatia sob o cursor converte, como se o arquivo tivesse caído nela.</summary>
     private static void PickAt(int x, int y)
     {
-        if (_files is not { Count: 1 } file || TargetSlot(x, y) is not { } slot)
+        if (_files is { Count: 1 } file && TargetSlot(x, y) is { } slot)
         {
-            return;
+            StartPulse(file.First, slot);
         }
-
-        Log.Write(LogEvent.FileDropped);
-        _dropped = (file.First, RadialMenu.Slices(Carousel.Target, file.First)[slot]);
-        _pulseSlot = slot;
-        Render();
-        SetTimer(Disc, TimerPulse, _motion == MotionStyle.Instant ? 1 : PulseMs, 0);
     }
 
     private static (int X, int Y) ScreenPoint(nint hwnd, nint lParam)

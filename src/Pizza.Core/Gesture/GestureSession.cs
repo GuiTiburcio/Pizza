@@ -70,11 +70,12 @@ public sealed class GestureSession
 
     /// <summary>
     /// Passou a espera depois de soltar e nenhuma fatia recebeu o drop. Com o menu aberto, ele fica
-    /// para a escolha por clique; antes disso, não havia o que escolher.
+    /// para a escolha por clique; antes disso, não havia o que escolher. <paramref name="canPick"/> diz se
+    /// o menu está na tela com um arquivo só (FR-30).
     /// </summary>
-    public SessionAction OnReleaseSettled()
+    public SessionAction OnReleaseSettled(bool canPick)
     {
-        if (State == GestureState.Menu)
+        if (State == GestureState.Menu && canPick)
         {
             State = GestureState.Picking;
             _waitingReentry = false;

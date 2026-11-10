@@ -205,7 +205,7 @@ internal static unsafe class DiscRenderer
         var hint = RoundedRect(DiscLayout.HintLeft, DiscLayout.HintTop, DiscLayout.HintWidth, DiscLayout.HintHeight, DiscLayout.HintHeight / 2f);
         Glass(g, hint, Math.Max(0.40, _glassAlpha), _palette.Border + 0.05);
         var hintText = frame.Picking
-            ? "Clique num formato  ·  Role para trocar a aba  ·  Esc ou clique fora para cancelar"
+            ? "Clique num formato  ·  Esc ou clique fora cancela"
             : "Solte numa fatia ou em qualquer lugar  ·  Role para trocar a aba";
         Text(g, hintText, _regular, 12, StyleRegular, _palette.Ink, DiscLayout.HintLeft + 10, DiscLayout.HintTop, DiscLayout.HintWidth - 20, DiscLayout.HintHeight);
     }
