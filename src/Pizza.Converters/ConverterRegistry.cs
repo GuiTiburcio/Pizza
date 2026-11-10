@@ -5,7 +5,7 @@ public static class ConverterRegistry
 {
     public static IReadOnlyList<IConverter> All { get; } =
     [
-        new ImageJpegConverter(), new ImagePngConverter(), new ImageWebpConverter(), new ImagePdfConverter(),
+        new ImageJpegConverter(), new ImagePngConverter(), new ImageWebpConverter(), new ImageAvifConverter(), new ImagePdfConverter(),
         new ImageTiffConverter(), new ImageIcoConverter(), new ImageGifConverter(),
     ];
 

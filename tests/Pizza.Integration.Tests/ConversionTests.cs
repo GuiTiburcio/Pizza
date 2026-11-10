@@ -46,6 +46,20 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
         Assert.Equal(24, BinaryPrimitives.ReadInt32BigEndian(output.AsSpan(20)));
     }
 
+    [Fact]
+    public void Avif_funciona_no_worker_sem_alterar_a_origem()
+    {
+        var source = CopySample();
+        var before = SHA256.HashData(File.ReadAllBytes(source));
+        var result = Runner().Run(source, "image.avif", "avif");
+        Assert.Null(result.ErrorCode);
+        var output = File.ReadAllBytes(Path.Combine(_folder, "fachada.avif"));
+        Assert.Equal("ftyp", System.Text.Encoding.ASCII.GetString(output, 4, 4));
+        Assert.Contains("avif", System.Text.Encoding.ASCII.GetString(output, 8, 24));
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
+        AssertNoTemporaries();
+    }
+
     [Theory]
     [InlineData("image.pdf", "pdf", "25504446")]
     [InlineData("image.webp", "webp", "52494646")]

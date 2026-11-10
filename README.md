@@ -1,70 +1,103 @@
-# Pizza
+<div align="center">
 
-Conversor de arquivos para Windows que funciona no gesto: **segure Ctrl, arraste o arquivo e solte no formato** num menu circular de vidro. Tudo offline, leve e rápido.
+![Pizza — conversão de arquivos no gesto](docs/assets/pizza-overview.svg)
 
-> **Status:** Fase 2: a primeira conversão funciona. Ctrl + arrastar um JPG abre o menu, e soltar na fatia PNG gera o arquivo ao lado do original, num processo isolado. O visual ainda é provisório. Para encerrar, clique com o botão direito no ícone nos ícones ocultos e escolha **Sair**.
+[![CI](https://github.com/GuiTiburcio/Pizza/actions/workflows/ci.yml/badge.svg)](https://github.com/GuiTiburcio/Pizza/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/GuiTiburcio/Pizza/actions/workflows/codeql.yml/badge.svg)](https://github.com/GuiTiburcio/Pizza/actions/workflows/codeql.yml)
+![Windows 10 e 11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4)
+![.NET 10](https://img.shields.io/badge/.NET-10-512BD4)
+[![GPL-3.0](https://img.shields.io/badge/licen%C3%A7a-GPL--3.0-blue)](LICENSE)
+
+**Ctrl + arrastar. Solte onde estiver. Clique no formato.**
+
+Conversor de imagens para Windows com menu circular, processamento local e arquivo original preservado.
+
+[Como usar](docs/USO.md) · [Dossiê e design](docs/design/README.md) · [Documentação](docs/README.md) · [Próximas etapas](docs/ROADMAP.md)
+
+</div>
+
+## O que é o Pizza
+
+O Pizza abre um menu de formatos quando você começa a arrastar um arquivo segurando Ctrl. Você pode soltar o mouse em qualquer posição e escolher com um clique, ou arrastar diretamente até uma fatia. A saída fica ao lado do original.
+
+O projeto está em **prévia de desenvolvimento**. Imagens e Imagem → PDF estão implementados. Operações em PDF, documentos e áudio fazem parte do roteiro. Instaladores assinados e atualização automática ainda não estão disponíveis.
 
 ## Como funciona
 
-1. Segure **Ctrl** e comece a arrastar um arquivo (área de trabalho ou Explorer).
-2. O menu radial abre no cursor, já na aba do tipo do arquivo. O scroll troca a aba.
-3. Solte na fatia do formato desejado, escolha as opções e pronto: o arquivo novo aparece ao lado do original.
+1. Abra o Pizza; ele fica na bandeja do Windows.
+2. Segure **Ctrl** e comece a arrastar uma imagem no Explorer ou na área de trabalho.
+3. Solte o mouse **onde estiver**. A Pizza continua aberta para você clicar no formato. Soltar diretamente numa fatia também funciona.
+4. Use a roda para ver mais opções. Os pontos do miolo indicam as voltas quando a aba tem mais de seis formatos.
+5. Escolha as opções, quando houver, e confirme. **Esc** cancela; depois da soltura, clicar em outro aplicativo também fecha o menu.
 
-O original nunca é alterado e nada sai do computador.
+O cartão de resultado permite abrir a saída ou mostrá-la na pasta. O menu do ícone dá acesso a **Arquivos...**, com o histórico da sessão, e **Sair**.
 
-## Documentação
+## Formatos desta prévia
 
-- [SPECS](docs/SPECS.md): fonte da verdade, com requisitos de segurança e privacidade.
-- [Visão geral do projeto](docs/PIZZA-PROJETO.md): produto, UX, arquitetura, conversores, fases.
-- [Registro de decisões (ADRs)](docs/adr/).
-
-## Ambiente de desenvolvimento
-
-| Ferramenta | Para quê |
+| Entrada | Saída |
 | --- | --- |
-| [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) | Compilar e testar |
-| Visual Studio Build Tools com "Desenvolvimento para desktop com C++" | Linker exigido pelo NativeAOT |
-| VS Code + extensão C# Dev Kit | Editor |
-| Git + GitHub CLI (`gh`) | Versionamento e PRs |
+| JPG/JPEG, PNG, WEBP, AVIF, TIFF/TIF e GIF | JPG, PNG, WEBP, AVIF, PDF, TIFF, ICO e GIF |
 
-### Compilar e testar
+O formato de origem é omitido. GIFs são tratados como imagem estática nesta etapa. HEIC, BMP, vídeo, áudio e conversões de documentos ainda não estão disponíveis. Por enquanto, um arquivo por vez.
 
-```bash
-dotnet build Pizza.slnx
+## Processamento local
+
+- Sem conta, telemetria ou upload de arquivos.
+- Original aberto somente para leitura; nomes existentes recebem um número, sem sobrescrever.
+- Conversor em processo isolado do Windows, sem rede, recebendo os arquivos por handles.
+- Metadados pessoais removidos por padrão; preservação opcional nos formatos compatíveis.
+- Registros técnicos locais sem nomes ou conteúdo dos arquivos.
+
+Requisitos e limites estão nas [SPECS](docs/SPECS.md). Recursos futuros descritos ali não representam funcionalidades já entregues; veja o [roteiro](docs/ROADMAP.md).
+
+## Experimentar e desenvolver
+
+Os builds de desenvolvimento são produzidos pelo [GitHub Actions](https://github.com/GuiTiburcio/Pizza/actions/workflows/ci.yml). Abra uma execução bem-sucedida e baixe o artefato **pizza-win-x64**. Consulte os [requisitos e o preparo do Worker](docs/USO.md).
+
+Para desenvolver, use Windows x64, **.NET 10 SDK** e **Visual Studio Build Tools com Desenvolvimento para desktop com C++**, exigido pelo NativeAOT:
+
+```powershell
+dotnet restore Pizza.slnx --locked-mode
+dotnet build Pizza.slnx -c Release --no-restore
+dotnet test Pizza.slnx -c Release --no-build
 ```
 
-```bash
-dotnet test Pizza.slnx
-```
+Para gerar uma cópia local de teste:
 
-### Gerar uma cópia local para testar
-
-Publica o `Pizza.exe` nativo e o Worker juntos, e dá ao Worker isolado a permissão de ler a própria pasta:
-
-```bash
+```powershell
 .\tools\publicar-dev.ps1
 ```
 
-Se o publish falhar com `'vswhere.exe' não é reconhecido`, falta a pasta do instalador do Visual Studio no PATH. Adicione `C:\Program Files (x86)\Microsoft Visual Studio\Installer` ao PATH do usuário e abra um terminal novo.
+Builds locais são para desenvolvimento. A distribuição oficial deve vir do CI. Veja [como contribuir](CONTRIBUTING.md).
 
-### Estrutura
+## Organização
 
-| Projeto | Papel |
+| Pasta | Conteúdo |
 | --- | --- |
-| `src/Pizza.App` | Residente `Pizza.exe` (NativeAOT): bandeja, hooks, overlay, painel, notificações |
-| `src/Pizza.Core` | Estados, configuração, logs, contratos IPC |
-| `src/Pizza.Worker` | `Pizza.Worker.exe`: conversão sob demanda |
-| `src/Pizza.Converters` | `IConverter` e implementações por família |
-| `tests/*` | Testes xUnit; `tests/samples` guarda arquivos de amostra pequenos |
+| `src/Pizza.App` | Residente NativeAOT: bandeja, gesto, menu, painéis e notificações |
+| `src/Pizza.Core` | Estados, geometria, catálogo, IPC e gravação segura |
+| `src/Pizza.Converters` | Conversores executados pelo Worker |
+| `src/Pizza.Worker` | Processo de conversão isolado |
+| `tests` | Testes unitários, do drop, conversores e isolamento real |
+| `docs` | Dossiê, especificações, uso, design e decisões |
+| `tools` | Publicação de desenvolvimento, sons e verificação de logs |
 
-O CI (GitHub Actions, Windows) compila, testa e publica o `Pizza.exe` nativo a cada PR e a cada push na `main`.
+## Inspiração
 
-## Forma de trabalho
+O Pizza nasceu depois que vi, por acaso, um vídeo no **TikTok**. Gostei da ideia de converter arquivos com um menu circular e decidi criar minha própria implementação para Windows. O vídeo inspirou o conceito; este repositório registra a construção do meu projeto.
 
-- Branch `main`; trabalho em `feat/…`, `fix/…`, `docs/…`, sempre por pull request.
-- Commits em [Conventional Commits](https://www.conventionalcommits.org/pt-br/), em português: `feat(overlay): destaca fatia no hover`.
-- Nomes no código em inglês; commits, documentação e interface em português.
+O link e o autor do vídeo ainda não foram identificados. Quando eu localizar a referência, adicionarei o crédito aqui. O planejamento e o design foram elaborados com o auxílio do Claude; o desenvolvimento conta com apoio do Claude e do Codex.
 
-## Licença
+## Dossiê e demonstração
 
-Gratuito e de código aberto, sob a [GPL-3.0](LICENSE) (ver [ADR-014](docs/adr/014-gratuito-gpl.md)). Para reportar falhas, veja [SECURITY.md](SECURITY.md).
+O [**Pizza — Dossiê do Projeto**, criado no Claude Design](https://claude.ai/artifact/LMrbTPnaY6EbVK1UPjcVDs#page-dcb81aee8d83), reúne a referência visual do projeto. A [documentação de design](docs/design/README.md) relaciona o artefato ao dossiê em Markdown e às decisões técnicas.
+
+As [pranchas do dossiê](docs/dossie/README.md) também estão disponíveis diretamente neste repositório.
+
+Uma demonstração prática em vídeo está planejada e será adicionada quando estiver pronta.
+
+## Contribuição e licença
+
+Leia [CONTRIBUTING.md](CONTRIBUTING.md); vulnerabilidades devem seguir [SECURITY.md](SECURITY.md).
+
+Código sob [GPL-3.0](LICENSE). Dependências e licenças estão descritas em [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

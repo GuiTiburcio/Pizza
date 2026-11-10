@@ -33,6 +33,14 @@ public sealed class ImageWebpConverter : ImageConverter
         image.WebpsaveStream(destination, q: Number(options, "quality"), keep: Keep(options));
 }
 
+public sealed class ImageAvifConverter : ImageConverter
+{
+    public override string Id => "image.avif";
+
+    protected override void Encode(Image image, Stream destination, IReadOnlyDictionary<string, string> options) =>
+        image.HeifsaveStream(destination, q: Number(options, "quality"), compression: Enums.ForeignHeifCompression.Av1, effort: 4, keep: Keep(options));
+}
+
 public sealed class ImageTiffConverter : ImageConverter
 {
     public override string Id => "image.tiff";

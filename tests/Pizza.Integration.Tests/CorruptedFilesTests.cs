@@ -18,7 +18,7 @@ public sealed class CorruptedFilesTests(SandboxFixture fixture) : IDisposable
 
     private static readonly (string Id, string Extension)[] Targets =
     [
-        ("image.jpg", "jpg"), ("image.png", "png"), ("image.webp", "webp"), ("image.pdf", "pdf"),
+        ("image.jpg", "jpg"), ("image.png", "png"), ("image.webp", "webp"), ("image.avif", "avif"), ("image.pdf", "pdf"),
         ("image.tiff", "tiff"), ("image.ico", "ico"), ("image.gif", "gif"),
     ];
 

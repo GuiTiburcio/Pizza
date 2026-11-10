@@ -59,6 +59,8 @@ Esta especificação **substitui** o que o `PIZZA-PROJETO.md` dizia sobre venda 
 
 ## 2. Decisões da entrevista
 
+**Emenda de 10/11/2026 — ADR-025 (prevalece sobre FR-07/20/21 e SEC-03 abaixo):** Ctrl + arrastar abre o menu. Soltar em qualquer posição prepara o arquivo e mantém o menu aberto para seleção por clique; soltar numa fatia continua selecionando diretamente. Depois da soltura, Esc recebido pela própria janela ou perder o foco cancela. Durante o arraste, Esc continua sendo tratado pelo OLE, sem hook de teclado. Nenhuma cópia física é criada ao preparar o arquivo. SEC-01/02/04/05/06/31 permanecem obrigatórios.
+
 Decisões tomadas na entrevista (método *grilling*), em 5 rodadas. Viram ADRs em `docs/adr/`.
 
 | # | Tema | Decisão | Requisitos |

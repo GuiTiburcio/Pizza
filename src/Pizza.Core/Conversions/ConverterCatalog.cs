@@ -57,6 +57,7 @@ public static class ConverterCatalog
                 Metadata,
             ]),
         new("image.webp", ImageTab, "WEBP", "Para web", "webp", ImagesExcept(".webp"), Quality),
+        new("image.avif", ImageTab, "AVIF", "Compacto moderno", "avif", ImagesExcept(".avif"), Quality),
         new(
             "image.pdf",
             ImageTab,
