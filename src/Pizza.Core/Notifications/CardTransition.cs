@@ -4,9 +4,9 @@ namespace Pizza.Core.Notifications;
 /// Um valor animado do cartão. É uma transição, não uma animação fixa: mudar o destino continua
 /// de onde está, como pede a receita de toast da skill animate (400 ms, curva "ease").
 /// </summary>
-public sealed class CardTransition(double value)
+public sealed class CardTransition(double value, double durationMs = 400)
 {
-    private const double DurationMs = 400;
+    private readonly double DurationMs = durationMs;
 
     // A curva "ease" do CSS: cubic-bezier(0.25, 0.1, 0.25, 1).
     private const double X1 = 0.25;
@@ -17,7 +17,7 @@ public sealed class CardTransition(double value)
 
     private double _from = value;
     private double _to = value;
-    private double _elapsedMs = DurationMs;
+    private double _elapsedMs = durationMs;
 
     public double Value => _from + ((_to - _from) * Ease(_elapsedMs / DurationMs));
 

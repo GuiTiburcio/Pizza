@@ -230,6 +230,43 @@ internal static unsafe partial class Native
         public nint HBalloonIcon;
     }
 
+    public const byte AC_SRC_ALPHA = 1;
+    public const uint ULW_ALPHA = 2;
+    public static readonly nint HKEY_CURRENT_USER = unchecked((int)0x80000001);
+    public const uint RRF_RT_REG_DWORD = 0x10;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SIZE
+    {
+        public int Cx;
+        public int Cy;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct BLENDFUNCTION
+    {
+        public byte BlendOp;
+        public byte BlendFlags;
+        public byte SourceConstantAlpha;
+        public byte AlphaFormat;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct BITMAPINFOHEADER
+    {
+        public uint Size;
+        public int Width;
+        public int Height;
+        public ushort Planes;
+        public ushort BitCount;
+        public uint Compression;
+        public uint SizeImage;
+        public int XPelsPerMeter;
+        public int YPelsPerMeter;
+        public uint ClrUsed;
+        public uint ClrImportant;
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct TRACKMOUSEEVENT
     {
@@ -336,6 +373,21 @@ internal static unsafe partial class Native
 
     [LibraryImport("user32.dll")]
     public static partial int SetForegroundWindow(nint hwnd);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint GetDC(nint hwnd);
+
+    [LibraryImport("user32.dll")]
+    public static partial int ReleaseDC(nint hwnd, nint hdc);
+
+    [LibraryImport("user32.dll")]
+    public static partial int UpdateLayeredWindow(nint hwnd, nint screen, POINT* position, SIZE* size, nint source, POINT* sourcePosition, uint key, BLENDFUNCTION* blend, uint flags);
+
+    [LibraryImport("gdi32.dll")]
+    public static partial nint CreateDIBSection(nint hdc, BITMAPINFOHEADER* info, uint usage, nint* bits, nint section, uint offset);
+
+    [LibraryImport("advapi32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial int RegGetValueW(nint key, string subKey, string value, uint flags, uint* type, void* data, uint* size);
 
     [LibraryImport("user32.dll")]
     public static partial int DestroyWindow(nint hwnd);

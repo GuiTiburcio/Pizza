@@ -1,0 +1,79 @@
+using Pizza.Core.Visual;
+
+namespace Pizza.Core.Tests.Visual;
+
+/// <summary>Desfoque do vidro (ADR-023): três passadas de média, que se aproximam de um gaussiano, e saturação.</summary>
+public class GlassBlurTests
+{
+    private static byte[] Solid(int width, int height, byte b, byte g, byte r)
+    {
+        var pixels = new byte[width * height * 4];
+        for (var i = 0; i < pixels.Length; i += 4)
+        {
+            pixels[i] = b;
+            pixels[i + 1] = g;
+            pixels[i + 2] = r;
+            pixels[i + 3] = 7;
+        }
+
+        return pixels;
+    }
+
+    [Fact]
+    public void Cor_uniforme_continua_igual_e_fica_opaca()
+    {
+        var pixels = Solid(40, 30, 50, 100, 150);
+
+        GlassBlur.Apply(pixels, 40, 30, radius: 5, saturation: 1);
+
+        for (var i = 0; i < pixels.Length; i += 4)
+        {
+            Assert.Equal([50, 100, 150, 255], pixels[i..(i + 4)]);
+        }
+    }
+
+    [Fact]
+    public void Ponto_claro_se_espalha_e_perde_intensidade()
+    {
+        var pixels = Solid(41, 41, 0, 0, 0);
+        var center = ((20 * 41) + 20) * 4;
+        pixels[center] = pixels[center + 1] = pixels[center + 2] = 255;
+
+        GlassBlur.Apply(pixels, 41, 41, radius: 3, saturation: 1);
+
+        Assert.InRange(pixels[center], 1, 40);
+        Assert.True(pixels[center + (4 * 4)] > 0);
+        Assert.Equal(0, pixels[0]);
+    }
+
+    [Fact]
+    public void Saturacao_nao_tinge_o_cinza()
+    {
+        var pixels = Solid(8, 8, 120, 120, 120);
+
+        GlassBlur.Apply(pixels, 8, 8, radius: 1, saturation: 1.8);
+
+        Assert.Equal([120, 120, 120, 255], pixels[..4]);
+    }
+
+    [Fact]
+    public void Saturacao_afasta_a_cor_do_cinza()
+    {
+        var pixels = Solid(8, 8, 100, 100, 160);
+
+        GlassBlur.Apply(pixels, 8, 8, radius: 1, saturation: 1.8);
+
+        Assert.True(pixels[2] > 160);
+        Assert.True(pixels[0] < 100);
+    }
+
+    [Fact]
+    public void Imagem_menor_que_o_raio_nao_quebra()
+    {
+        var pixels = Solid(2, 3, 10, 20, 30);
+
+        GlassBlur.Apply(pixels, 2, 3, radius: 11, saturation: 1.8);
+
+        Assert.Equal(255, pixels[3]);
+    }
+}

@@ -31,6 +31,32 @@ public static class RadialMenu
         return offset <= HalfSliceDegrees ? slot : null;
     }
 
+    /// <summary>
+    /// Fatia sob o ponto como ela está desenhada agora: girada na troca de aba e, a que está em hover,
+    /// maior e deslocada (WF-2). O alvo do drop precisa ser o que o usuário vê.
+    /// </summary>
+    public static int? SlotAt(double x, double y, double rotationDegrees, int? hoveredSlot, double hover)
+    {
+        var turn = -rotationDegrees * Math.PI / 180;
+        var rx = (x * Math.Cos(turn)) - (y * Math.Sin(turn));
+        var ry = (x * Math.Sin(turn)) + (y * Math.Cos(turn));
+
+        if (hoveredSlot is { } slot && hover > 0)
+        {
+            // Mesmo desenho do Visual.SliceGeometry: 106% e 5 px para fora, na direção da fatia.
+            var direction = SlotAngle(slot) * Math.PI / 180;
+            var scale = 1 + (0.06 * hover);
+            var hx = (rx - (5 * hover * Math.Cos(direction))) / scale;
+            var hy = (ry - (5 * hover * Math.Sin(direction))) / scale;
+            if (SlotAt(hx, hy) == slot)
+            {
+                return slot;
+            }
+        }
+
+        return SlotAt(rx, ry);
+    }
+
     /// <summary>Se existe alguma conversão para o arquivo; sem nenhuma, o menu não abre (FR-09).</summary>
     public static bool CanConvert(string path) => Available(path).Any();
 

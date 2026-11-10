@@ -21,6 +21,7 @@ internal static unsafe class Program
         SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         Marshal.ThrowExceptionForHR(OleInitialize(0));
 
+        DiscRenderer.Start();
         Overlay.Create();
         OptionsPanel.Create();
         Notifications.Create();
