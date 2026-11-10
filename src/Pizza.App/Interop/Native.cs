@@ -78,6 +78,8 @@ internal static unsafe partial class Native
     public const uint WS_EX_NOACTIVATE = 0x08000000;
     public const uint LWA_ALPHA = 0x2;
     public const int SW_HIDE = 0;
+    public const uint SWP_NOSIZE = 0x0001;
+    public const uint SWP_NOMOVE = 0x0002;
     public const uint SWP_NOACTIVATE = 0x0010;
     public const uint SWP_SHOWWINDOW = 0x0040;
     public static readonly nint HWND_TOPMOST = -1;

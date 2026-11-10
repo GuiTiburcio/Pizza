@@ -26,7 +26,7 @@ internal static unsafe class Overlay
     private const nuint TimerLeave = 5;
     private const nuint TimerPulse = 6;
     private const nuint TimerPicking = 7;
-    private const uint PickingTimeoutMs = 30_000; // ADR-025: sem escolha em 30 s, o menu fecha.
+    private const uint PickingTimeoutMs = 10_000; // ADR-025: 10 s sem nenhuma interação, o menu fecha.
     private const uint LeaveGraceMs = 80;
     private const uint WatchdogMs = 250;
     private const uint AnimationMs = 10;
@@ -439,6 +439,7 @@ internal static unsafe class Overlay
                     StartAnimation();
                 }
 
+                KeepPicking();
                 return 0;
 
             case WM_TIMER:
@@ -453,21 +454,27 @@ internal static unsafe class Overlay
                     SetHover(hovered);
                 }
 
+                KeepPicking();
                 return 0;
 
-            case WM_LBUTTONDOWN when _picking && hwnd == Disc:
+            case WM_LBUTTONDOWN or WM_RBUTTONDOWN when _picking && hwnd == Disc:
+                // Os dois botões escolhem a fatia; o painel abre quando o formato tem opções.
                 var (clickX, clickY) = ScreenPoint(hwnd, lParam);
                 PickAt(clickX, clickY);
                 return 0;
 
-            case WM_LBUTTONDOWN or WM_RBUTTONDOWN when _picking:
-                // Clique fora, ou com o botão direito: cancela quando o botão subir, para a soltura também
-                // ficar com a camada e não abrir nada na janela de baixo.
+            case WM_LBUTTONDOWN when _picking:
+                // Clique fora: cancela quando o botão subir, para a soltura também ficar com a camada e não
+                // abrir nada na janela de baixo.
                 _cancelOnRelease = true;
                 SetCapture(hwnd);
                 return 0;
 
-            case WM_LBUTTONUP or WM_RBUTTONUP when _cancelOnRelease:
+            case WM_RBUTTONDOWN or WM_RBUTTONUP when _picking:
+                // Botão direito fora das fatias não faz nada, nem chega à janela de baixo.
+                return 0;
+
+            case WM_LBUTTONUP when _cancelOnRelease:
                 _cancelOnRelease = false;
                 ReleaseCapture();
                 CancelPicking();
@@ -475,6 +482,10 @@ internal static unsafe class Overlay
 
             case WM_KEYDOWN when _picking && (int)wParam == VK_ESCAPE:
                 CancelPicking();
+                return 0;
+
+            case WM_KEYDOWN when _picking:
+                KeepPicking();
                 return 0;
 
             case WM_ACTIVATE when (_picking || _cancelOnRelease) && hwnd == _catcher && (wParam & 0xFFFF) == 0:
@@ -612,8 +623,21 @@ internal static unsafe class Overlay
         _picking = true;
         SetWindowLongPtrW(_catcher, GWL_EXSTYLE, GetWindowLongPtrW(_catcher, GWL_EXSTYLE) & ~(nint)WS_EX_NOACTIVATE);
         OptionsPanel.TakeFocus(_catcher);
-        SetTimer(Disc, TimerPicking, PickingTimeoutMs, 0);
+
+        // Ganhar o foco traz a camada para a frente; o disco precisa voltar para cima dela, senão todo
+        // clique no menu cai na camada e conta como clique fora.
+        SetWindowPos(Disc, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        KeepPicking();
         Render();
+    }
+
+    /// <summary>Qualquer interação na escolha (mouse, roda, teclado) reinicia o tempo até fechar.</summary>
+    private static void KeepPicking()
+    {
+        if (_picking)
+        {
+            SetTimer(Disc, TimerPicking, PickingTimeoutMs, 0);
+        }
     }
 
     private static void ExitPicking()
