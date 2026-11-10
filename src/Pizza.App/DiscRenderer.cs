@@ -240,22 +240,18 @@ internal static unsafe class DiscRenderer
             }
         }
 
-        if (pulse)
+        // Formato escolhido: o mesmo vidro do hover, com a cor um pouco mais forte e sem marca; o ✓ fica só no
+        // aviso de concluído.
+        var fromColor = pulse ? WithAlpha(Tint, 0.74) : Mix(_palette.RestTop, WithAlpha(Tint, 0.62), hover);
+        var toColor = pulse ? WithAlpha(Tint, 0.44) : Mix(_palette.RestBottom, WithAlpha(Tint, 0.30), hover);
+        Gradient(g, path, top, bottom, fromColor, toColor);
+        if (hover > 0)
         {
-            // Formato escolhido: vidro mais fosco e escuro, sem marca; o ✓ fica só no aviso de concluído.
-            Fill(g, WithAlpha(Mix(Tint, Argb(255, 15, 19, 32), 0.45), 0.94), path);
-        }
-        else
-        {
-            Gradient(g, path, top, bottom, Mix(_palette.RestTop, WithAlpha(Tint, 0.62), hover), Mix(_palette.RestBottom, WithAlpha(Tint, 0.30), hover));
-            if (hover > 0)
-            {
-                // Brilho só no alto e discreto. O degradê do GDI+ se repete fora do trecho dele, por isso o recorte.
-                var sheenBottom = top + ((bottom - top) * 0.4f);
-                GdipSetClipRect(g, 0, top - 1, DiscLayout.Width, sheenBottom - top + 1, CombineReplace);
-                Gradient(g, path, top, sheenBottom, Argb((byte)(110 * hover), 255, 255, 255), Argb(0, 255, 255, 255));
-                GdipResetClip(g);
-            }
+            // Brilho só no alto e discreto. O degradê do GDI+ se repete fora do trecho dele, por isso o recorte.
+            var sheenBottom = top + ((bottom - top) * 0.4f);
+            GdipSetClipRect(g, 0, top - 1, DiscLayout.Width, sheenBottom - top + 1, CombineReplace);
+            Gradient(g, path, top, sheenBottom, Argb((byte)(110 * hover), 255, 255, 255), Argb(0, 255, 255, 255));
+            GdipResetClip(g);
         }
 
         Stroke(g, Mix(_palette.RestBorder, Argb(242, 255, 255, 255), hover), 1 + (float)hover, path);
