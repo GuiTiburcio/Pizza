@@ -61,14 +61,6 @@ public static class SliceGeometry
             Round(At(inner, start + innerOffset), At(inner, start), At(inner + corner, start)));
     }
 
-    /// <summary>Centro do texto da fatia, acompanhando o hover.</summary>
-    public static (double X, double Y) LabelCenter(double centerDegrees, double hover, double centerX, double centerY)
-    {
-        var direction = Radians(centerDegrees);
-        var radius = ((RadialMenu.InnerRadius + RadialMenu.OuterRadius) / 2 * (1 + (HoverScale * hover))) + (HoverShift * hover);
-        return (centerX + (radius * Math.Cos(direction)), centerY + (radius * Math.Sin(direction)));
-    }
-
     /// <summary>Curva quadrática do canto, escrita como cúbica, que é o que o GDI+ desenha.</summary>
     private static Corner Round((double X, double Y) from, (double X, double Y) control, (double X, double Y) to) =>
         new(from, Lerp(from, control, 2.0 / 3), Lerp(to, control, 2.0 / 3), to);
