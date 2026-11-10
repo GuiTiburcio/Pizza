@@ -11,13 +11,14 @@ namespace Pizza.App;
 
 /// <summary>
 /// Menu radial no visual do Dossiê (ADR-023). São duas janelas: o menu, que aceita o drop, e uma camada
-/// quase invisível sobre todas as telas, que recusa o drop para que soltar fora do menu não vire uma cópia.
+/// quase invisível sobre todas as telas, que prepara a escolha por clique ao soltar fora das fatias (ADR-025).
 /// </summary>
 internal static unsafe class Overlay
 {
     public const uint WmGestureStarted = WM_APP + 1;
     public const uint WmGestureReleased = WM_APP + 2;
     public const uint WmWheel = WM_APP + 3;
+    private const uint WmChoiceReady = WM_APP + 4;
 
     private const string ClassName = "PizzaOverlay";
     private const nuint TimerAfterRelease = 1;
@@ -46,6 +47,8 @@ internal static unsafe class Overlay
     private static long _lastFrame;
     private static MotionStyle _motion = MotionStyle.Slide;
     private static double _scale = 1;
+    private static IReadOnlyList<MenuPage> _pages = RadialMenu.Pages("a.jpg");
+    private static bool _clickArmed;
     private static int _left;
     private static int _top;
     private static int? _hoverSlot;
@@ -93,6 +96,11 @@ internal static unsafe class Overlay
 
     public static void OnDragEnter(DraggedFiles? files, int x, int y)
     {
+        if (Session.State == GestureState.Choosing)
+        {
+            return;
+        }
+
         KillTimer(Disc, TimerLeave);
         var action = Session.OnDragEnter(files is { } candidate && RadialMenu.CanConvert(candidate.First));
         if (action == SessionAction.Close)
@@ -135,30 +143,83 @@ internal static unsafe class Overlay
             SetHover(slot);
         }
 
-        return slot is not null;
+        // ADR-025 / SEC-05: qualquer posição prepara o arquivo; só uma fatia seleciona o formato.
+        return Session.State == GestureState.Menu && _files is { Count: 1 } && IsVisible && _pulseSlot is null;
     }
 
     /// <summary>Aceita o drop numa fatia e mostra o pulso antes de seguir. Devolve falso se o drop não vale.</summary>
-    public static bool OnDrop(DraggedFiles? files, int x, int y)
+    public static bool OnDrop(DraggedFiles? files, int x, int y, bool selectSlice = true)
     {
-        if (files is not { Count: 1 } file || TargetSlot(x, y) is not { } slot)
+        // CF_HDROP é relido na soltura. Validar antes de alterar o estado ou indexar o catálogo (SEC-06).
+        if (Session.State != GestureState.Menu || files is not { Count: 1 } file ||
+            _files is not { Count: 1 } entered || !string.Equals(file.First, entered.First, StringComparison.OrdinalIgnoreCase) ||
+            !RadialMenu.CanConvert(file.First) || !IsVisible || _pulseSlot is not null)
+        {
+            return false;
+        }
+
+        var slot = selectSlice ? TargetSlot(x, y) : null;
+        if (slot is { } selected)
+        {
+            return Select(file.First, selected);
+        }
+
+        if (Session.OnDrop(true) != SessionAction.PrepareChoice)
+        {
+            return false;
+        }
+
+        StopDragTimers();
+        _clickArmed = false;
+        // Só ativa a janela depois que Drop devolver o controle ao Explorer.
+        PostMessageW(Disc, WmChoiceReady, 0, 0);
+        return true;
+    }
+
+    private static bool Select(string path, int slot)
+    {
+        var page = _pages[Carousel.Target];
+        var converter = RadialMenu.Slices(page.Tab, path, page.Turn).ElementAtOrDefault(slot);
+        if (converter is null)
         {
             return false;
         }
 
         Log.Write(LogEvent.FileDropped);
         Session.End();
-        KillTimer(Disc, TimerAfterRelease);
-        KillTimer(Disc, TimerWatchdog);
-        KillTimer(Disc, TimerLeave);
+        StopDragTimers();
         ShowWindow(_catcher, SW_HIDE);
 
         // O resto acontece depois que o Drop retornar: o Explorer fica preso até lá.
-        _dropped = (file.First, RadialMenu.Slices(Carousel.Target, file.First)[slot]);
+        _dropped = (path, converter);
         _pulseSlot = slot;
         Render();
         SetTimer(Disc, TimerPulse, _motion == MotionStyle.Instant ? 1 : PulseMs, 0);
         return true;
+    }
+
+    private static void StopDragTimers()
+    {
+        KillTimer(Disc, TimerAfterRelease);
+        KillTimer(Disc, TimerWatchdog);
+        KillTimer(Disc, TimerLeave);
+    }
+
+    private static void PrepareChoice()
+    {
+        if (Session.State != GestureState.Choosing)
+        {
+            return;
+        }
+
+        ShowWindow(_catcher, SW_HIDE);
+        SetHover(null);
+        OptionsPanel.TakeFocus(Disc);
+        if (GetForegroundWindow() != Disc)
+        {
+            // Se o Windows recusar foco, não deixar um menu preso sem receber Esc.
+            Hide();
+        }
     }
 
     private static void FinishDrop()
@@ -213,10 +274,16 @@ internal static unsafe class Overlay
             return null;
         }
 
+        // O alvo é a fatia como está desenhada: girada na troca de aba e, a em hover, maior.
         var (centerX, centerY) = DiscCenter();
-        var slot = RadialMenu.SlotAt((x - centerX) / _scale, (y - centerY) / _scale);
-        return slot < RadialMenu.Slices(Carousel.Target, file.First).Count ? slot : null;
+        var growth = Hover.Select(transition => _motion == MotionStyle.Slide ? transition.Value : 0).ToArray();
+        var slot = RadialMenu.SlotAt((x - centerX) / _scale, (y - centerY) / _scale, Rotation(), growth);
+        var page = _pages[Carousel.Target];
+        return slot < RadialMenu.Slices(page.Tab, file.First, page.Turn).Count ? slot : null;
     }
+
+    private static double Rotation() =>
+        _motion == MotionStyle.Slide ? -TabRotation * Carousel.DistanceTo(Carousel.Target) : 0;
 
     private static (int X, int Y) DiscCenter() =>
         (_left + (int)Math.Round(DiscLayout.CenterX * _scale), _top + (int)Math.Round(DiscLayout.CenterY * _scale));
@@ -271,7 +338,8 @@ internal static unsafe class Overlay
         _left = Math.Max(info.RcWork.Left, Math.Min(x - (int)Math.Round(DiscLayout.CenterX * _scale), info.RcWork.Right - width));
         _top = Math.Max(info.RcWork.Top, Math.Min(y - (int)Math.Round(DiscLayout.CenterY * _scale), info.RcWork.Bottom - height));
 
-        Carousel.Reset();
+        _pages = RadialMenu.Pages(_files!.Value.First);
+        Carousel.Reset(_pages.Count);
         _hoverSlot = null;
         foreach (var transition in Hover)
         {
@@ -310,6 +378,7 @@ internal static unsafe class Overlay
         _files = null;
         _dropped = null;
         _pulseSlot = null;
+        _clickArmed = false;
     }
 
     /// <summary>Some com o menu e descarta a cópia da tela usada no vidro (ADR-023).</summary>
@@ -359,20 +428,38 @@ internal static unsafe class Overlay
         }
 
         var fileName = _files is { } files ? Path.GetFileName(files.First) : null;
-        var slices = _files is { } dragged ? RadialMenu.Slices(Carousel.Target, dragged.First) : [];
-        var rotation = _motion == MotionStyle.Slide ? -TabRotation * Carousel.DistanceTo(Carousel.Target) : 0;
+        var page = _pages[Carousel.Target];
+        var slices = _files is { } dragged ? RadialMenu.Slices(page.Tab, dragged.First, page.Turn) : [];
+        var rotation = Rotation();
         var frame = new DiscFrame(
             _scale,
             fileName,
             _files?.Count ?? 0,
             slices,
             Hover.Select(transition => transition.Value).ToArray(),
-            _motion == MotionStyle.Instant ? Carousel.Target : Carousel.Position,
-            Carousel.Target,
+            TabPosition(_motion == MotionStyle.Instant ? Carousel.Target : Carousel.Position),
+            page.Tab,
             rotation,
             _motion,
-            _pulseSlot);
+            _pulseSlot,
+            page.Turn,
+            _pages.Count(candidate => candidate.Tab == page.Tab),
+            Session.State == GestureState.Choosing);
         DiscRenderer.Show(Disc, _left, _top, frame);
+    }
+
+    private static double TabPosition(double position)
+    {
+        var wrapped = ((position % _pages.Count) + _pages.Count) % _pages.Count;
+        var from = (int)Math.Floor(wrapped);
+        var to = (from + 1) % _pages.Count;
+        var nextTab = _pages[to].Tab;
+        if (nextTab < _pages[from].Tab)
+        {
+            nextTab += MenuTabs.Names.Count;
+        }
+
+        return _pages[from].Tab + ((nextTab - _pages[from].Tab) * (wrapped - from));
     }
 
     [System.Runtime.InteropServices.UnmanagedCallersOnly]
@@ -386,6 +473,54 @@ internal static unsafe class Overlay
 
             case WmGestureReleased:
                 OnButtonReleased();
+                return 0;
+
+            case WmChoiceReady:
+                PrepareChoice();
+                return 0;
+
+            case WM_MOUSEMOVE when Session.State == GestureState.Choosing:
+                OnDragOver(_left + (short)(lParam & 0xFFFF), _top + (short)((lParam >> 16) & 0xFFFF));
+                return 0;
+
+            case WM_LBUTTONDOWN when Session.State == GestureState.Choosing:
+                _clickArmed = true;
+                return 0;
+
+            case WM_LBUTTONUP when Session.State == GestureState.Choosing:
+                if (_clickArmed && TargetSlot(_left + (short)(lParam & 0xFFFF), _top + (short)((lParam >> 16) & 0xFFFF)) is { } chosen && _files is { } selected)
+                {
+                    Select(selected.First, chosen);
+                }
+
+                _clickArmed = false;
+                return 0;
+
+            case WM_KEYDOWN when Session.State == GestureState.Choosing:
+                if ((int)wParam == VK_ESCAPE)
+                {
+                    OnDropOutside();
+                }
+                else if ((int)wParam is VK_RETURN or VK_SPACE && _hoverSlot is { } focused && _files is { } selectedFile)
+                {
+                    Select(selectedFile.First, focused);
+                }
+                else if ((int)wParam is VK_TAB or VK_RIGHT or VK_DOWN or VK_LEFT or VK_UP && _files is { } activeFile)
+                {
+                    var page = _pages[Carousel.Target];
+                    var count = RadialMenu.Slices(page.Tab, activeFile.First, page.Turn).Count;
+                    if (count > 0)
+                    {
+                        var backwards = (int)wParam is VK_LEFT or VK_UP || ((int)wParam == VK_TAB && GetKeyState(VK_SHIFT) < 0);
+                        SetHover(((_hoverSlot ?? (backwards ? 0 : -1)) + (backwards ? -1 : 1) + count) % count);
+                    }
+                }
+
+                return 0;
+
+            case WM_ACTIVATE when Session.State == GestureState.Choosing && (wParam & 0xFFFF) == 0:
+            case WM_CLOSE:
+                OnDropOutside();
                 return 0;
 
             case WmWheel:
@@ -499,12 +634,11 @@ internal static unsafe class Overlay
             return;
         }
 
-        if (id == TimerAfterRelease && Session.State == GestureState.Menu)
+        if (id == TimerAfterRelease && Session.OnDropTimeout() == SessionAction.Close)
         {
             Log.Write(LogEvent.MenuCancelled);
+            Hide();
         }
-
-        Hide();
     }
 
     private static bool IsPrimaryButtonDown()

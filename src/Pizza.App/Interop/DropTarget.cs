@@ -27,8 +27,7 @@ internal readonly record struct DraggedFiles(string First, int Count);
 
 /// <summary>Recebe os eventos de arraste de uma janela do overlay e repassa para o <see cref="Overlay"/>.</summary>
 /// <param name="acceptsDrop">
-/// Verdadeiro para o disco (aceita o drop nas fatias, como cópia); falso para a camada que cobre a tela,
-/// que recusa o drop para que soltar fora do menu nunca chegue ao Explorer (Parte 14.1).
+/// Verdadeiro para o disco (também seleciona fatias); falso para a camada, que apenas prepara a escolha (ADR-025).
 /// </param>
 [GeneratedComClass]
 internal sealed partial class DropTarget(bool acceptsDrop) : IDropTarget
@@ -45,8 +44,8 @@ internal sealed partial class DropTarget(bool acceptsDrop) : IDropTarget
 
     public int DragOver(int keyState, POINT pt, ref int effect)
     {
-        // SEC-05: só cópia, e só com o cursor sobre uma fatia.
-        effect = acceptsDrop && Overlay.OnDragOver(pt.X, pt.Y) ? effect & DROPEFFECT_COPY : DROPEFFECT_NONE;
+        // SEC-05: preparar o arquivo e selecionar uma fatia aceitam somente cópia.
+        effect = Overlay.OnDragOver(pt.X, pt.Y) ? effect & DROPEFFECT_COPY : DROPEFFECT_NONE;
         return S_OK;
     }
 
@@ -58,7 +57,7 @@ internal sealed partial class DropTarget(bool acceptsDrop) : IDropTarget
 
     public int Drop(nint dataObject, int keyState, POINT pt, ref int effect)
     {
-        if (acceptsDrop && Overlay.OnDrop(ReadFiles(dataObject), pt.X, pt.Y))
+        if ((effect & DROPEFFECT_COPY) != 0 && Overlay.OnDrop(ReadFiles(dataObject), pt.X, pt.Y, selectSlice: acceptsDrop))
         {
             effect &= DROPEFFECT_COPY;
         }

@@ -44,6 +44,7 @@ public sealed class ExifToolTests : IDisposable
     [InlineData("image.jpg")]
     [InlineData("image.png")]
     [InlineData("image.webp")]
+    [InlineData("image.avif")]
     public void Manter_metadados_preserva_autor_e_gps(string converterId)
     {
         // PRIV-32.

@@ -6,6 +6,7 @@ public enum GestureState
     Idle,
     WaitingForFile,
     Menu,
+    Choosing,
 }
 
 /// <summary>O que o overlay deve fazer depois de um evento do arraste.</summary>
@@ -20,6 +21,7 @@ public enum SessionAction
     /// <summary>O botão subiu: a camada fica mais um instante, até o Windows concluir o arraste.</summary>
     WaitForDrop,
     Close,
+    PrepareChoice,
 }
 
 /// <summary>
@@ -53,7 +55,7 @@ public sealed class GestureSession
     /// </summary>
     public SessionAction OnButtonReleased()
     {
-        if (State == GestureState.Idle)
+        if (State is GestureState.Idle or GestureState.Choosing)
         {
             return SessionAction.None;
         }
@@ -64,7 +66,7 @@ public sealed class GestureSession
 
     public SessionAction OnDragEnter(bool hasFiles)
     {
-        if (State == GestureState.Idle)
+        if (State is GestureState.Idle or GestureState.Choosing)
         {
             return SessionAction.None;
         }
@@ -93,7 +95,7 @@ public sealed class GestureSession
 
     public SessionAction OnDragLeave()
     {
-        if (State == GestureState.Idle)
+        if (State is GestureState.Idle or GestureState.Choosing)
         {
             return SessionAction.None;
         }
@@ -106,6 +108,37 @@ public sealed class GestureSession
     public SessionAction OnLeaveTimeout()
     {
         if (!_waitingReentry)
+        {
+            return SessionAction.None;
+        }
+
+        End();
+        return SessionAction.Close;
+    }
+
+    /// <summary>ADR-025: só um drop OLE confirmado prepara a escolha por clique.</summary>
+    public SessionAction OnDrop(bool hasFile)
+    {
+        if (State is GestureState.Idle or GestureState.Choosing)
+        {
+            return SessionAction.None;
+        }
+
+        if (State != GestureState.Menu || !hasFile)
+        {
+            End();
+            return SessionAction.Close;
+        }
+
+        _waitingReentry = false;
+        _released = false;
+        State = GestureState.Choosing;
+        return SessionAction.PrepareChoice;
+    }
+
+    public SessionAction OnDropTimeout()
+    {
+        if (State is GestureState.Idle or GestureState.Choosing)
         {
             return SessionAction.None;
         }

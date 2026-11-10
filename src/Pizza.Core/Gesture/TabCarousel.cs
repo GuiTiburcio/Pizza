@@ -29,8 +29,13 @@ public sealed class TabCarousel(int count)
 
     public bool IsAnimating => Position != _goal;
 
-    public void Reset()
+    public void Reset(int? pageCount = null)
     {
+        if (pageCount is { } pages)
+        {
+            count = pages;
+        }
+
         _accumulatedDelta = 0;
         _goal = 0;
         _velocity = 0;

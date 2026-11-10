@@ -6,6 +6,7 @@
     <Project Path="src/Pizza.Worker/Pizza.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Pizza.App.Tests/Pizza.App.Tests.csproj" />
     <Project Path="tests/Pizza.Converters.Tests/Pizza.Converters.Tests.csproj" />
     <Project Path="tests/Pizza.Core.Tests/Pizza.Core.Tests.csproj" />
     <Project Path="tests/Pizza.Integration.Tests/Pizza.Integration.Tests.csproj" />

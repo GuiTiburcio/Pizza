@@ -17,7 +17,10 @@ internal readonly record struct DiscFrame(
     int TargetTab,
     double Rotation,
     MotionStyle Motion,
-    int? PulseSlot);
+    int? PulseSlot,
+    int Turn = 0,
+    int TurnCount = 1,
+    bool Choosing = false);
 
 /// <summary>
 /// Desenha o menu no visual do Dossiê (DES-1, WF-1, WF-2) com GDI+ e transparência por pixel (ADR-023).
@@ -72,9 +75,11 @@ internal static unsafe class DiscRenderer
     private static nint _semibold;
     private static nint _memory;
     private static nint _target;
+    private static nint _originalTarget;
     private static nint _bits;
     private static nint _backdropMemory;
     private static nint _backdropDib;
+    private static nint _originalBackdrop;
     private static nint _backdropBits;
     private static nint _backdrop;
     private static int _width;
@@ -96,7 +101,7 @@ internal static unsafe class DiscRenderer
         _width = width;
         _height = height;
         _memory = CreateCompatibleDC(0);
-        _target = CreateDib(_memory, width, height, out _bits);
+        _target = CreateDib(_memory, width, height, out _bits, out _originalTarget);
         _palette = DarkTheme() ? Dark : Light;
         _glassAlpha = _palette.MinimumVeil;
         if (!TransparencyEnabled())
@@ -105,7 +110,7 @@ internal static unsafe class DiscRenderer
         }
 
         _backdropMemory = CreateCompatibleDC(0);
-        _backdropDib = CreateDib(_backdropMemory, width, height, out _backdropBits);
+        _backdropDib = CreateDib(_backdropMemory, width, height, out _backdropBits, out _originalBackdrop);
         var screen = GetDC(0);
 
         // Sem CAPTUREBLT: janelas em camadas, como a imagem do arraste, ficam fora da cópia.
@@ -135,6 +140,7 @@ internal static unsafe class DiscRenderer
         if (_backdropBits != 0)
         {
             new Span<byte>((void*)_backdropBits, _width * _height * 4).Clear();
+            SelectObject(_backdropMemory, _originalBackdrop);
             DeleteObject(_backdropDib);
             DeleteDC(_backdropMemory);
             _backdropBits = 0;
@@ -142,6 +148,9 @@ internal static unsafe class DiscRenderer
 
         if (_target != 0)
         {
+            // O quadro composto também contém pixels da tela: zerar antes de liberar (ADR-023).
+            new Span<byte>((void*)_bits, _width * _height * 4).Clear();
+            SelectObject(_memory, _originalTarget);
             DeleteObject(_target);
             DeleteDC(_memory);
             _target = 0;
@@ -185,7 +194,9 @@ internal static unsafe class DiscRenderer
         // Sombra externa suave, um pouco abaixo do disco.
         for (var ring = 8; ring >= 1; ring--)
         {
-            Fill(g, Argb(4, 15, 20, 40), Ellipse(cx, cy + 6, 190 + (ring * 2)));
+            var shadow = Ellipse(cx, cy + 6, 190 + (ring * 2));
+            Fill(g, Argb(4, 15, 20, 40), shadow);
+            GdipDeletePath(shadow);
         }
 
         Glass(g, Ellipse(cx, cy, 190), _glassAlpha, _palette.Border);
@@ -201,7 +212,7 @@ internal static unsafe class DiscRenderer
 
         var hint = RoundedRect(DiscLayout.HintLeft, DiscLayout.HintTop, DiscLayout.HintWidth, DiscLayout.HintHeight, DiscLayout.HintHeight / 2f);
         Glass(g, hint, Math.Max(0.40, _glassAlpha), _palette.Border + 0.05);
-        Text(g, "Role para trocar a aba  ·  Solte o Ctrl e aperte Esc para cancelar", _regular, 12, StyleRegular, _palette.Ink, DiscLayout.HintLeft + 10, DiscLayout.HintTop, DiscLayout.HintWidth - 20, DiscLayout.HintHeight);
+        Text(g, frame.Choosing ? "Clique no formato · Role para mais · Esc cancela" : "Solte onde estiver e clique · Ou solte no formato", _regular, 12, StyleRegular, _palette.Ink, DiscLayout.HintLeft + 10, DiscLayout.HintTop, DiscLayout.HintWidth - 20, DiscLayout.HintHeight);
     }
 
     private static void DrawSlice(nint g, DiscFrame frame, int slot)
@@ -284,6 +295,21 @@ internal static unsafe class DiscRenderer
         else if (frame.FileName is { } fileName)
         {
             Text(g, fileName, _semibold, 10.5f, StyleRegular, _palette.Ink, cx - 60, cy + 12, 120, 18);
+        }
+
+        if (frame.TurnCount > 1)
+        {
+            for (var turn = 0; turn < frame.TurnCount; turn++)
+            {
+                var dot = Ellipse(cx + ((turn - ((frame.TurnCount - 1) / 2f)) * 12), cy + 43, 3);
+                Fill(g, turn == frame.Turn ? Tint : _palette.IdleArc, dot);
+                GdipDeletePath(dot);
+            }
+        }
+
+        if (frame.Slices.Count == 0)
+        {
+            Text(g, "Em breve", _semibold, 16, StyleRegular, _palette.Ink, cx - 90, cy - 132, 180, 30);
         }
     }
 
@@ -487,12 +513,12 @@ internal static unsafe class DiscRenderer
         return result != 0 || value != 0;
     }
 
-    private static nint CreateDib(nint memory, int width, int height, out nint bits)
+    private static nint CreateDib(nint memory, int width, int height, out nint bits, out nint previous)
     {
         var info = new BITMAPINFOHEADER { Size = (uint)sizeof(BITMAPINFOHEADER), Width = width, Height = -height, Planes = 1, BitCount = 32 };
         nint pixels;
         var dib = CreateDIBSection(memory, &info, 0, &pixels, 0, 0);
-        SelectObject(memory, dib);
+        previous = SelectObject(memory, dib);
         bits = pixels;
         return dib;
     }

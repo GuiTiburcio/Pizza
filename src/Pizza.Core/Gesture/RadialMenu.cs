@@ -2,6 +2,8 @@ using Pizza.Core.Conversions;
 
 namespace Pizza.Core.Gesture;
 
+public readonly record struct MenuPage(int Tab, int Turn);
+
 /// <summary>Geometria das fatias (WF-1) e o que cada arquivo pode virar. Medidas no disco de 380 px.</summary>
 public static class RadialMenu
 {
@@ -31,12 +33,58 @@ public static class RadialMenu
         return offset <= HalfSliceDegrees ? slot : null;
     }
 
+    /// <summary>
+    /// Fatia sob o ponto como ela está desenhada agora: girada na troca de aba e, a que está em hover,
+    /// maior e deslocada (WF-2). O alvo do drop precisa ser o que o usuário vê.
+    /// </summary>
+    public static int? SlotAt(double x, double y, double rotationDegrees, int? hoveredSlot, double hover)
+    {
+        var turn = -rotationDegrees * Math.PI / 180;
+        var rx = (x * Math.Cos(turn)) - (y * Math.Sin(turn));
+        var ry = (x * Math.Sin(turn)) + (y * Math.Cos(turn));
+
+        if (hoveredSlot is { } slot && hover > 0)
+        {
+            // Mesmo desenho do Visual.SliceGeometry: 106% e 5 px para fora, na direção da fatia.
+            var direction = SlotAngle(slot) * Math.PI / 180;
+            var scale = 1 + (0.06 * hover);
+            var hx = (rx - (5 * hover * Math.Cos(direction))) / scale;
+            var hy = (ry - (5 * hover * Math.Sin(direction))) / scale;
+            if (SlotAt(hx, hy) == slot)
+            {
+                return slot;
+            }
+        }
+
+        return SlotAt(rx, ry);
+    }
+
+    /// <summary>Considera também as fatias que ainda estão voltando do hover, na ordem inversa do desenho.</summary>
+    public static int? SlotAt(double x, double y, double rotationDegrees, IReadOnlyList<double> hovers)
+    {
+        for (var slot = hovers.Count - 1; slot >= 0; slot--)
+        {
+            if (hovers[slot] > 0 && SlotAt(x, y, rotationDegrees, slot, hovers[slot]) == slot)
+            {
+                return slot;
+            }
+        }
+
+        // A área de repouso é uma tolerância para o destaque não oscilar quando a borda interna se afasta.
+        return SlotAt(x, y, rotationDegrees, null, 0);
+    }
+
     /// <summary>Se existe alguma conversão para o arquivo; sem nenhuma, o menu não abre (FR-09).</summary>
     public static bool CanConvert(string path) => Available(path).Any();
 
-    /// <summary>Fatias de uma aba para o arquivo, na ordem do catálogo. O que passar de seis fica de fora.</summary>
-    public static IReadOnlyList<ConverterInfo> Slices(int tab, string path) =>
-        Available(path).Where(converter => converter.Tab == tab).Take(SlotCount).ToArray();
+    /// <summary>Fatias de uma volta da aba, sem descartar os formatos das voltas seguintes (ADR-024).</summary>
+    public static IReadOnlyList<ConverterInfo> Slices(int tab, string path, int turn = 0) =>
+        Available(path).Where(converter => converter.Tab == tab).Skip(turn * SlotCount).Take(SlotCount).ToArray();
+
+    public static IReadOnlyList<MenuPage> Pages(string path) =>
+        Enumerable.Range(0, MenuTabs.Names.Count)
+            .SelectMany(tab => Enumerable.Range(0, Math.Max(1, (Available(path).Count(converter => converter.Tab == tab) + SlotCount - 1) / SlotCount))
+                .Select(turn => new MenuPage(tab, turn))).ToArray();
 
     private static IEnumerable<ConverterInfo> Available(string path)
     {

@@ -1,5 +1,7 @@
 # Pizza — Especificação completa do projeto
 
+> **Atualização — 10/11/2026:** este dossiê preserva o planejamento e decisões históricas. A implementação está em prévia de imagens, e o repositório já é público. Consulte o [roteiro atual](ROADMAP.md) e as emendas da [SPECS](SPECS.md). O gesto permite soltar em qualquer posição e escolher por clique (ADR-025). O [artefato original do Claude Design](design/README.md) está referenciado na documentação.
+
 > Conversor de arquivos para Windows que funciona no gesto: **segure Ctrl, arraste o arquivo e solte no formato** num menu circular de vidro. Tudo offline, leve e rápido.
 
 | Campo | Valor |
@@ -739,6 +741,7 @@ Cada decisão também tem um arquivo próprio em [`docs/adr/`](adr/).
 | 022 | Imagem → PDF com gerador próprio, folha A4 e margem de 10 mm | PDFsharp virou AGPL na 6.5.0; sem dependência nova | PDFsharp 6.2.4 ou AGPL; página do tamanho da imagem |
 | 024 | AVIF depois do WEBP e voltas de fatias quando há mais de 6 | Nenhum formato fica de fora, sem tecla extra no arraste | Fatia "Mais", Shift + roda, AVIF no fim |
 | 023 | GDI+ e desfoque próprio do vidro, substituindo Direct2D e Acrylic do ADR-003 | Acrylic e composição do Windows não funcionam com o disco inativo; sem dependência nova | Vortice, Acrylic, composição, API não documentada |
+| 025 | Soltar em qualquer posição e escolher por clique; soltar na fatia continua como atalho | Não exige sustentar o botão nem mirar no centro | Exigir soltura no centro; selecionar apenas por drop |
 
 ---
 

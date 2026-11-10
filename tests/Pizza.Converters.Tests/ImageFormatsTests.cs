@@ -69,6 +69,17 @@ public class ImageFormatsTests
     }
 
     [Fact]
+    public void Avif_tem_assinatura_e_dimensoes_certas()
+    {
+        var (error, avif) = Run("image.avif", Solid(32, 24).PngsaveBuffer());
+        Assert.Null(error);
+        Assert.Equal("ftyp", Encoding.ASCII.GetString(avif, 4, 4));
+        Assert.Contains("avif", Encoding.ASCII.GetString(avif, 8, 24));
+        using var result = Image.NewFromBuffer(avif);
+        Assert.Equal((32, 24), (result.Width, result.Height));
+    }
+
+    [Fact]
     public void Tiff_nao_perde_as_dimensoes()
     {
         var (error, tiff) = Run("image.tiff", Solid(32, 24).PngsaveBuffer());

@@ -27,6 +27,32 @@ public class RadialMenuTests
         Assert.Null(RadialMenu.SlotAt(x, y));
     }
 
+    [Fact]
+    public void Alvo_acompanha_as_fatias_giradas_na_troca_de_aba()
+    {
+        // Fatia 0 desenhada a -90° + 40°: o cursor ali está sobre ela, não sobre a vizinha.
+        var angle = (-90 + 40) * Math.PI / 180;
+        var x = 130 * Math.Cos(angle);
+        var y = 130 * Math.Sin(angle);
+
+        Assert.Equal(1, RadialMenu.SlotAt(x, y));
+        Assert.Equal(0, RadialMenu.SlotAt(x, y, rotationDegrees: 40, hoveredSlot: null, hover: 0));
+    }
+
+    [Fact]
+    public void Fatia_em_hover_aceita_o_drop_na_parte_que_cresceu()
+    {
+        // No hover, a fatia 0 vai até cerca de r 183 (106% e 5 px para fora).
+        Assert.Null(RadialMenu.SlotAt(0, -178));
+        Assert.Equal(0, RadialMenu.SlotAt(0, -178, rotationDegrees: 0, hoveredSlot: 0, hover: 1));
+    }
+
+    [Fact]
+    public void Crescimento_do_hover_nao_rouba_o_alvo_das_outras_fatias()
+    {
+        Assert.Equal(3, RadialMenu.SlotAt(0, 130, rotationDegrees: 0, hoveredSlot: 0, hover: 1));
+    }
+
     [Theory]
     [InlineData(0, -92, 0)]
     [InlineData(0, -168, 0)]
@@ -36,13 +62,13 @@ public class RadialMenuTests
     }
 
     [Theory]
-    [InlineData("C:\\a\\fachada.jpg", "PNG,WEBP,PDF,TIFF,ICO,GIF")]
-    [InlineData("C:\\a\\FACHADA.JPEG", "PNG,WEBP,PDF,TIFF,ICO,GIF")]
-    [InlineData("a.png", "JPG,WEBP,PDF,TIFF,ICO,GIF")]
-    [InlineData("a.webp", "JPG,PNG,PDF,TIFF,ICO,GIF")]
-    [InlineData("a.tif", "JPG,PNG,WEBP,PDF,ICO,GIF")]
-    [InlineData("a.tiff", "JPG,PNG,WEBP,PDF,ICO,GIF")]
-    [InlineData("a.gif", "JPG,PNG,WEBP,PDF,TIFF,ICO")]
+    [InlineData("C:\\a\\fachada.jpg", "PNG,WEBP,AVIF,PDF,TIFF,ICO")]
+    [InlineData("C:\\a\\FACHADA.JPEG", "PNG,WEBP,AVIF,PDF,TIFF,ICO")]
+    [InlineData("a.png", "JPG,WEBP,AVIF,PDF,TIFF,ICO")]
+    [InlineData("a.webp", "JPG,PNG,AVIF,PDF,TIFF,ICO")]
+    [InlineData("a.tif", "JPG,PNG,WEBP,AVIF,PDF,ICO")]
+    [InlineData("a.tiff", "JPG,PNG,WEBP,AVIF,PDF,ICO")]
+    [InlineData("a.gif", "JPG,PNG,WEBP,AVIF,PDF,TIFF")]
     [InlineData("a.avif", "JPG,PNG,WEBP,PDF,TIFF,ICO")] // Mais de 6: o último da ordem fica de fora.
     public void Fatias_seguem_a_ordem_sem_o_formato_de_origem(string path, string expected)
     {
