@@ -122,6 +122,11 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | §10.1 | Saem `showHint` e `accentColor` | 019 |
 | SEC-10, 11, 12, 14, 16, TST-06, TST-27 | Removidos: o canal com o Worker usa pipes sem nome, entregues só a ele. SEC-13 e SEC-15 continuam valendo | 021 |
 | SEC-57 | Confirmado: o MSI só avisa que há versão nova | — |
+| Escolha por clique (detalhes) | O botão direito numa fatia também escolhe: abre o painel de opções e, em formato sem opções, converte direto. No disco, fora das fatias, nenhum botão faz nada. Depois de 10 s sem interação (mouse, roda ou teclado), a escolha fecha; cada interação reinicia a contagem | 025 |
+| FR-04 e FR-20 (Fase 4b) | Acima do disco, uma faixa mostra os níveis da fatia em hover, em todas as abas (exemplo: "Nível de compressão: Impressão, Escritório, Tela"). Soltar ou clicar usa o nível padrão, e o painel completo abre no botão direito. O desenho final, mesclando faixa e painel, sai num ADR da Fase 4b | — |
+| Barra de abas (Fase 4d) | Fica mais fina: entre 55% e 70% da altura atual | — |
+| Temas do vidro (Fase 8) | Na tela de Configuração, paletas opcionais em degradê pastel, no estilo do fundo das pranchas de referência do Dossiê | — |
+| Sobre (Fase 8) | A seção Sobre da Configuração mostra a frase do projeto: "Afinal, tudo acaba em pizza." | — |
 
 ---
 

@@ -10,6 +10,8 @@
 
 **Ctrl + arrastar. Solte onde estiver. Clique no formato.**
 
+*Afinal, tudo acaba em pizza.*
+
 Conversor de imagens para Windows com menu circular, processamento local e arquivo original preservado.
 
 [Como usar](docs/USO.md) · [Dossiê e design](docs/design/README.md) · [Documentação](docs/README.md) · [Próximas etapas](docs/ROADMAP.md)
@@ -84,7 +86,7 @@ Builds locais são para desenvolvimento. A distribuição oficial deve vir do CI
 
 ## Inspiração
 
-O Pizza nasceu depois que vi, por acaso, um vídeo no **TikTok**. Gostei da ideia de converter arquivos com um menu circular e decidi criar minha própria implementação para Windows. O vídeo inspirou o conceito; este repositório registra a construção do meu projeto.
+O Pizza nasceu depois que vi, por acaso, um vídeo no **TikTok**. Gostei da ideia de converter arquivos com um menu circular e decidi criar minha própria implementação para Windows. O vídeo inspirou o conceito; este repositório registra a construção do meu projeto. O nome vem do formato do menu, que lembra uma pizza fatiada, e do ditado "afinal, tudo acaba em pizza": aqui, todo arquivo arrastado acaba nela.
 
 O link e o autor do vídeo ainda não foram identificados. Quando eu localizar a referência, adicionarei o crédito aqui. O planejamento e o design foram elaborados com o auxílio do Claude; o desenvolvimento conta com apoio do Claude e do Codex.
 

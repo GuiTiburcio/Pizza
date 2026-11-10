@@ -9,4 +9,6 @@ Depois da soltura, Esc e perder o foco cancelam. As teclas chegam somente à pr�
 
 A camada de captura recebe apenas CF_HDROP válido durante o gesto e devolve apenas COPY/NONE, respeitando os efeitos oferecidos pela origem. Preparar o arquivo não cria uma cópia física e não altera o original. Finalizado o arraste, a camada de tela inteira é escondida.
 
+Na escolha, o botão direito numa fatia também escolhe: abre o painel de opções do formato ou, sem opções, converte direto. No disco, fora das fatias, nenhum botão faz nada. Fora do disco, o clique segue para o Windows e o menu fecha por perder o foco. Depois de 10 segundos sem interação (mouse, roda ou teclado), a escolha fecha e a cópia da tela é descartada (ADR-023); cada interação reinicia a contagem, para não atrapalhar quem navega pelas abas no touchpad.
+
 Verificação: TST-01 para estados, dados inválidos e timers atrasados; TST-10 para integridade da origem; teste manual com Explorer, vários monitores e escala de 100% a 200%.

@@ -23,3 +23,15 @@ Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equival
 Fases e critérios completos estão nas [SPECS](SPECS.md). Artefatos experimentais do CI são builds de desenvolvimento.
 
 **Fase atual: 4 — Visual Pizza, ainda aberta.** O [acompanhamento por etapas](FASE-4.md) separa implementação, verificação automática e aceite visual, para manter Claude, Codex e mantenedor no mesmo ponto do plano. A Fase 5 só começa após o aceite da Fase 4.
+
+## Ideias para depois da v1.x
+
+Pedidos do mantenedor, anotados em 10/11/2026. Cada um passa por alinhamento e ADR antes do código.
+
+| Ideia | O que é |
+| --- | --- |
+| Régua de porcentagem | No painel de opções, um controle deslizante (slider) no lugar dos botões fixos de 75% e 50% |
+| Interação por voz | Uso guiado por voz, para incluir pessoas com deficiência visual |
+| Dicas de uso | Um tutorial curto na primeira vez; as dicas continuam enquanto o usuário quiser, e uma opção desliga |
+
+Decisões com fase marcada (faixa de níveis na 4b, barra de abas mais fina na 4d, temas do vidro e frase no Sobre na Fase 8) estão na SPECS §2.1.

@@ -99,6 +99,38 @@ public sealed class OverlayDropTests
     }
 
     [Fact]
+    public void Clique_numa_fatia_durante_a_escolha_escolhe_o_formato()
+    {
+        // ADR-025: os dois botões escolhem a fatia; o direito é o caminho para as opções.
+        PrepareChoice();
+
+        Assert.True(ChooseAt(0, -130));
+        Assert.Equal(GestureState.Idle, Session.State);
+        Assert.Equal(0, (int?)typeof(Overlay).GetField("_pulseSlot", PrivateStatic)!.GetValue(null));
+    }
+
+    [Fact]
+    public void Clique_fora_das_fatias_durante_a_escolha_nao_faz_nada()
+    {
+        PrepareChoice();
+
+        Assert.False(ChooseAt(0, 0));
+        Assert.Equal(GestureState.Choosing, Session.State);
+    }
+
+    [Fact]
+    public void Prazo_sem_interacao_cancela_a_escolha()
+    {
+        // ADR-025: 10 s sem interação fecham o menu e descartam a cópia da tela.
+        PrepareChoice();
+
+        typeof(Overlay).GetMethod("OnTimer", PrivateStatic)!.Invoke(null, [ChoiceTimer]);
+
+        Assert.Equal(GestureState.Idle, Session.State);
+        Assert.False(Overlay.IsVisible);
+    }
+
+    [Fact]
     public void Efeito_sem_copy_nao_e_aceito()
     {
         Prepare();
@@ -138,6 +170,17 @@ public sealed class OverlayDropTests
         session.OnDragEnter(hasFiles: true);
         foreach (var hover in Hover) hover.Snap(0);
     }
+
+    private static nuint ChoiceTimer => Convert.ToUInt32(typeof(Overlay).GetField("TimerChoice", PrivateStatic)!.GetRawConstantValue());
+
+    private static void PrepareChoice()
+    {
+        Prepare();
+        Assert.True(Overlay.OnDrop(new DraggedFiles("entrada.jpg", 1), 0, 0, selectSlice: false));
+    }
+
+    private static bool ChooseAt(int x, int y) =>
+        (bool)typeof(Overlay).GetMethod("ChooseAt", PrivateStatic)!.Invoke(null, [DiscLayout.CenterX + x, DiscLayout.CenterY + y])!;
 
     private static int? TargetAt(int x, int y) =>
         (int?)typeof(Overlay).GetMethod("TargetSlot", PrivateStatic)!.Invoke(null, [DiscLayout.CenterX + x, DiscLayout.CenterY + y]);
