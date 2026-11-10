@@ -185,7 +185,9 @@ internal static unsafe class DiscRenderer
         // Sombra externa suave, um pouco abaixo do disco.
         for (var ring = 8; ring >= 1; ring--)
         {
-            Fill(g, Argb(4, 15, 20, 40), Ellipse(cx, cy + 6, 190 + (ring * 2)));
+            var shadow = Ellipse(cx, cy + 6, 190 + (ring * 2));
+            Fill(g, Argb(4, 15, 20, 40), shadow);
+            GdipDeletePath(shadow);
         }
 
         Glass(g, Ellipse(cx, cy, 190), _glassAlpha, _palette.Border);

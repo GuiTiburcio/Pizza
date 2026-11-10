@@ -213,10 +213,15 @@ internal static unsafe class Overlay
             return null;
         }
 
+        // O alvo é a fatia como está desenhada: girada na troca de aba e, a em hover, maior.
         var (centerX, centerY) = DiscCenter();
-        var slot = RadialMenu.SlotAt((x - centerX) / _scale, (y - centerY) / _scale);
+        var growth = _motion == MotionStyle.Slide && _hoverSlot is { } hovered ? Hover[hovered].Value : 0;
+        var slot = RadialMenu.SlotAt((x - centerX) / _scale, (y - centerY) / _scale, Rotation(), _hoverSlot, growth);
         return slot < RadialMenu.Slices(Carousel.Target, file.First).Count ? slot : null;
     }
+
+    private static double Rotation() =>
+        _motion == MotionStyle.Slide ? -TabRotation * Carousel.DistanceTo(Carousel.Target) : 0;
 
     private static (int X, int Y) DiscCenter() =>
         (_left + (int)Math.Round(DiscLayout.CenterX * _scale), _top + (int)Math.Round(DiscLayout.CenterY * _scale));
@@ -360,7 +365,7 @@ internal static unsafe class Overlay
 
         var fileName = _files is { } files ? Path.GetFileName(files.First) : null;
         var slices = _files is { } dragged ? RadialMenu.Slices(Carousel.Target, dragged.First) : [];
-        var rotation = _motion == MotionStyle.Slide ? -TabRotation * Carousel.DistanceTo(Carousel.Target) : 0;
+        var rotation = Rotation();
         var frame = new DiscFrame(
             _scale,
             fileName,
