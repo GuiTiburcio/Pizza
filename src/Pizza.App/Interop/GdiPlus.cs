@@ -147,6 +147,9 @@ internal static unsafe partial class GdiPlus
     [LibraryImport(Library)]
     public static partial int GdipResetClip(nint graphics);
 
+    [LibraryImport(Library)]
+    public static partial int GdipSetClipRect(nint graphics, float x, float y, float width, float height, int combine);
+
     [LibraryImport(Library, StringMarshalling = StringMarshalling.Utf16)]
     public static partial int GdipCreateFontFamilyFromName(string name, nint collection, out nint family);
 

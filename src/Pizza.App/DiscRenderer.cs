@@ -25,16 +25,47 @@ internal readonly record struct DiscFrame(
 /// </summary>
 internal static unsafe class DiscRenderer
 {
-    private const int SourceCopy = 0x00CC0020;
-    private const int CaptureBlt = 0x40000000;
+    private const uint SourceCopy = 0x00CC0020;
     private const int BlurRadius = 11;
     private const double Saturation = 1.8;
     private const double TabArcSpan = 30;
 
     private static readonly uint Tint = Argb(255, 47, 107, 255);
-    private static readonly uint Ink = Argb(255, 15, 19, 32);
-    private static readonly uint SliceInk = Argb(255, 31, 38, 56);
-    private static readonly uint HoverInk = Argb(255, 11, 21, 48);
+
+    // Parte 4.2 (claro) e 4.4 (escuro): mesmo desenho, com o vidro escurecido e textos claros.
+    private static readonly Palette Light = new(
+        Veil: Argb(255, 255, 255, 255),
+        Border: 0.55,
+        Ink: Argb(255, 15, 19, 32),
+        SliceInk: Argb(255, 31, 38, 56),
+        HoverInk: Argb(255, 11, 21, 48),
+        RestTop: Argb(51, 26, 33, 64),
+        RestBottom: Argb(20, 26, 33, 64),
+        RestBorder: Argb(115, 255, 255, 255),
+        Center: Argb(140, 255, 255, 255),
+        CenterBorder: Argb(235, 255, 255, 255),
+        Sheen: Argb(204, 255, 255, 255),
+        IdleArc: Argb(71, 15, 19, 32),
+        Highlight: Argb(217, 255, 255, 255),
+        MinimumVeil: 0.16);
+
+    private static readonly Palette Dark = new(
+        Veil: Argb(255, 10, 12, 20),
+        Border: 0.22,
+        Ink: Argb(255, 238, 241, 248),
+        SliceInk: Argb(255, 214, 221, 236),
+        HoverInk: Argb(255, 255, 255, 255),
+        RestTop: Argb(31, 255, 255, 255),
+        RestBottom: Argb(13, 255, 255, 255),
+        RestBorder: Argb(56, 255, 255, 255),
+        Center: Argb(36, 255, 255, 255),
+        CenterBorder: Argb(90, 255, 255, 255),
+        Sheen: Argb(90, 255, 255, 255),
+        IdleArc: Argb(90, 255, 255, 255),
+        Highlight: Argb(56, 255, 255, 255),
+        MinimumVeil: 0.35);
+
+    private static Palette _palette = Light;
 
     private static nuint _token;
     private static nint _regular;
@@ -66,7 +97,8 @@ internal static unsafe class DiscRenderer
         _height = height;
         _memory = CreateCompatibleDC(0);
         _target = CreateDib(_memory, width, height, out _bits);
-        _glassAlpha = 0.16;
+        _palette = DarkTheme() ? Dark : Light;
+        _glassAlpha = _palette.MinimumVeil;
         if (!TransparencyEnabled())
         {
             return;
@@ -75,15 +107,19 @@ internal static unsafe class DiscRenderer
         _backdropMemory = CreateCompatibleDC(0);
         _backdropDib = CreateDib(_backdropMemory, width, height, out _backdropBits);
         var screen = GetDC(0);
-        BitBlt(_backdropMemory, 0, 0, width, height, screen, left, top, unchecked((uint)(SourceCopy | CaptureBlt)));
+
+        // Sem CAPTUREBLT: janelas em camadas, como a imagem do arraste, ficam fora da cópia.
+        BitBlt(_backdropMemory, 0, 0, width, height, screen, left, top, SourceCopy);
         ReleaseDC(0, screen);
 
         var pixels = new Span<byte>((void*)_backdropBits, width * height * 4);
         GlassBlur.Apply(pixels, width, height, BlurRadius * dpi / 96, Saturation);
 
-        // Além do Dossiê: com fundo escuro, o vidro clareia o bastante para o texto escuro continuar legível.
+        // Além do Dossiê: o véu engrossa quando o fundo puxa para o lado do texto, que continua legível.
         var luminance = AverageLuminance(pixels);
-        _glassAlpha = Math.Max(0.16, (0.72 - luminance) / (1 - luminance));
+        _glassAlpha = _palette == Dark
+            ? Math.Max(Dark.MinimumVeil, 1 - (0.30 / Math.Max(luminance, 0.30)))
+            : Math.Max(Light.MinimumVeil, (0.72 - luminance) / (1 - luminance));
         GdipCreateBitmapFromScan0(width, height, width * 4, FormatArgb, _backdropBits, out _backdrop);
     }
 
@@ -152,8 +188,8 @@ internal static unsafe class DiscRenderer
             Fill(g, Argb(4, 15, 20, 40), Ellipse(cx, cy + 6, 190 + (ring * 2)));
         }
 
-        Glass(g, Ellipse(cx, cy, 190), _glassAlpha, 0.55);
-        Arc(g, Argb(204, 255, 255, 255), 1.5f, cx, cy, 186, -160, 81);
+        Glass(g, Ellipse(cx, cy, 190), _glassAlpha, _palette.Border);
+        Arc(g, _palette.Sheen, 1.5f, cx, cy, 186, -160, 81);
 
         for (var slot = 0; slot < frame.Slices.Count; slot++)
         {
@@ -164,8 +200,8 @@ internal static unsafe class DiscRenderer
         DrawTabBar(g, frame);
 
         var hint = RoundedRect(DiscLayout.HintLeft, DiscLayout.HintTop, DiscLayout.HintWidth, DiscLayout.HintHeight, DiscLayout.HintHeight / 2f);
-        Glass(g, hint, Math.Max(0.40, _glassAlpha), 0.6);
-        Text(g, "Role para trocar a aba  ·  Solte o Ctrl e aperte Esc para cancelar", _regular, 12, StyleRegular, Ink, DiscLayout.HintLeft + 10, DiscLayout.HintTop, DiscLayout.HintWidth - 20, DiscLayout.HintHeight);
+        Glass(g, hint, Math.Max(0.40, _glassAlpha), _palette.Border + 0.05);
+        Text(g, "Role para trocar a aba  ·  Solte o Ctrl e aperte Esc para cancelar", _regular, 12, StyleRegular, _palette.Ink, DiscLayout.HintLeft + 10, DiscLayout.HintTop, DiscLayout.HintWidth - 20, DiscLayout.HintHeight);
     }
 
     private static void DrawSlice(nint g, DiscFrame frame, int slot)
@@ -194,21 +230,23 @@ internal static unsafe class DiscRenderer
         }
         else
         {
-            var restTop = Argb(51, 26, 33, 64);
-            var restBottom = Argb(20, 26, 33, 64);
-            Gradient(g, path, top, bottom, Mix(restTop, WithAlpha(Tint, 0.62), hover), Mix(restBottom, WithAlpha(Tint, 0.30), hover));
+            Gradient(g, path, top, bottom, Mix(_palette.RestTop, WithAlpha(Tint, 0.62), hover), Mix(_palette.RestBottom, WithAlpha(Tint, 0.30), hover));
             if (hover > 0)
             {
-                Gradient(g, path, top, top + ((bottom - top) / 2), Argb((byte)(178 * hover), 255, 255, 255), Argb(0, 255, 255, 255));
+                // Brilho só no alto e discreto. O degradê do GDI+ se repete fora do trecho dele, por isso o recorte.
+                var sheenBottom = top + ((bottom - top) * 0.4f);
+                GdipSetClipRect(g, 0, top - 1, DiscLayout.Width, sheenBottom - top + 1, CombineReplace);
+                Gradient(g, path, top, sheenBottom, Argb((byte)(110 * hover), 255, 255, 255), Argb(0, 255, 255, 255));
+                GdipResetClip(g);
             }
         }
 
-        Stroke(g, Mix(Argb(115, 255, 255, 255), Argb(242, 255, 255, 255), hover), 1 + (float)hover, path);
+        Stroke(g, Mix(_palette.RestBorder, Argb(242, 255, 255, 255), hover), 1 + (float)hover, path);
         GdipDeletePath(path);
 
         var slice = frame.Slices[slot];
         var label = SliceGeometry.LabelCenter(angle, movement, DiscLayout.CenterX, DiscLayout.CenterY);
-        var ink = pulse ? Argb(255, 255, 255, 255) : Mix(SliceInk, HoverInk, hover);
+        var ink = pulse ? Argb(255, 255, 255, 255) : Mix(_palette.SliceInk, _palette.HoverInk, hover);
         var name = pulse ? "✓ " + slice.Label : slice.Label;
         var bold = hover >= 0.5;
         Text(g, name, bold ? _regular : _semibold, 14 + (2 * (float)hover), bold ? StyleBold : StyleRegular, ink, (float)label.X - 55, (float)label.Y - 18, 110, 20);
@@ -220,27 +258,27 @@ internal static unsafe class DiscRenderer
         const float cx = DiscLayout.CenterX;
         const float cy = DiscLayout.CenterY;
         var center = Ellipse(cx, cy, 76);
-        Fill(g, Argb(140, 255, 255, 255), center);
-        Stroke(g, Argb(235, 255, 255, 255), 1, center);
+        Fill(g, _palette.Center, center);
+        Stroke(g, _palette.CenterBorder, 1, center);
         GdipDeletePath(center);
-        Arc(g, Argb(230, 255, 255, 255), 1.2f, cx, cy, 66, -151, 61);
+        Arc(g, _palette.Sheen, 1.2f, cx, cy, 66, -151, 61);
 
         // Um traço por aba, na ordem da barra (WF-1, nota 4).
         for (var tab = 0; tab < MenuTabs.Names.Count; tab++)
         {
             var lit = Math.Max(0, 1 - Math.Abs(Distance(tab, frame.TabPosition)));
-            Arc(g, Mix(Argb(71, 15, 19, 32), Tint, lit), 3 + (float)lit, cx, cy, 64, -90 + (90 * tab) - (TabArcSpan / 2), TabArcSpan, round: true);
+            Arc(g, Mix(_palette.IdleArc, Tint, lit), 3 + (float)lit, cx, cy, 64, -90 + (90 * tab) - (TabArcSpan / 2), TabArcSpan, round: true);
         }
 
         DrawFileIcon(g, cx - 18, cy - 40, frame.FileName);
         if (frame.FileCount > 1)
         {
-            Text(g, $"{frame.FileCount} arquivos", _semibold, 12, StyleRegular, Ink, cx - 60, cy + 10, 120, 18);
-            Text(g, "um arquivo por vez", _regular, 10.5f, StyleRegular, Ink, cx - 60, cy + 28, 120, 16);
+            Text(g, $"{frame.FileCount} arquivos", _semibold, 12, StyleRegular, _palette.Ink, cx - 60, cy + 10, 120, 18);
+            Text(g, "um arquivo por vez", _regular, 10.5f, StyleRegular, _palette.Ink, cx - 60, cy + 28, 120, 16);
         }
         else if (frame.FileName is { } fileName)
         {
-            Text(g, fileName, _semibold, 10.5f, StyleRegular, Ink, cx - 60, cy + 12, 120, 18);
+            Text(g, fileName, _semibold, 10.5f, StyleRegular, _palette.Ink, cx - 60, cy + 12, 120, 18);
         }
     }
 
@@ -274,17 +312,17 @@ internal static unsafe class DiscRenderer
     private static void DrawTabBar(nint g, DiscFrame frame)
     {
         var bar = RoundedRect(DiscLayout.TabBarLeft, 0, DiscLayout.TabBarWidth, DiscLayout.TabBarHeight, DiscLayout.TabBarHeight / 2f);
-        Glass(g, bar, Math.Max(0.30, _glassAlpha), 0.6);
+        Glass(g, bar, Math.Max(0.30, _glassAlpha), _palette.Border + 0.05);
 
         var highlight = RoundedRect((float)DiscLayout.HighlightLeft(frame.TabPosition), DiscLayout.TabPadding, DiscLayout.TabWidth, DiscLayout.TabBarHeight - (2 * DiscLayout.TabPadding), 22);
-        Fill(g, Argb(217, 255, 255, 255), highlight);
+        Fill(g, _palette.Highlight, highlight);
         GdipDeletePath(highlight);
 
         for (var tab = 0; tab < MenuTabs.Names.Count; tab++)
         {
             var (left, _) = DiscLayout.TabSpan(tab);
             var active = tab == frame.TargetTab;
-            Text(g, MenuTabs.Names[tab], active ? _semibold : _regular, 13, StyleRegular, active ? Ink : SliceInk, (float)left, DiscLayout.TabPadding, DiscLayout.TabWidth, DiscLayout.TabBarHeight - (2 * DiscLayout.TabPadding));
+            Text(g, MenuTabs.Names[tab], active ? _semibold : _regular, 13, StyleRegular, active ? _palette.Ink : _palette.SliceInk, (float)left, DiscLayout.TabPadding, DiscLayout.TabWidth, DiscLayout.TabBarHeight - (2 * DiscLayout.TabPadding));
         }
     }
 
@@ -298,12 +336,12 @@ internal static unsafe class DiscRenderer
             GdipDrawImageRectI(g, _backdrop, 0, 0, _width, _height);
             GdipResetClip(g);
             GdipScaleWorldTransform(g, (float)ScaleOf(), (float)ScaleOf(), 0);
-            Fill(g, WithAlpha(Argb(255, 255, 255, 255), fill), path);
+            Fill(g, WithAlpha(_palette.Veil, fill), path);
         }
         else
         {
-            // Transparência desligada: branco sólido 92%, a mesma forma.
-            Fill(g, Argb(235, 255, 255, 255), path);
+            // Transparência desligada: sólido 92%, a mesma forma.
+            Fill(g, WithAlpha(_palette == Dark ? Argb(255, 32, 36, 48) : Argb(255, 255, 255, 255), 0.92), path);
         }
 
         Stroke(g, WithAlpha(Argb(255, 255, 255, 255), border), 1, path);
@@ -426,6 +464,15 @@ internal static unsafe class DiscRenderer
         return samples == 0 ? 1 : sum / samples;
     }
 
+    /// <summary>Segue o tema dos aplicativos no Windows, como a opção padrão "Seguir o Windows" da Parte 4.</summary>
+    private static bool DarkTheme()
+    {
+        uint value = 1;
+        var size = (uint)sizeof(uint);
+        var result = RegGetValueW(HKEY_CURRENT_USER, @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "AppsUseLightTheme", RRF_RT_REG_DWORD, null, &value, &size);
+        return result == 0 && value == 0;
+    }
+
     private static bool TransparencyEnabled()
     {
         uint value = 1;
@@ -443,6 +490,22 @@ internal static unsafe class DiscRenderer
         bits = pixels;
         return dib;
     }
+
+    private sealed record Palette(
+        uint Veil,
+        double Border,
+        uint Ink,
+        uint SliceInk,
+        uint HoverInk,
+        uint RestTop,
+        uint RestBottom,
+        uint RestBorder,
+        uint Center,
+        uint CenterBorder,
+        uint Sheen,
+        uint IdleArc,
+        uint Highlight,
+        double MinimumVeil);
 
     private static uint Argb(byte a, byte r, byte g, byte b) => ((uint)a << 24) | ((uint)r << 16) | ((uint)g << 8) | b;
 
