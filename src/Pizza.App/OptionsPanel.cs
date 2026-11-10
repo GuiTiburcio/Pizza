@@ -20,6 +20,8 @@ internal static unsafe class OptionsPanel
 
     private static nint _window;
     private static OptionsPanelState? _state;
+    private static PanelViewport? _viewport;
+    private static int _wheelRemainder;
     private static string _fileName = string.Empty;
     private static int _dpi = 96;
 
@@ -54,9 +56,11 @@ internal static unsafe class OptionsPanel
         _dpi = GetDpiForMonitor(monitor, 0, &dpiX, &dpiY) == S_OK ? (int)dpiX : 96;
         var info = new MONITORINFO { CbSize = (uint)sizeof(MONITORINFO) };
         GetMonitorInfoW(monitor, &info);
+        _viewport = new PanelViewport(_state.Height, (info.RcWork.Bottom - info.RcWork.Top) * 96 / _dpi);
+        _wheelRemainder = 0;
 
         var width = Scale(_state.Width);
-        var height = Scale(_state.Height);
+        var height = Scale(_viewport.Height);
         var left = Math.Max(info.RcWork.Left, Math.Min(centerX - (width / 2), info.RcWork.Right - width));
         var top = Math.Max(info.RcWork.Top, Math.Min(centerY - (height / 2), info.RcWork.Bottom - height));
 
@@ -78,6 +82,7 @@ internal static unsafe class OptionsPanel
         if (_state is not null)
         {
             _state = null;
+            _viewport = null;
             ShowWindow(_window, SW_HIDE);
         }
     }
@@ -114,13 +119,24 @@ internal static unsafe class OptionsPanel
             case WM_KEYDOWN:
                 if (ToKey((int)wParam) is { } key && _state is { } state)
                 {
-                    Apply(state.Press(key));
+                    var action = state.Press(key);
+                    var focus = state.Targets.First(target =>
+                        (target.Kind, target.Row) == state.Focus &&
+                        (target.Kind != PanelTargetKind.Choice || state.IsSelected(target.Row, target.Choice)));
+                    _viewport?.Reveal(focus.Bounds);
+                    Apply(action);
                 }
 
                 return 0;
 
             case WM_LBUTTONDOWN:
                 OnClick((short)(lParam & 0xFFFF), (short)((lParam >> 16) & 0xFFFF));
+                return 0;
+
+            case WM_MOUSEWHEEL:
+                _wheelRemainder += (short)(wParam >> 16);
+                Scroll(-(_wheelRemainder / 120) * 44);
+                _wheelRemainder %= 120;
                 return 0;
 
             case WM_CLOSE:
@@ -152,10 +168,37 @@ internal static unsafe class OptionsPanel
 
     private static void OnClick(int x, int y)
     {
-        if (_state is { } state && state.TargetAt(x * 96 / _dpi, y * 96 / _dpi) is { } target)
+        if (_state is not { } state || _viewport is not { } viewport)
+        {
+            return;
+        }
+
+        x = x * 96 / _dpi;
+        y = y * 96 / _dpi;
+        if (viewport.CanScroll && y >= viewport.ContentHeight)
+        {
+            if (ScrollButton(state.Width, viewport.Height, next: false).Contains(x, y))
+            {
+                Scroll(-44);
+            }
+            else if (ScrollButton(state.Width, viewport.Height, next: true).Contains(x, y))
+            {
+                Scroll(44);
+            }
+
+            return;
+        }
+
+        if (state.TargetAt(x, y + viewport.Offset) is { } target)
         {
             Apply(state.Click(target));
         }
+    }
+
+    private static void Scroll(int distance)
+    {
+        _viewport?.Scroll(distance);
+        InvalidateRect(_window, null, 0);
     }
 
     private static void Apply(PanelAction action)
@@ -175,14 +218,14 @@ internal static unsafe class OptionsPanel
     {
         PAINTSTRUCT ps;
         var hdc = BeginPaint(hwnd, &ps);
-        if (_state is { } state)
+        if (_state is { } state && _viewport is { } viewport)
         {
             var width = Scale(state.Width);
-            var height = Scale(state.Height);
+            var height = Scale(viewport.Height);
             var buffer = CreateCompatibleDC(hdc);
             var bitmap = CreateCompatibleBitmap(hdc, width, height);
             var oldBitmap = SelectObject(buffer, bitmap);
-            Draw(buffer, state, width, height);
+            Draw(buffer, state, viewport, width, height);
             BitBlt(hdc, 0, 0, width, height, buffer, 0, 0, SRCCOPY);
             SelectObject(buffer, oldBitmap);
             DeleteObject(bitmap);
@@ -192,7 +235,7 @@ internal static unsafe class OptionsPanel
         EndPaint(hwnd, &ps);
     }
 
-    private static void Draw(nint hdc, OptionsPanelState state, int width, int height)
+    private static void Draw(nint hdc, OptionsPanelState state, PanelViewport viewport, int width, int height)
     {
         var whole = new RECT { Right = width, Bottom = height };
         Fill(hdc, whole, _palette.Background);
@@ -200,7 +243,30 @@ internal static unsafe class OptionsPanel
         var inside = new RECT { Left = 1, Top = 1, Right = width - 1, Bottom = height - 1 };
         Round(hdc, inside, PanelRadius, _palette.Background);
         SetBkMode(hdc, TRANSPARENT);
+        SetViewportOrgEx(hdc, 0, -Scale(viewport.Offset), null);
+        DrawContent(hdc, state, width);
+        SetViewportOrgEx(hdc, 0, 0, null);
+        if (viewport.CanScroll)
+        {
+            var footer = new RECT { Top = Scale(viewport.ContentHeight), Right = width, Bottom = height };
+            Fill(hdc, footer, _palette.Background);
+            var previous = Scaled(ScrollButton(state.Width, viewport.Height, next: false));
+            var next = Scaled(ScrollButton(state.Width, viewport.Height, next: true));
+            var hint = new RECT { Left = Scale(OptionsPanelState.Padding), Top = previous.Top, Right = previous.Left - Scale(8), Bottom = previous.Bottom };
+            Label(hdc, "Role para ver mais", hint, 13, FW_NORMAL, _palette.SecondaryText, DT_SINGLELINE | DT_VCENTER);
+            DrawButton(hdc, previous, "↑", _palette.Surface, _palette.Text, focused: false);
+            DrawButton(hdc, next, "↓", _palette.Surface, _palette.Text, focused: false);
+        }
+    }
 
+    private static PanelRect ScrollButton(int width, int height, bool next)
+    {
+        var right = width - OptionsPanelState.Padding - (next ? 0 : 52);
+        return new PanelRect(right - 44, height - 56, right, height - 12);
+    }
+
+    private static void DrawContent(nint hdc, OptionsPanelState state, int width)
+    {
         var inner = width - Scale(OptionsPanelState.Padding);
         var title = new RECT { Left = Scale(OptionsPanelState.Padding), Top = Scale(22), Right = inner, Bottom = Scale(52) };
         Label(hdc, $"{_fileName} → {state.Converter.Label}", title, 18, FW_BOLD, _palette.Text, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);

@@ -19,6 +19,7 @@ Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste), 
 - Alvos de clique de pelo menos 44 × 44 px lógicos. A caixa de metadados mantém o desenho compacto, com toda a linha clicável.
 - Texto principal, secundário e sobre seleções com contraste mínimo de 4,5:1 nos fundos opacos usados. O preenchimento azul é `#2F6AFF`: o branco sobre `#2F6BFF` resulta em 4,4988:1, abaixo do NFR-06.
 - Seleção continua indicada por marca e negrito, além da cor. Tab, Shift+Tab, setas, Espaço, Enter e Esc mantêm o comportamento existente.
+- Em área útil menor que o painel, a altura fica limitada à tela sem reduzir fontes ou controles. A roda e os botões fixos ↑/↓ permitem percorrer o conteúdo; navegar pelo teclado revela automaticamente o alvo com foco. Testes cobrem o painel PNG com 640 px físicos de altura útil a 200%.
 - **Ainda sem vidro no painel.** A superfície opaca desta entrega é a base para a próxima parte de 4b; não representa o aceite do visual final.
 
 ## Verificação e aceite
@@ -35,4 +36,4 @@ Checklist manual da Fase 4 (NFR-06/NFR-08), ainda pendente:
 - [ ] Conferir o vidro quando ele for implementado, inclusive transparência desligada e fundos de alto contraste.
 - [ ] Registrar o aceite do mantenedor antes de avançar para 4c.
 
-A revisão de segurança desta alteração é focada no código-fonte, conforme o modo de orientação da skill `security-audit`. Não altera drop, hooks, IPC, Worker, acesso a arquivos ou logs; preserva SEC-01 e PRIV-16. Não foram executados testes locais de auditoria: este ambiente não demonstrou todos os controles de isolamento exigidos pela skill. O CI é validação de engenharia; a auditoria completa TST-28 permanece na Fase 5.
+A revisão de segurança desta alteração é focada no código-fonte, conforme o modo de orientação da skill `security-audit`. A rolagem usa somente mensagens da própria janela. Não altera drop, hooks, IPC, Worker, acesso a arquivos ou logs; preserva SEC-01 e PRIV-16. Não foram executados testes locais de auditoria: este ambiente não demonstrou todos os controles de isolamento exigidos pela skill. O CI é validação de engenharia; a auditoria completa TST-28 permanece na Fase 5.
