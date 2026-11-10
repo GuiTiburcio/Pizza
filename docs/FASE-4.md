@@ -7,10 +7,19 @@ Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste), 
 | Etapa | Entrega | Situação |
 | --- | --- | --- |
 | 4a — disco | Vidro, fatias, hover, animação, temas e escolha por clique | Implementado nos PRs #26 e #30; conferência visual ampla pendente |
+| 4r — reorganização | Separar `Overlay.cs` (720 linhas) e `DiscRenderer.cs` (601 linhas) por assunto, sem mudar comportamento | Pedido do mantenedor em 10/11/2026; vem antes de continuar a 4b |
 | 4b — painel de opções | Temas, cantos, foco, legibilidade e vidro | Base de temas, cantos e alvos implementada; vidro e aceite visual pendentes |
 | 4c — notificações e Arquivos | Aplicar linguagem visual e temas aos componentes da Fase 3 | Aguardando 4b |
 | 4d — bandeja | Janela própria de vidro com teclado, conforme ADR-020 | Aguardando 4c |
 | 4e — aceite da fase | Comparar o conjunto com o dossiê e conferir NFR-06/NFR-08 | Pendente; libera a Fase 5 |
+
+## Etapa 4r — reorganização
+
+A 4b (faixa de níveis e vidro no painel) mexe nesses dois arquivos. Separá-los antes deixa cada mudança menor e restrita à parte que ela toca.
+
+- `Overlay.cs` vira partes de uma classe parcial, por assunto: janela e mensagens; arraste e soltura; escolha por clique; animação e hover. O estado continua o mesmo; só muda de arquivo.
+- `DiscRenderer.cs` separa o desenho do vidro e das formas, o texto (reto e curvo) e a montagem do quadro.
+- Nenhum comportamento muda. Prova: os testes passam antes e depois, e o verificador local desenha os mesmos quadros com resultado idêntico, pixel a pixel.
 
 ## Etapa 4b — base do painel
 

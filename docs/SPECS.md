@@ -127,6 +127,7 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | Barra de abas (Fase 4d) | Fica mais fina: entre 55% e 70% da altura atual | — |
 | Temas do vidro (Fase 8) | Na tela de Configuração, paletas opcionais em degradê pastel, no estilo do fundo das pranchas de referência do Dossiê | — |
 | Sobre (Fase 8) | A seção Sobre da Configuração mostra a frase do projeto: "Afinal, tudo acaba em pizza." | — |
+| NFR-01 | A meta de 20 MB vale para a **memória privada** do residente, a coluna Memória do Gerenciador de Tarefas. O conjunto de trabalho total também conta DLLs do Windows compartilhadas com o Explorer (shell32, windows.storage, combase), exigidas pelo arrastar e soltar em qualquer linguagem. Medição de 10/11/2026, em repouso: 7,8 MB privados e 24 MB de conjunto de trabalho. A Fase 5 mede também com o menu aberto | — |
 
 ---
 
