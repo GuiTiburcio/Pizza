@@ -1,13 +1,27 @@
 # Dossiê do projeto
 
-Pranchas do planejamento do Pizza, feitas em 08/11/2026 e 09/11/2026, antes do código. Elas mostram a intenção do projeto: público, visual, arquitetura, segurança, LGPD, implantação e wireframes.
+Pranchas do planejamento do Pizza, feitas antes do código, em 08/11/2026 e 09/11/2026. Elas mostram:
 
-> **Atenção:** este é o retrato do planejamento. Algumas decisões mudaram depois, durante a implementação. Quando uma prancha e as [SPECS](../SPECS.md) discordarem, valem as SPECS (em especial a §2.1, com as emendas) e os [ADRs](../adr/). Exemplos:
+- público e posicionamento;
+- sistema visual;
+- arquitetura;
+- segurança e LGPD;
+- implantação;
+- wireframes.
+
+> **Revisão de 10/11/2026:** as pranchas foram atualizadas para bater com a SPECS v1.2. Se alguma ainda divergir, valem as [SPECS](../SPECS.md) (em especial a §2.1, com as emendas) e os [ADRs](../adr/).
 >
-> - soltar fora do disco não cancela mais: o menu fica aberto para escolher com um clique ([ADR-025](../adr/025-soltar-em-qualquer-lugar.md));
-> - a imagem vira PDF com um gerador próprio, sem dependência nova ([ADR-022](../adr/022-imagem-pdf-gerador-proprio.md));
-> - as notificações são janelas próprias do Pizza, não os avisos nativos do Windows ([ADR-018](../adr/018-notificacao-e-painel-proprios.md));
-> - o vidro é desenhado com GDI+ e um desfoque próprio ([ADR-023](../adr/023-vidro-gdiplus-desfoque-proprio.md)).
+> As principais mudanças desde o planejamento são estas:
+>
+> - **Gesto:** soltar fora de uma fatia deixa o menu aberto para escolher com um clique ([ADR-025](../adr/025-soltar-em-qualquer-lugar.md)).
+> - **Vidro:** desenhado com GDI+ e um desfoque próprio ([ADR-023](../adr/023-vidro-gdiplus-desfoque-proprio.md)).
+> - **Notificações:** são janelas do próprio Pizza ([ADR-018](../adr/018-notificacao-e-painel-proprios.md)).
+> - **Simplificações do v1** ([ADR-019](../adr/019-simplificacoes-do-v1.md)):
+>   - um Worker por arquivo;
+>   - documentos do Office só pelo LibreOffice isolado;
+>   - nenhum download além da atualização.
+> - **Canal com o Worker:** pipes sem nome ([ADR-021](../adr/021-pipe-sem-nome.md)).
+> - **Imagem para PDF:** um gerador próprio, sem dependência nova ([ADR-022](../adr/022-imagem-pdf-gerador-proprio.md)).
 
 ## Visão geral
 
@@ -57,6 +71,22 @@ Pranchas do planejamento do Pizza, feitas em 08/11/2026 e 09/11/2026, antes do c
 
 ![Roteiro](eng-0-roteiro.png)
 
+### ENG-1 · Arquitetura em dois processos
+
+![Arquitetura](eng-1-arquitetura.png)
+
+### ENG-2 · Máquina de estados
+
+![Estados](eng-2-estados.png)
+
+### ENG-3 · Módulos e contratos
+
+![Módulos](eng-3-modulos.png)
+
+### ENG-4 · Sequência de uma conversão
+
+![Sequência](eng-4-sequencia.png)
+
 ## Wireframes
 
 ### WF-1 · Anatomia do menu radial
@@ -78,3 +108,7 @@ Pranchas do planejamento do Pizza, feitas em 08/11/2026 e 09/11/2026, antes do c
 ### WF-5 · Ícone da bandeja
 
 ![Bandeja](wf-5-bandeja.png)
+
+### WF-6 · Configuração (v1.0)
+
+![Configuração](wf-6-configuracoes.png)
