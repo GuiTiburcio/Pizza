@@ -463,7 +463,7 @@ Cada conversão com perda oferece de 3 a 4 níveis com valores reais, e um deles
 
 ### 7.1 Aba Imagem
 
-Ordem das fatias (ADR-012): começando no topo e seguindo no sentido horário, **JPG, PNG, WEBP, Imagem → PDF, TIFF, ICO, GIF**, sem o formato de origem. Se depois de tirar a origem ainda sobrarem mais de 6 candidatos (origem fora da lista, como BMP ou HEIC), os últimos da ordem ficam de fora.
+Ordem das fatias (ADR-012, alterado pelo ADR-024): começando no topo e seguindo no sentido horário, **JPG, PNG, WEBP, AVIF, Imagem → PDF, TIFF, ICO, GIF**, sem o formato de origem. Com mais de 6, as fatias se dividem em voltas, e a roda do mouse percorre as voltas antes de trocar de aba.
 
 | Fatia | Opções no painel | Padrão |
 | --- | --- | --- |
@@ -500,7 +500,13 @@ Ordem das fatias (ADR-012): começando no topo e seguindo no sentido horário, *
 | MP3 | 320 · 192 · 128 kbps | 192 kbps |
 | MP4 | Original · 1080p · 720p | 1080p |
 
-### 7.5 Regras gerais
+Também entram (SPECS §2.1): WAV, FLAC, M4A/AAC, OGG/Opus, WebM, AV1, GIF para vídeo, extrair áudio de vídeo e MOV/MKV para MP4, com resolução, taxa de quadros e meta de tamanho. HEVC depende de análise de patentes; RAW e ProRes estão em estudo.
+
+### 7.5 Aba Web (v1.x)
+
+Minificar HTML, CSS e JS; TTF e OTF para WOFF2; gerar .gz e .br de um arquivo.
+
+### 7.6 Regras gerais
 
 - O app lembra a última opção usada em cada conversão.
 - "Usar sempre" pula o painel nas próximas vezes; dá para desfazer nas Configurações.
@@ -731,6 +737,7 @@ Cada decisão também tem um arquivo próprio em [`docs/adr/`](adr/).
 | 020 | Menu do ícone próprio de vidro, com Play/Pause/Stop da fila | Pedido do mantenedor; menu curto | Linhas de texto no menu do Windows |
 | 021 | Pipe sem nome entre residente e Worker | Mais simples e sem como ser aberto por outro processo | Pipe com nome e ACL condicional |
 | 022 | Imagem → PDF com gerador próprio, folha A4 e margem de 10 mm | PDFsharp virou AGPL na 6.5.0; sem dependência nova | PDFsharp 6.2.4 ou AGPL; página do tamanho da imagem |
+| 024 | AVIF depois do WEBP e voltas de fatias quando há mais de 6 | Nenhum formato fica de fora, sem tecla extra no arraste | Fatia "Mais", Shift + roda, AVIF no fim |
 | 023 | GDI+ e desfoque próprio do vidro, substituindo Direct2D e Acrylic do ADR-003 | Acrylic e composição do Windows não funcionam com o disco inativo; sem dependência nova | Vortice, Acrylic, composição, API não documentada |
 
 ---

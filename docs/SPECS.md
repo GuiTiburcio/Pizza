@@ -99,6 +99,9 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | SEC-46 | Sem teto de arquivos; fila com no máximo 2 conversões por núcleo | 017 |
 | FR-23 | "Manter metadados" funciona em JPG, PNG e WEBP. Em PDF e ICO, a caixa aparece desativada, com o aviso de que o formato não guarda metadados | — |
 | Imagem → PDF | Gerador próprio, sem PDFsharp (AGPL desde a 6.5.0). Folha A4 acompanhando a orientação da imagem, margem de 10 mm. A biblioteca das demais operações de PDF será decidida na Fase 6 | 022 |
+| Aba Imagem e FR-04 | AVIF entra depois do WEBP. Com mais de 6 formatos, as fatias se dividem em voltas; a roda percorre as voltas da aba antes da próxima aba, e pontos no miolo mostram a volta. Aba sem conversão mostra "Em breve" com o que vem nela | 024 |
+| Áudio/Vídeo (v1.x) | MP3, WAV, FLAC, M4A/AAC e OGG/Opus; MP4, WebM e AV1; GIF para vídeo; extrair áudio de vídeo; MOV e MKV para MP4; opções de resolução, taxa de quadros e meta de tamanho. HEVC só depois de análise de patentes e licença. Em estudo para fotógrafos e videomakers: fotos RAW (CR2, NEF, ARW, DNG), que exigem biblioteca nova, e ProRes para MP4 | — |
+| Web (v1.x, aba nova) | Minificar HTML, CSS e JS; TTF e OTF para WOFF2; gerar .gz e .br de um arquivo. Ativar compressão em servidor fica de fora, por não ser conversão de arquivo; SVG a partir de imagem fica em estudo | — |
 | Desenho e vidro | GDI+ do Windows, sem Direct2D nem Vortice. Vidro desfocado pelo próprio Pizza a partir de uma cópia do trecho da tela atrás do menu, só em memória e zerada ao fechar; branco sólido 92% com a transparência do Windows desligada | 023 |
 | TST-03 | Sem SharpFuzz: ele só observa código C#, e quem interpreta os arquivos é o libvips nativo. Teste próprio corrompe arquivos válidos de cada formato de forma repetível e os passa pelo Worker real: cerca de 100 casos em cada PR e 5.000 por semana. Queda do Worker, travamento, temporário sobrando ou erro fora de `CORRUPTED`, `UNSUPPORTED` e `LIMIT_EXCEEDED` reprovam | — |
 | SEC-45 | HEIC fica de fora da lista enquanto o libvips empacotado não trouxer o codec HEVC: o menu não abre para `.heic`. AVIF continua aceito | — |
@@ -238,10 +241,10 @@ O Pizza é uma **ferramenta** que roda no computador do cliente. Quem decide con
 
 | Versão | Conversões |
 | --- | --- |
-| v0.1 | Imagem: JPG, PNG, WEBP, TIFF, ICO, GIF, Imagem → PDF |
+| v0.1 | Imagem: JPG, PNG, WEBP, AVIF, TIFF, ICO, GIF, Imagem → PDF |
 | v0.2 | PDF: Comprimir, Juntar, Dividir, Imagens, Word, Girar |
 | v0.3 | Documento: DOCX/XLSX/PPTX → PDF |
-| v1.x | Áudio e vídeo (FFmpeg LGPL) |
+| v1.x | Áudio e vídeo (FFmpeg LGPL) e aba Web |
 
 Os níveis de qualidade de cada conversão estão na Parte 7 do `PIZZA-PROJETO.md`.
 
