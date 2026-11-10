@@ -92,6 +92,8 @@ O link e o autor do vídeo ainda não foram identificados. Quando eu localizar a
 
 O [**Pizza — Dossiê do Projeto**, criado no Claude Design](https://claude.ai/artifact/LMrbTPnaY6EbVK1UPjcVDs#page-dcb81aee8d83), reúne a referência visual do projeto. A [documentação de design](docs/design/README.md) relaciona o artefato ao dossiê em Markdown e às decisões técnicas.
 
+As [pranchas do dossiê](docs/dossie/README.md) também estão disponíveis diretamente neste repositório.
+
 Uma demonstração prática em vídeo está planejada e será adicionada quando estiver pronta.
 
 ## Contribuição e licença

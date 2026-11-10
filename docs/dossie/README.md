@@ -13,7 +13,7 @@ Pranchas do planejamento do Pizza, feitas antes do código, em 08/11/2026 e 09/1
 >
 > As principais mudanças desde o planejamento são estas:
 >
-> - **Gesto:** soltar fora de uma fatia deixa o menu aberto para escolher com um clique ([ADR-025](../adr/025-soltar-em-qualquer-lugar.md)).
+> - **Gesto:** soltar fora de uma fatia deixa o menu aberto para escolher com um clique ([ADR-025](../adr/025-escolha-por-clique-apos-o-gesto.md)).
 > - **Vidro:** desenhado com GDI+ e um desfoque próprio ([ADR-023](../adr/023-vidro-gdiplus-desfoque-proprio.md)).
 > - **Notificações:** são janelas do próprio Pizza ([ADR-018](../adr/018-notificacao-e-painel-proprios.md)).
 > - **Simplificações do v1** ([ADR-019](../adr/019-simplificacoes-do-v1.md)):
