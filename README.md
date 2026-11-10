@@ -14,7 +14,7 @@
 
 Conversor de imagens para Windows com menu circular, processamento local e arquivo original preservado.
 
-[Como usar](docs/USO.md) · [Dossiê e design](docs/design/README.md) · [Documentação](docs/README.md) · [Próximas etapas](docs/ROADMAP.md)
+[Como usar](docs/USO.md) · [Dossiê e design](docs/dossie/README.md) · [Documentação](docs/README.md) · [Próximas etapas](docs/ROADMAP.md)
 
 </div>
 
@@ -25,6 +25,8 @@ O Pizza abre um menu de formatos quando você começa a arrastar um arquivo segu
 O projeto está em **prévia de desenvolvimento**. Imagens e Imagem → PDF estão implementados. Operações em PDF, documentos e áudio fazem parte do roteiro. Instaladores assinados e atualização automática ainda não estão disponíveis.
 
 ## Como funciona
+
+<p align="center"><img src="docs/imagens/menu.png" alt="Menu do Pizza aberto sobre um arquivo JPG: abas Imagem, PDF, Documento e Áudio, e seis fatias de formato com o nome e a descrição acompanhando a curva; a fatia AVIF está em destaque" width="440"></p>
 
 1. Abra o Pizza; ele fica na bandeja do Windows.
 2. Segure **Ctrl** e comece a arrastar uma imagem no Explorer ou na área de trabalho.
@@ -102,9 +104,7 @@ Claude e Codex são as ferramentas de IA utilizadas na construção do projeto. 
 
 ## Dossiê e demonstração
 
-O [**Pizza — Dossiê do Projeto**, criado no Claude Design](https://claude.ai/artifact/LMrbTPnaY6EbVK1UPjcVDs#page-dcb81aee8d83), reúne a referência visual do projeto. A [documentação de design](docs/design/README.md) relaciona o artefato ao dossiê em Markdown e às decisões técnicas.
-
-As [pranchas do dossiê](docs/dossie/README.md) também estão disponíveis diretamente neste repositório.
+O [**Pizza — Dossiê do Projeto**, criado no Claude Design](https://claude.ai/artifact/LMrbTPnaY6EbVK1UPjcVDs#page-dcb81aee8d83), reúne a referência visual do projeto. As [pranchas do dossiê](docs/dossie/README.md) também estão neste repositório, sem precisar de login no Claude. O que foi descartado no caminho, e por quê, está em [ideias descartadas](docs/ideias-descartadas/README.md).
 
 Uma demonstração prática em vídeo está planejada e será adicionada quando estiver pronta.
 

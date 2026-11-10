@@ -1,6 +1,6 @@
 # Pizza — Especificação completa do projeto
 
-> **Atualização — 10/11/2026:** este dossiê preserva o planejamento e decisões históricas. A implementação está em prévia de imagens, e o repositório já é público. Consulte o [roteiro atual](ROADMAP.md) e as emendas da [SPECS](SPECS.md). O gesto permite soltar em qualquer posição e escolher por clique (ADR-025). O [artefato original do Claude Design](design/README.md) está referenciado na documentação.
+> **Atualização — 10/11/2026:** este dossiê preserva o planejamento e decisões históricas. A implementação está em prévia de imagens, e o repositório já é público. Consulte o [roteiro atual](ROADMAP.md) e as emendas da [SPECS](SPECS.md). O gesto permite soltar em qualquer posição e escolher por clique (ADR-025). O [artefato original do Claude Design](dossie/README.md) está referenciado na documentação.
 
 > Conversor de arquivos para Windows que funciona no gesto: **segure Ctrl, arraste o arquivo e solte no formato** num menu circular de vidro. Tudo offline, leve e rápido.
 
