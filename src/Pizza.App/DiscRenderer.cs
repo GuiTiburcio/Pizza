@@ -212,8 +212,13 @@ internal static unsafe class DiscRenderer
         var movement = frame.Motion == MotionStyle.Slide ? hover : 0;
         var shape = SliceGeometry.Build(angle, movement, DiscLayout.CenterX, DiscLayout.CenterY);
         var path = SlicePath(shape);
-        var top = (float)shape.AllPoints().Min(point => point.Y);
-        var bottom = (float)shape.AllPoints().Max(point => point.Y);
+
+        // Pelo contorno inteiro: nas fatias de cima e de baixo, o arco passa além dos cantos, e o degradê
+        // recomeçaria nessa sobra, desenhando uma linha.
+        RectF box;
+        GdipGetPathWorldBounds(path, &box, 0, 0);
+        var top = box.Y;
+        var bottom = box.Y + box.Height;
 
         if (hover > 0)
         {
@@ -400,7 +405,8 @@ internal static unsafe class DiscRenderer
     {
         var start = new PointF { X = 0, Y = top - 0.5f };
         var end = new PointF { X = 0, Y = bottom + 0.5f };
-        GdipCreateLineBrush(&start, &end, from, to, 0, out var brush);
+        // Espelhado nas pontas: se sobrar algum pixel, ele repete a cor da borda em vez de saltar.
+        GdipCreateLineBrush(&start, &end, from, to, WrapTileFlipXY, out var brush);
         GdipFillPath(g, brush, path);
         GdipDeleteBrush(brush);
     }

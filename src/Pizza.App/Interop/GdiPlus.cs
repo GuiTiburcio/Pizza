@@ -20,6 +20,7 @@ internal static unsafe partial class GdiPlus
     public const int LineJoinRound = 2;
     public const int LineCapRound = 2;
     public const int CombineReplace = 0;
+    public const int WrapTileFlipXY = 3;
 
     private const string Library = "gdiplus.dll";
 
@@ -101,6 +102,9 @@ internal static unsafe partial class GdiPlus
 
     [LibraryImport(Library)]
     public static partial int GdipClosePathFigure(nint path);
+
+    [LibraryImport(Library)]
+    public static partial int GdipGetPathWorldBounds(nint path, RectF* bounds, nint matrix, nint pen);
 
     [LibraryImport(Library)]
     public static partial int GdipCreateSolidFill(uint color, out nint brush);
