@@ -682,6 +682,16 @@ Cada fase é quebrada em etapas menores. Ao fim de cada etapa o dono do produto 
 
 A etapa 1a vem antes de tudo porque receber o arraste do Explorer numa janela própria (OLE `IDropTarget` com NativeAOT) é o ponto de maior incerteza técnica do projeto.
 
+### 13.2 Ideias para depois da v1.x
+
+Pedidos do dono do produto, anotados em 10/11/2026 para quando a v1.x estiver pronta. Cada um passa por alinhamento e ADR antes do código.
+
+| Ideia | O que é |
+| --- | --- |
+| Régua de porcentagem | No painel de opções, um controle deslizante (slider) no lugar dos botões fixos de 75% e 50% |
+| Interação por voz | Uso guiado por voz, para incluir pessoas com deficiência visual |
+| Dicas de uso | Um tutorial curto na primeira vez. As dicas continuam aparecendo enquanto o usuário quiser, e uma opção desliga |
+
 ---
 
 ## Parte 14 — Riscos e decisões em aberto
