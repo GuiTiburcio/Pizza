@@ -37,6 +37,25 @@ jobs:
       - name: Compilar
         run: dotnet build Pizza.slnx -c Release --no-restore
 
+      # TST-14: verificador independente. Só para teste; nunca entra no pacote do Pizza.
+      # A versão atual fica em exiftool.org e as antigas no SourceForge; o hash vale para as duas origens.
+      - name: Baixar ExifTool
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'exiftool.zip'
+          $hash = '9C79E97A9444BA1F893DA1DCBCAE378FBA0C0A0112AFD8BF426B396C75F884CE'
+          foreach ($url in 'https://exiftool.org/exiftool-13.62_64.zip', 'https://sourceforge.net/projects/exiftool/files/exiftool-13.62_64.zip/download') {
+            try { Invoke-WebRequest $url -OutFile $zip -UserAgent 'pizza-ci' -MaximumRedirection 5 } catch { continue }
+            if ((Get-FileHash $zip -Algorithm SHA256).Hash -eq $hash) { $ok = $true; break }
+          }
+          if (-not $ok) { throw 'ExifTool não baixado ou com hash diferente.' }
+          $folder = Join-Path $env:RUNNER_TEMP 'exiftool'
+          Expand-Archive $zip $folder
+          $exe = Get-ChildItem $folder -Recurse -Filter 'exiftool(-k).exe' | Select-Object -First 1
+          $tool = Join-Path $exe.DirectoryName 'exiftool.exe'
+          Rename-Item $exe.FullName $tool
+          "PIZZA_EXIFTOOL=$tool" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
       - name: Testar
         run: dotnet test Pizza.slnx -c Release --no-build --logger "trx" --results-directory TestResults
 
