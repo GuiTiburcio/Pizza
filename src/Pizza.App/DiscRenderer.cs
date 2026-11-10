@@ -242,7 +242,8 @@ internal static unsafe class DiscRenderer
 
         if (pulse)
         {
-            Fill(g, WithAlpha(Tint, 0.88), path);
+            // Formato escolhido: vidro mais fosco e escuro, sem marca; o ✓ fica só no aviso de concluído.
+            Fill(g, WithAlpha(Mix(Tint, Argb(255, 15, 19, 32), 0.45), 0.94), path);
         }
         else
         {
@@ -263,9 +264,8 @@ internal static unsafe class DiscRenderer
         var slice = frame.Slices[slot];
         // Nome e descrição seguem o arco da fatia, sempre de pé (escolha "B · Curva completa", Ref-Texto-Fatias).
         var ink = pulse ? Argb(255, 255, 255, 255) : Mix(_palette.SliceInk, _palette.HoverInk, hover);
-        var name = pulse ? "✓ " + slice.Label : slice.Label;
         var bold = hover >= 0.5;
-        CurvedLabel(g, name, bold ? _regular : _semibold, 14 + (2 * (float)hover), bold ? StyleBold : StyleRegular, ink, angle, CurvedText.NameRadius(angle, movement));
+        CurvedLabel(g, slice.Label, bold ? _regular : _semibold, 14 + (2 * (float)hover), bold ? StyleBold : StyleRegular, ink, angle, CurvedText.NameRadius(angle, movement));
         CurvedLabel(g, slice.Caption, _regular, 10.5f, StyleRegular, ink, angle, CurvedText.CaptionRadius(angle, movement));
     }
 
