@@ -277,7 +277,8 @@ internal static unsafe class DiscRenderer
         Fill(g, _palette.Center, center);
         Stroke(g, _palette.CenterBorder, 1, center);
         GdipDeletePath(center);
-        Arc(g, _palette.Sheen, 1.2f, cx, cy, 66, -151, 61);
+        // Brilho rente à borda do miolo (r 76). Mais para dentro, ele encostava nos traços de aba (r 64).
+        Arc(g, _palette.Sheen, 1.2f, cx, cy, 73, -151, 61);
 
         // Um traço por aba, na ordem da barra (WF-1, nota 4).
         for (var tab = 0; tab < MenuTabs.Names.Count; tab++)
