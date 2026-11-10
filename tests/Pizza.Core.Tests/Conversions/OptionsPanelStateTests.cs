@@ -196,6 +196,23 @@ public class OptionsPanelStateTests
     }
 
     [Fact]
+    public void Cada_controle_tem_alvo_de_pelo_menos_44_pixels_e_responde_na_borda()
+    {
+        // Fase 4b / NFR-06: o alvo inteiro é clicável, inclusive fora do texto.
+        foreach (var converter in ConverterCatalog.All.Where(c => c.HasPanel))
+        {
+            var panel = new OptionsPanelState(converter);
+            foreach (var target in panel.Targets)
+            {
+                Assert.True(target.Bounds.Right - target.Bounds.Left >= 44, converter.Id);
+                Assert.True(target.Bounds.Bottom - target.Bounds.Top >= 44, converter.Id);
+                Assert.Equal(target, panel.TargetAt(target.Bounds.Left + 1, target.Bounds.Top + 1));
+                Assert.Equal(target, panel.TargetAt(target.Bounds.Right - 1, target.Bounds.Bottom - 1));
+            }
+        }
+    }
+
+    [Fact]
     public void Ponto_encontra_o_alvo_certo()
     {
         var panel = Panel("image.png");
