@@ -17,7 +17,7 @@ Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equival
 | Configurações completas e políticas de TI | Planejadas |
 | Instaladores assinados, atualização verificada, SBOM e proveniência de release | Pendentes antes da distribuição estável |
 | Auditoria completa e medições finais de desempenho | Pendentes para a v1.0 |
-| Artefato original do Claude Design | [Referência disponível](design/README.md) |
+| Artefato original do Claude Design | [Referência disponível](dossie/README.md) |
 | Vídeo de aplicação prática | Planejado pelo mantenedor |
 
 Fases e critérios completos estão nas [SPECS](SPECS.md). Artefatos experimentais do CI são builds de desenvolvimento.

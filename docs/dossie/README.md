@@ -1,5 +1,7 @@
 # Dossiê do projeto
 
+**[Abrir o artefato original no Claude Design](https://claude.ai/artifact/LMrbTPnaY6EbVK1UPjcVDs#page-dcb81aee8d83)** (exige login no Claude). As imagens abaixo são as mesmas pranchas, exportadas para quem não usa o Claude. O texto consolidado do planejamento está em [PIZZA-PROJETO.md](../PIZZA-PROJETO.md).
+
 Pranchas do planejamento do Pizza, feitas antes do código, em 08/11/2026 e 09/11/2026. Elas mostram:
 
 - público e posicionamento;
@@ -42,6 +44,12 @@ Pranchas do planejamento do Pizza, feitas antes do código, em 08/11/2026 e 09/1
 ### DES-1 · Sistema visual
 
 ![Sistema visual](des-1-sistema-visual.png)
+
+### Referência · texto das fatias
+
+Decidido em 10/11/2026: **B · Curva completa**. A versão A, sem girar, foi descartada porque a descrição longa não cabia nas fatias laterais sem quebrar a linha.
+
+![Texto das fatias](ref-texto-fatias.png)
 
 ## Arquitetura
 
