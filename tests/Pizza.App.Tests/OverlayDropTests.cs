@@ -130,6 +130,25 @@ public sealed class OverlayDropTests
         Assert.False(Overlay.IsVisible);
     }
 
+    [Theory]
+    [InlineData(Native.WM_LBUTTONDOWN)]
+    [InlineData(Native.WM_LBUTTONUP)]
+    [InlineData(Native.WM_RBUTTONDOWN)]
+    [InlineData(Native.WM_RBUTTONUP)]
+    public void Botao_no_miolo_reinicia_prazo_e_timer_antigo_nao_fecha_a_escolha(uint message)
+    {
+        PrepareChoice();
+        var before = Environment.TickCount64;
+        typeof(Overlay).GetMethod("OnChoiceButton", PrivateStatic)!.Invoke(null,
+            [message, DiscLayout.CenterX, DiscLayout.CenterY]);
+
+        var deadline = (long)typeof(Overlay).GetField("_choiceDeadline", PrivateStatic)!.GetValue(null)!;
+        Assert.True(deadline >= before + 10_000);
+        // WM_TIMER pode estar na fila quando uma interação renova o prazo.
+        typeof(Overlay).GetMethod("OnTimer", PrivateStatic)!.Invoke(null, [ChoiceTimer]);
+        Assert.Equal(GestureState.Choosing, Session.State);
+    }
+
     [Fact]
     public void Efeito_sem_copy_nao_e_aceito()
     {
@@ -163,6 +182,8 @@ public sealed class OverlayDropTests
         Set("_pulseSlot", null);
         Set("_dropped", null);
         Set("_motion", MotionStyle.Slide);
+        Set("_choiceDeadline", 0L);
+        Set("_clickArmed", false);
         typeof(Overlay).GetProperty(nameof(Overlay.IsVisible))!.SetValue(null, true);
         ((TabCarousel)typeof(Overlay).GetField("Carousel", PrivateStatic)!.GetValue(null)!).Reset();
         var session = (GestureSession)typeof(Overlay).GetField("Session", PrivateStatic)!.GetValue(null)!;

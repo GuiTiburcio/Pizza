@@ -28,6 +28,7 @@ internal static unsafe class Overlay
     private const nuint TimerPulse = 6;
     private const nuint TimerChoice = 7;
     private const uint ChoiceIdleMs = 10_000; // ADR-025: 10 s sem nenhuma interação, a escolha fecha.
+    private static long _choiceDeadline;
     private const uint LeaveGraceMs = 80;
     private const uint WatchdogMs = 250;
     private const uint AnimationMs = 10;
@@ -217,7 +218,29 @@ internal static unsafe class Overlay
     {
         if (Session.State == GestureState.Choosing)
         {
-            SetTimer(Disc, TimerChoice, ChoiceIdleMs, 0);
+            _choiceDeadline = Environment.TickCount64 + ChoiceIdleMs;
+            if (Disc != 0)
+            {
+                SetTimer(Disc, TimerChoice, ChoiceIdleMs, 0);
+            }
+        }
+    }
+
+    private static void OnChoiceButton(uint message, int x, int y)
+    {
+        KeepChoosing();
+        if (message is WM_LBUTTONDOWN or WM_RBUTTONDOWN)
+        {
+            _clickArmed = true;
+        }
+        else
+        {
+            if (_clickArmed)
+            {
+                ChooseAt(x, y);
+            }
+
+            _clickArmed = false;
         }
     }
 
@@ -504,18 +527,9 @@ internal static unsafe class Overlay
                 KeepChoosing();
                 return 0;
 
-            case WM_LBUTTONDOWN or WM_RBUTTONDOWN when Session.State == GestureState.Choosing:
-                _clickArmed = true;
-                return 0;
-
-            case WM_LBUTTONUP or WM_RBUTTONUP when Session.State == GestureState.Choosing:
+            case WM_LBUTTONDOWN or WM_RBUTTONDOWN or WM_LBUTTONUP or WM_RBUTTONUP when Session.State == GestureState.Choosing:
                 // O botão direito numa fatia abre as opções do formato; fora das fatias, nenhum dos dois faz nada.
-                if (_clickArmed)
-                {
-                    ChooseAt(_left + (short)(lParam & 0xFFFF), _top + (short)((lParam >> 16) & 0xFFFF));
-                }
-
-                _clickArmed = false;
+                OnChoiceButton(msg, _left + (short)(lParam & 0xFFFF), _top + (short)((lParam >> 16) & 0xFFFF));
                 return 0;
 
             case WM_KEYDOWN when Session.State == GestureState.Choosing:
@@ -641,7 +655,15 @@ internal static unsafe class Overlay
             KillTimer(Disc, TimerChoice);
             if (Session.State == GestureState.Choosing)
             {
-                OnDropOutside();
+                var remaining = _choiceDeadline - Environment.TickCount64;
+                if (remaining <= 0)
+                {
+                    OnDropOutside();
+                }
+                else if (Disc != 0)
+                {
+                    SetTimer(Disc, TimerChoice, (uint)remaining, 0);
+                }
             }
 
             return;
