@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Pizza.App.Interop;
 using Pizza.Core.Conversions;
 using Pizza.Core.Diagnostics;
@@ -13,7 +12,7 @@ namespace Pizza.App;
 /// Menu radial no visual do Dossiê (ADR-023). São duas janelas: o menu, que aceita o drop, e uma camada
 /// quase invisível sobre todas as telas, que prepara a escolha por clique ao soltar fora das fatias (ADR-025).
 /// </summary>
-internal static unsafe class Overlay
+internal static unsafe partial class Overlay
 {
     public const uint WmGestureStarted = WM_APP + 1;
     public const uint WmGestureReleased = WM_APP + 2;
@@ -97,269 +96,6 @@ internal static unsafe class Overlay
         RevokeDragDrop(_catcher);
     }
 
-    public static void OnDragEnter(DraggedFiles? files, int x, int y)
-    {
-        if (Session.State == GestureState.Choosing)
-        {
-            return;
-        }
-
-        KillTimer(Disc, TimerLeave);
-        var action = Session.OnDragEnter(files is { } candidate && RadialMenu.CanConvert(candidate.First));
-        if (action == SessionAction.Close)
-        {
-            // Texto, ou arquivo sem conversão (FR-09): sai da frente e deixa o arraste seguir normal.
-            Log.Write(LogEvent.NotAFile);
-            Hide();
-            return;
-        }
-
-        if (files is { } dragged && _files?.First != dragged.First)
-        {
-            _files = files;
-        }
-
-        if (action == SessionAction.ShowMenu)
-        {
-            ShowMenu(x, y);
-        }
-        else
-        {
-            Render();
-        }
-    }
-
-    public static void OnDragLeave()
-    {
-        if (Session.OnDragLeave() == SessionAction.WaitForReentry)
-        {
-            SetTimer(Disc, TimerLeave, LeaveGraceMs, 0);
-        }
-    }
-
-    /// <summary>Atualiza o destaque e diz se o cursor está sobre uma fatia que aceita o arquivo.</summary>
-    public static bool OnDragOver(int x, int y)
-    {
-        var slot = TargetSlot(x, y);
-        if (slot != _hoverSlot)
-        {
-            SetHover(slot);
-        }
-
-        // ADR-025 / SEC-05: qualquer posição prepara o arquivo; só uma fatia seleciona o formato.
-        return Session.State == GestureState.Menu && _files is { Count: 1 } && IsVisible && _pulseSlot is null;
-    }
-
-    /// <summary>Aceita o drop numa fatia e mostra o pulso antes de seguir. Devolve falso se o drop não vale.</summary>
-    public static bool OnDrop(DraggedFiles? files, int x, int y, bool selectSlice = true)
-    {
-        // CF_HDROP é relido na soltura. Validar antes de alterar o estado ou indexar o catálogo (SEC-06).
-        if (Session.State != GestureState.Menu || files is not { Count: 1 } file ||
-            _files is not { Count: 1 } entered || !string.Equals(file.First, entered.First, StringComparison.OrdinalIgnoreCase) ||
-            !RadialMenu.CanConvert(file.First) || !IsVisible || _pulseSlot is not null)
-        {
-            return false;
-        }
-
-        var slot = selectSlice ? TargetSlot(x, y) : null;
-        if (slot is { } selected)
-        {
-            return Select(file.First, selected);
-        }
-
-        if (Session.OnDrop(true) != SessionAction.PrepareChoice)
-        {
-            return false;
-        }
-
-        StopDragTimers();
-        _clickArmed = false;
-        // Só ativa a janela depois que Drop devolver o controle ao Explorer.
-        PostMessageW(Disc, WmChoiceReady, 0, 0);
-        return true;
-    }
-
-    private static bool Select(string path, int slot)
-    {
-        var page = _pages[Carousel.Target];
-        var converter = RadialMenu.Slices(page.Tab, path, page.Turn).ElementAtOrDefault(slot);
-        if (converter is null)
-        {
-            return false;
-        }
-
-        Log.Write(LogEvent.FileDropped);
-        Session.End();
-        StopDragTimers();
-        ShowWindow(_catcher, SW_HIDE);
-
-        // O resto acontece depois que o Drop retornar: o Explorer fica preso até lá.
-        _dropped = (path, converter);
-        _pulseSlot = slot;
-        Render();
-        SetTimer(Disc, TimerPulse, _motion == MotionStyle.Instant ? 1 : PulseMs, 0);
-        return true;
-    }
-
-    private static void StopDragTimers()
-    {
-        KillTimer(Disc, TimerAfterRelease);
-        KillTimer(Disc, TimerWatchdog);
-        KillTimer(Disc, TimerLeave);
-        KillTimer(Disc, TimerChoice);
-    }
-
-    /// <summary>Clique durante a escolha, com qualquer botão: a fatia sob o cursor escolhe o formato.</summary>
-    private static bool ChooseAt(int x, int y) =>
-        Session.State == GestureState.Choosing && _files is { } file && TargetSlot(x, y) is { } slot && Select(file.First, slot);
-
-    /// <summary>Qualquer interação na escolha (mouse, roda, teclado) reinicia o prazo até fechar.</summary>
-    private static void KeepChoosing()
-    {
-        if (Session.State == GestureState.Choosing)
-        {
-            _choiceDeadline = Environment.TickCount64 + ChoiceIdleMs;
-            if (Disc != 0)
-            {
-                SetTimer(Disc, TimerChoice, ChoiceIdleMs, 0);
-            }
-        }
-    }
-
-    private static void OnChoiceButton(uint message, int x, int y)
-    {
-        KeepChoosing();
-        if (message is WM_LBUTTONDOWN or WM_RBUTTONDOWN)
-        {
-            _clickArmed = true;
-        }
-        else
-        {
-            if (_clickArmed)
-            {
-                ChooseAt(x, y);
-            }
-
-            _clickArmed = false;
-        }
-    }
-
-    private static void PrepareChoice()
-    {
-        if (Session.State != GestureState.Choosing)
-        {
-            return;
-        }
-
-        ShowWindow(_catcher, SW_HIDE);
-        SetHover(null);
-        OptionsPanel.TakeFocus(Disc);
-        if (GetForegroundWindow() != Disc)
-        {
-            // Se o Windows recusar foco, não deixar um menu preso sem receber Esc.
-            Hide();
-            return;
-        }
-
-        KeepChoosing();
-    }
-
-    private static void FinishDrop()
-    {
-        KillTimer(Disc, TimerPulse);
-        if (_dropped is not { } dropped)
-        {
-            return;
-        }
-
-        _dropped = null;
-        _pulseSlot = null;
-        if (dropped.Converter.HasPanel)
-        {
-            _awaitingOptions = dropped;
-            var (centerX, centerY) = DiscCenter();
-            HideWindow();
-            OptionsPanel.Show(dropped.Converter, Path.GetFileName(dropped.Path), centerX, centerY);
-        }
-        else
-        {
-            Hide();
-            Notifications.Convert(dropped.Path, dropped.Converter, new Dictionary<string, string>());
-        }
-    }
-
-    /// <summary>O painel fechou: com as opções escolhidas, ou null se o usuário cancelou.</summary>
-    public static void OnPanelClosed(IReadOnlyDictionary<string, string>? options)
-    {
-        if (_awaitingOptions is not { } pending)
-        {
-            return;
-        }
-
-        _awaitingOptions = null;
-        Hide();
-        if (options is null)
-        {
-            Log.Write(LogEvent.MenuCancelled);
-            return;
-        }
-
-        Notifications.Convert(pending.Path, pending.Converter, options);
-    }
-
-    /// <summary>Fatia sob o cursor, se houver uma disponível para o arquivo arrastado.</summary>
-    private static int? TargetSlot(int x, int y)
-    {
-        // FR-30: por enquanto, um arquivo por vez.
-        if (_files is not { Count: 1 } file || !IsVisible || _pulseSlot is not null)
-        {
-            return null;
-        }
-
-        // O alvo é a fatia como está desenhada: girada na troca de aba e, a em hover, maior.
-        var (centerX, centerY) = DiscCenter();
-        var growth = Hover.Select(transition => _motion == MotionStyle.Slide ? transition.Value : 0).ToArray();
-        var slot = RadialMenu.SlotAt((x - centerX) / _scale, (y - centerY) / _scale, Rotation(), growth);
-        var page = _pages[Carousel.Target];
-        return slot < RadialMenu.Slices(page.Tab, file.First, page.Turn).Count ? slot : null;
-    }
-
-    private static double Rotation() =>
-        _motion == MotionStyle.Slide ? -TabRotation * Carousel.DistanceTo(Carousel.Target) : 0;
-
-    private static (int X, int Y) DiscCenter() =>
-        (_left + (int)Math.Round(DiscLayout.CenterX * _scale), _top + (int)Math.Round(DiscLayout.CenterY * _scale));
-
-    public static void OnDropOutside()
-    {
-        Log.Write(LogEvent.MenuCancelled);
-        Hide();
-    }
-
-    /// <summary>Estado 2: só a camada invisível, até o OLE confirmar que o arraste é de arquivos.</summary>
-    private static void BeginGesture()
-    {
-        OptionsPanel.Close();
-        _awaitingOptions = null;
-        _dropped = null;
-        _pulseSlot = null;
-        KillTimer(Disc, TimerAfterRelease);
-        KillTimer(Disc, TimerPulse);
-        HideWindow();
-        _files = null;
-        Session.Begin();
-
-        SetWindowPos(
-            _catcher,
-            HWND_TOPMOST,
-            GetSystemMetrics(SM_XVIRTUALSCREEN),
-            GetSystemMetrics(SM_YVIRTUALSCREEN),
-            GetSystemMetrics(SM_CXVIRTUALSCREEN),
-            GetSystemMetrics(SM_CYVIRTUALSCREEN),
-            SWP_NOACTIVATE | SWP_SHOWWINDOW);
-        SetTimer(Disc, TimerWatchdog, WatchdogMs, 0);
-    }
-
     private static void ShowMenu(int x, int y)
     {
         var point = new POINT { X = x, Y = y };
@@ -433,34 +169,6 @@ internal static unsafe class Overlay
         IsVisible = false;
         _hoverSlot = null;
         DiscRenderer.Release();
-    }
-
-    private static void SetHover(int? slot)
-    {
-        if (_hoverSlot is { } previous)
-        {
-            Move(Hover[previous], 0);
-        }
-
-        if (slot is { } next)
-        {
-            Move(Hover[next], 1);
-        }
-
-        _hoverSlot = slot;
-        StartAnimation();
-    }
-
-    private static void Move(CardTransition transition, double target)
-    {
-        if (_motion == MotionStyle.Instant)
-        {
-            transition.Snap(target);
-        }
-        else
-        {
-            transition.Retarget(target);
-        }
     }
 
     private static void Render()
@@ -591,50 +299,6 @@ internal static unsafe class Overlay
         }
     }
 
-    private static void StartAnimation()
-    {
-        Render();
-
-        // Já animando: só o destino muda, e o movimento em curso continua sem tranco.
-        if (_lastFrame == 0 && IsAnimating())
-        {
-            _lastFrame = Stopwatch.GetTimestamp();
-            SetTimer(Disc, TimerAnimation, AnimationMs, 0);
-        }
-    }
-
-    private static bool IsAnimating() => Carousel.IsAnimating || Hover.Any(transition => !transition.IsDone);
-
-    private static void AnimationFrame()
-    {
-        // O tempo real decorrido, e não o intervalo do timer, mantém a velocidade constante.
-        var now = Stopwatch.GetTimestamp();
-        var elapsedMs = Stopwatch.GetElapsedTime(_lastFrame, now).TotalMilliseconds;
-        _lastFrame = now;
-
-        Carousel.Advance(elapsedMs);
-        foreach (var transition in Hover)
-        {
-            transition.Advance(elapsedMs);
-        }
-
-        Render();
-        if (!IsAnimating())
-        {
-            KillTimer(Disc, TimerAnimation);
-            _lastFrame = 0;
-        }
-    }
-
-    private static void OnButtonReleased()
-    {
-        KillTimer(Disc, TimerWatchdog);
-        if (Session.OnButtonReleased() == SessionAction.WaitForDrop)
-        {
-            SetTimer(Disc, TimerAfterRelease, AfterReleaseMs, 0);
-        }
-    }
-
     private static void OnTimer(nuint id)
     {
         if (id == TimerAnimation)
@@ -697,13 +361,6 @@ internal static unsafe class Overlay
             Log.Write(LogEvent.MenuCancelled);
             Hide();
         }
-    }
-
-    private static bool IsPrimaryButtonDown()
-    {
-        // GetAsyncKeyState lê o botão físico; com os botões trocados no Windows, o principal é o direito.
-        var button = GetSystemMetrics(SM_SWAPBUTTON) != 0 ? VK_RBUTTON : VK_LBUTTON;
-        return (GetAsyncKeyState(button) & 0x8000) != 0;
     }
 
     /// <summary>A camada é quase invisível: só precisa de algo pintado para o Windows entregar o mouse a ela.</summary>
