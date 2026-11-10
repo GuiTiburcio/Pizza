@@ -14,6 +14,7 @@ public sealed unsafe partial class SandboxedProcess : IDisposable
 
     private const int AlreadyExists = unchecked((int)0x800700B7);
     private const ulong MemoryLimitBytes = 1536UL * 1024 * 1024;
+    private const int KillWaitMs = 5000;
 
     private readonly nint _process;
     private readonly nint _job;
@@ -153,7 +154,15 @@ public sealed unsafe partial class SandboxedProcess : IDisposable
         return target;
     }
 
-    public void Kill() => TerminateProcess(_process, 1);
+    /// <summary>
+    /// Encerra e espera sair. TerminateProcess é assíncrono: até o fim, o processo ainda segura os
+    /// handles duplicados, e o temporário marcado para exclusão continuaria existindo (SEC-34).
+    /// </summary>
+    public void Kill()
+    {
+        TerminateProcess(_process, 1);
+        WaitForExit(KillWaitMs);
+    }
 
     public bool WaitForExit(int milliseconds) => WaitForSingleObject(_process, (uint)milliseconds) == 0;
 
