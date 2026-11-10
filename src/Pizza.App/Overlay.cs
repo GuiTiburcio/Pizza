@@ -26,6 +26,9 @@ internal static unsafe class Overlay
     private const nuint TimerAnimation = 4;
     private const nuint TimerLeave = 5;
     private const nuint TimerPulse = 6;
+    private const nuint TimerChoice = 7;
+    private const uint ChoiceIdleMs = 10_000; // ADR-025: 10 s sem nenhuma interação, a escolha fecha.
+    private static long _choiceDeadline;
     private const uint LeaveGraceMs = 80;
     private const uint WatchdogMs = 250;
     private const uint AnimationMs = 10;
@@ -203,6 +206,42 @@ internal static unsafe class Overlay
         KillTimer(Disc, TimerAfterRelease);
         KillTimer(Disc, TimerWatchdog);
         KillTimer(Disc, TimerLeave);
+        KillTimer(Disc, TimerChoice);
+    }
+
+    /// <summary>Clique durante a escolha, com qualquer botão: a fatia sob o cursor escolhe o formato.</summary>
+    private static bool ChooseAt(int x, int y) =>
+        Session.State == GestureState.Choosing && _files is { } file && TargetSlot(x, y) is { } slot && Select(file.First, slot);
+
+    /// <summary>Qualquer interação na escolha (mouse, roda, teclado) reinicia o prazo até fechar.</summary>
+    private static void KeepChoosing()
+    {
+        if (Session.State == GestureState.Choosing)
+        {
+            _choiceDeadline = Environment.TickCount64 + ChoiceIdleMs;
+            if (Disc != 0)
+            {
+                SetTimer(Disc, TimerChoice, ChoiceIdleMs, 0);
+            }
+        }
+    }
+
+    private static void OnChoiceButton(uint message, int x, int y)
+    {
+        KeepChoosing();
+        if (message is WM_LBUTTONDOWN or WM_RBUTTONDOWN)
+        {
+            _clickArmed = true;
+        }
+        else
+        {
+            if (_clickArmed)
+            {
+                ChooseAt(x, y);
+            }
+
+            _clickArmed = false;
+        }
     }
 
     private static void PrepareChoice()
@@ -219,7 +258,10 @@ internal static unsafe class Overlay
         {
             // Se o Windows recusar foco, não deixar um menu preso sem receber Esc.
             Hide();
+            return;
         }
+
+        KeepChoosing();
     }
 
     private static void FinishDrop()
@@ -373,6 +415,7 @@ internal static unsafe class Overlay
         KillTimer(Disc, TimerAfterRelease);
         KillTimer(Disc, TimerWatchdog);
         KillTimer(Disc, TimerPulse);
+        KillTimer(Disc, TimerChoice);
         ShowWindow(_catcher, SW_HIDE);
         HideWindow();
         _files = null;
@@ -481,22 +524,16 @@ internal static unsafe class Overlay
 
             case WM_MOUSEMOVE when Session.State == GestureState.Choosing:
                 OnDragOver(_left + (short)(lParam & 0xFFFF), _top + (short)((lParam >> 16) & 0xFFFF));
+                KeepChoosing();
                 return 0;
 
-            case WM_LBUTTONDOWN when Session.State == GestureState.Choosing:
-                _clickArmed = true;
-                return 0;
-
-            case WM_LBUTTONUP when Session.State == GestureState.Choosing:
-                if (_clickArmed && TargetSlot(_left + (short)(lParam & 0xFFFF), _top + (short)((lParam >> 16) & 0xFFFF)) is { } chosen && _files is { } selected)
-                {
-                    Select(selected.First, chosen);
-                }
-
-                _clickArmed = false;
+            case WM_LBUTTONDOWN or WM_RBUTTONDOWN or WM_LBUTTONUP or WM_RBUTTONUP when Session.State == GestureState.Choosing:
+                // O botão direito numa fatia abre as opções do formato; fora das fatias, nenhum dos dois faz nada.
+                OnChoiceButton(msg, _left + (short)(lParam & 0xFFFF), _top + (short)((lParam >> 16) & 0xFFFF));
                 return 0;
 
             case WM_KEYDOWN when Session.State == GestureState.Choosing:
+                KeepChoosing();
                 if ((int)wParam == VK_ESCAPE)
                 {
                     OnDropOutside();
@@ -535,6 +572,7 @@ internal static unsafe class Overlay
                     StartAnimation();
                 }
 
+                KeepChoosing();
                 return 0;
 
             case WM_TIMER:
@@ -608,6 +646,26 @@ internal static unsafe class Overlay
         if (id == TimerPulse)
         {
             FinishDrop();
+            return;
+        }
+
+        if (id == TimerChoice)
+        {
+            // Ninguém escolheu: o menu e a cópia da tela não ficam abertos para sempre (ADR-023).
+            KillTimer(Disc, TimerChoice);
+            if (Session.State == GestureState.Choosing)
+            {
+                var remaining = _choiceDeadline - Environment.TickCount64;
+                if (remaining <= 0)
+                {
+                    OnDropOutside();
+                }
+                else if (Disc != 0)
+                {
+                    SetTimer(Disc, TimerChoice, (uint)remaining, 0);
+                }
+            }
+
             return;
         }
 
