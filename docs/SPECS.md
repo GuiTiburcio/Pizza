@@ -99,6 +99,7 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | SEC-46 | Sem teto de arquivos; fila com no máximo 2 conversões por núcleo | 017 |
 | FR-23 | "Manter metadados" funciona em JPG, PNG e WEBP. Em PDF e ICO, a caixa aparece desativada, com o aviso de que o formato não guarda metadados | — |
 | Imagem → PDF | Gerador próprio, sem PDFsharp (AGPL desde a 6.5.0). Folha A4 acompanhando a orientação da imagem, margem de 10 mm. A biblioteca das demais operações de PDF será decidida na Fase 6 | 022 |
+| Desenho e vidro | GDI+ do Windows, sem Direct2D nem Vortice. Vidro desfocado pelo próprio Pizza a partir de uma cópia do trecho da tela atrás do menu, só em memória e zerada ao fechar; branco sólido 92% com a transparência do Windows desligada | 023 |
 | TST-03 | Sem SharpFuzz: ele só observa código C#, e quem interpreta os arquivos é o libvips nativo. Teste próprio corrompe arquivos válidos de cada formato de forma repetível e os passa pelo Worker real: cerca de 100 casos em cada PR e 5.000 por semana. Queda do Worker, travamento, temporário sobrando ou erro fora de `CORRUPTED`, `UNSUPPORTED` e `LIMIT_EXCEEDED` reprovam | — |
 | SEC-45 | HEIC fica de fora da lista enquanto o libvips empacotado não trouxer o codec HEVC: o menu não abre para `.heic`. AVIF continua aceito | — |
 | FR-22 | "Usar sempre estas opções" passa para a Fase 8, junto com a tela de Configuração que permite desfazer. Até lá, o painel sempre abre e Enter converte com o padrão | — |

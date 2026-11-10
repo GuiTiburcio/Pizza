@@ -57,6 +57,20 @@ public class CardMotionTests
     }
 
     [Fact]
+    public void Duracao_pode_ser_a_do_hover_da_fatia()
+    {
+        // WF-2: 180 ms, curva "ease".
+        var transition = new CardTransition(0, 180);
+        transition.Retarget(1);
+
+        transition.Advance(179);
+        Assert.False(transition.IsDone);
+
+        transition.Advance(1);
+        Assert.Equal(1, transition.Value);
+    }
+
+    [Fact]
     public void Snap_vai_direto()
     {
         var transition = new CardTransition(100);

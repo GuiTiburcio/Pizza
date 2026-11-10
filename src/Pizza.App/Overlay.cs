@@ -3,54 +3,58 @@ using Pizza.App.Interop;
 using Pizza.Core.Conversions;
 using Pizza.Core.Diagnostics;
 using Pizza.Core.Gesture;
+using Pizza.Core.Notifications;
+using Pizza.Core.Visual;
 using static Pizza.App.Interop.Native;
 
 namespace Pizza.App;
 
 /// <summary>
-/// Overlay da prova de conceito (etapa 1a): um disco simples em GDI, sem vidro. O visual final vem na Fase 4.
-/// São duas janelas: o disco, que aceita o drop, e uma camada quase invisível sobre todas as telas,
-/// que recusa o drop para que soltar fora do menu não vire uma cópia no Explorer.
+/// Menu radial no visual do Dossiê (ADR-023). São duas janelas: o menu, que aceita o drop, e uma camada
+/// quase invisível sobre todas as telas, que recusa o drop para que soltar fora do menu não vire uma cópia.
 /// </summary>
 internal static unsafe class Overlay
 {
     public const uint WmGestureStarted = WM_APP + 1;
     public const uint WmGestureReleased = WM_APP + 2;
     public const uint WmWheel = WM_APP + 3;
-    private const uint WmShowPanel = WM_APP + 5;
 
     private const string ClassName = "PizzaOverlay";
-    private const int DiscSize = 380;
     private const nuint TimerAfterRelease = 1;
     private const nuint TimerWatchdog = 3;
     private const nuint TimerAnimation = 4;
     private const nuint TimerLeave = 5;
+    private const nuint TimerPulse = 6;
     private const uint LeaveGraceMs = 80;
     private const uint WatchdogMs = 250;
     private const uint AnimationMs = 10;
     private const uint AfterReleaseMs = 400;
+    private const uint PulseMs = 120; // WF-2: pulso ao soltar.
+    private const double HoverMs = 180; // WF-2: 180 ms, curva "ease".
+    private const double TabRotation = 12; // FR-04: as fatias giram levemente ao trocar de aba.
 
     // A camada precisa de alfa maior que zero, senão o Windows deixa o mouse atravessar.
     private const byte CatcherAlpha = 1;
-    private const byte DiscAlpha = 235;
 
-    private static readonly uint DiscColor = Rgb(26, 33, 64);
     private static readonly DropTarget DiscTarget = new(acceptsDrop: true);
     private static readonly DropTarget CatcherTarget = new(acceptsDrop: false);
-
-    private static nint _catcher;
     private static readonly TabCarousel Carousel = new(MenuTabs.Names.Count);
     private static readonly GestureSession Session = new();
+    private static readonly CardTransition[] Hover = Enumerable.Range(0, RadialMenu.SlotCount).Select(_ => new CardTransition(0, HoverMs)).ToArray();
+
+    private static nint _catcher;
     private static long _lastFrame;
     private static MotionStyle _motion = MotionStyle.Slide;
-    private static int _size = DiscSize;
+    private static double _scale = 1;
     private static int _left;
     private static int _top;
     private static int? _hoverSlot;
+    private static int? _pulseSlot;
     private static DraggedFiles? _files;
+    private static (string Path, ConverterInfo Converter)? _dropped;
     private static (string Path, ConverterInfo Converter)? _awaitingOptions;
 
-    /// <summary>Janela do disco; também recebe as mensagens enviadas pelos hooks.</summary>
+    /// <summary>Janela do menu; também recebe as mensagens enviadas pelos hooks.</summary>
     public static nint Disc { get; private set; }
 
     /// <summary>Verdadeiro com o menu na tela; só a camada invisível não conta.</summary>
@@ -74,9 +78,8 @@ internal static unsafe class Overlay
 
         const uint exStyle = WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED | WS_EX_NOACTIVATE;
         _catcher = CreateWindowExW(exStyle, ClassName, "Pizza Camada", WS_POPUP, 0, 0, 1, 1, 0, 0, instance, 0);
-        Disc = CreateWindowExW(exStyle, ClassName, "Pizza", WS_POPUP, 0, 0, DiscSize, DiscSize, 0, 0, instance, 0);
+        Disc = CreateWindowExW(exStyle, ClassName, "Pizza", WS_POPUP, 0, 0, DiscLayout.Width, DiscLayout.Height, 0, 0, instance, 0);
         SetLayeredWindowAttributes(_catcher, 0, CatcherAlpha, LWA_ALPHA);
-        SetLayeredWindowAttributes(Disc, 0, DiscAlpha, LWA_ALPHA);
 
         DiscTarget.Register(Disc);
         CatcherTarget.Register(_catcher);
@@ -100,15 +103,18 @@ internal static unsafe class Overlay
             return;
         }
 
+        if (files is { } dragged && _files?.First != dragged.First)
+        {
+            _files = files;
+        }
+
         if (action == SessionAction.ShowMenu)
         {
             ShowMenu(x, y);
         }
-
-        if (files is { } dragged && _files?.First != dragged.First)
+        else
         {
-            _files = files;
-            Invalidate();
+            Render();
         }
     }
 
@@ -126,14 +132,13 @@ internal static unsafe class Overlay
         var slot = TargetSlot(x, y);
         if (slot != _hoverSlot)
         {
-            _hoverSlot = slot;
-            Invalidate();
+            SetHover(slot);
         }
 
         return slot is not null;
     }
 
-    /// <summary>Inicia a conversão se o arquivo caiu numa fatia. Devolve falso se o drop não vale.</summary>
+    /// <summary>Aceita o drop numa fatia e mostra o pulso antes de seguir. Devolve falso se o drop não vale.</summary>
     public static bool OnDrop(DraggedFiles? files, int x, int y)
     {
         if (files is not { Count: 1 } file || TargetSlot(x, y) is not { } slot)
@@ -148,30 +153,35 @@ internal static unsafe class Overlay
         KillTimer(Disc, TimerLeave);
         ShowWindow(_catcher, SW_HIDE);
 
-        _hoverSlot = null;
-        var converter = RadialMenu.Slices(Carousel.Target, file.First)[slot];
-        if (converter.HasPanel)
+        // O resto acontece depois que o Drop retornar: o Explorer fica preso até lá.
+        _dropped = (file.First, RadialMenu.Slices(Carousel.Target, file.First)[slot]);
+        _pulseSlot = slot;
+        Render();
+        SetTimer(Disc, TimerPulse, _motion == MotionStyle.Instant ? 1 : PulseMs, 0);
+        return true;
+    }
+
+    private static void FinishDrop()
+    {
+        KillTimer(Disc, TimerPulse);
+        if (_dropped is not { } dropped)
         {
-            // Abre depois que o Drop retornar: o Explorer fica preso até lá.
-            _awaitingOptions = (file.First, converter);
-            PostMessageW(Disc, WmShowPanel, 0, 0);
+            return;
+        }
+
+        _dropped = null;
+        _pulseSlot = null;
+        if (dropped.Converter.HasPanel)
+        {
+            _awaitingOptions = dropped;
+            var (centerX, centerY) = DiscCenter();
+            HideWindow();
+            OptionsPanel.Show(dropped.Converter, Path.GetFileName(dropped.Path), centerX, centerY);
         }
         else
         {
             Hide();
-            Notifications.Convert(file.First, converter, new Dictionary<string, string>());
-        }
-
-        return true;
-    }
-
-    private static void ShowPanel()
-    {
-        if (_awaitingOptions is { } pending)
-        {
-            ShowWindow(Disc, SW_HIDE);
-            IsVisible = false;
-            OptionsPanel.Show(pending.Converter, Path.GetFileName(pending.Path), _left + (_size / 2), _top + (_size / 2));
+            Notifications.Convert(dropped.Path, dropped.Converter, new Dictionary<string, string>());
         }
     }
 
@@ -198,16 +208,18 @@ internal static unsafe class Overlay
     private static int? TargetSlot(int x, int y)
     {
         // FR-30: por enquanto, um arquivo por vez.
-        if (_files is not { Count: 1 } file || !IsVisible)
+        if (_files is not { Count: 1 } file || !IsVisible || _pulseSlot is not null)
         {
             return null;
         }
 
-        var center = _size / 2.0;
-        var scale = DiscSize / (double)_size;
-        var slot = RadialMenu.SlotAt((x - _left - center) * scale, (y - _top - center) * scale);
+        var (centerX, centerY) = DiscCenter();
+        var slot = RadialMenu.SlotAt((x - centerX) / _scale, (y - centerY) / _scale);
         return slot < RadialMenu.Slices(Carousel.Target, file.First).Count ? slot : null;
     }
+
+    private static (int X, int Y) DiscCenter() =>
+        (_left + (int)Math.Round(DiscLayout.CenterX * _scale), _top + (int)Math.Round(DiscLayout.CenterY * _scale));
 
     public static void OnDropOutside()
     {
@@ -220,11 +232,12 @@ internal static unsafe class Overlay
     {
         OptionsPanel.Close();
         _awaitingOptions = null;
+        _dropped = null;
+        _pulseSlot = null;
         KillTimer(Disc, TimerAfterRelease);
-        ShowWindow(Disc, SW_HIDE);
-        IsVisible = false;
+        KillTimer(Disc, TimerPulse);
+        HideWindow();
         _files = null;
-        _hoverSlot = null;
         Session.Begin();
 
         SetWindowPos(
@@ -251,20 +264,27 @@ internal static unsafe class Overlay
         var info = new MONITORINFO { CbSize = (uint)sizeof(MONITORINFO) };
         GetMonitorInfoW(monitor, &info);
 
-        // Perto da borda, desloca para o disco caber inteiro na tela (WF-1, nota 5).
-        _size = DiscSize * (int)dpiX / 96;
-        _left = Math.Max(info.RcWork.Left, Math.Min(x - (_size / 2), info.RcWork.Right - _size));
-        _top = Math.Max(info.RcWork.Top, Math.Min(y - (_size / 2), info.RcWork.Bottom - _size));
+        // O disco nasce centrado no cursor; perto da borda, o conjunto desloca para caber inteiro (WF-1, nota 5).
+        _scale = dpiX / 96.0;
+        var width = (int)Math.Round(DiscLayout.Width * _scale);
+        var height = (int)Math.Round(DiscLayout.Height * _scale);
+        _left = Math.Max(info.RcWork.Left, Math.Min(x - (int)Math.Round(DiscLayout.CenterX * _scale), info.RcWork.Right - width));
+        _top = Math.Max(info.RcWork.Top, Math.Min(y - (int)Math.Round(DiscLayout.CenterY * _scale), info.RcWork.Bottom - height));
 
         Carousel.Reset();
+        _hoverSlot = null;
+        foreach (var transition in Hover)
+        {
+            transition.Snap(0);
+        }
+
         _motion = ResolveMotion();
 
-        // A posição e o tamanho são definidos antes da região, que é relativa à janela.
-        SetWindowPos(Disc, HWND_TOPMOST, _left, _top, _size, _size, SWP_NOACTIVATE | SWP_SHOWWINDOW);
-        SetWindowRgn(Disc, CreateEllipticRgn(0, 0, _size + 1, _size + 1), 1);
-
+        // O vidro copia a tela antes de o menu aparecer, para não se desfocar a si mesmo.
+        DiscRenderer.Prepare(_left, _top, width, height, (int)dpiX);
         IsVisible = true;
-        Invalidate();
+        Render();
+        SetWindowPos(Disc, HWND_TOPMOST, _left, _top, width, height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
         Log.Write(LogEvent.MenuOpened);
     }
 
@@ -284,16 +304,76 @@ internal static unsafe class Overlay
         KillTimer(Disc, TimerLeave);
         KillTimer(Disc, TimerAfterRelease);
         KillTimer(Disc, TimerWatchdog);
-        KillTimer(Disc, TimerAnimation);
-        _lastFrame = 0;
+        KillTimer(Disc, TimerPulse);
         ShowWindow(_catcher, SW_HIDE);
-        ShowWindow(Disc, SW_HIDE);
-        IsVisible = false;
+        HideWindow();
         _files = null;
-        _hoverSlot = null;
+        _dropped = null;
+        _pulseSlot = null;
     }
 
-    private static void Invalidate() => InvalidateRect(Disc, null, 0);
+    /// <summary>Some com o menu e descarta a cópia da tela usada no vidro (ADR-023).</summary>
+    private static void HideWindow()
+    {
+        KillTimer(Disc, TimerAnimation);
+        _lastFrame = 0;
+        ShowWindow(Disc, SW_HIDE);
+        IsVisible = false;
+        _hoverSlot = null;
+        DiscRenderer.Release();
+    }
+
+    private static void SetHover(int? slot)
+    {
+        if (_hoverSlot is { } previous)
+        {
+            Move(Hover[previous], 0);
+        }
+
+        if (slot is { } next)
+        {
+            Move(Hover[next], 1);
+        }
+
+        _hoverSlot = slot;
+        StartAnimation();
+    }
+
+    private static void Move(CardTransition transition, double target)
+    {
+        if (_motion == MotionStyle.Instant)
+        {
+            transition.Snap(target);
+        }
+        else
+        {
+            transition.Retarget(target);
+        }
+    }
+
+    private static void Render()
+    {
+        if (!IsVisible)
+        {
+            return;
+        }
+
+        var fileName = _files is { } files ? Path.GetFileName(files.First) : null;
+        var slices = _files is { } dragged ? RadialMenu.Slices(Carousel.Target, dragged.First) : [];
+        var rotation = _motion == MotionStyle.Slide ? -TabRotation * Carousel.DistanceTo(Carousel.Target) : 0;
+        var frame = new DiscFrame(
+            _scale,
+            fileName,
+            _files?.Count ?? 0,
+            slices,
+            Hover.Select(transition => transition.Value).ToArray(),
+            _motion == MotionStyle.Instant ? Carousel.Target : Carousel.Position,
+            Carousel.Target,
+            rotation,
+            _motion,
+            _pulseSlot);
+        DiscRenderer.Show(Disc, _left, _top, frame);
+    }
 
     [System.Runtime.InteropServices.UnmanagedCallersOnly]
     private static nint WndProc(nint hwnd, uint msg, nuint wParam, nint lParam)
@@ -309,16 +389,17 @@ internal static unsafe class Overlay
                 return 0;
 
             case WmWheel:
-                if (IsVisible && Carousel.OnWheel((int)lParam))
+                if (IsVisible && _pulseSlot is null && Carousel.OnWheel((int)lParam))
                 {
-                    _hoverSlot = null;
+                    SetHover(null);
+                    if (_motion != MotionStyle.Slide)
+                    {
+                        Carousel.Snap();
+                    }
+
                     StartAnimation();
                 }
 
-                return 0;
-
-            case WmShowPanel:
-                ShowPanel();
                 return 0;
 
             case WM_TIMER:
@@ -329,7 +410,7 @@ internal static unsafe class Overlay
                 return 1;
 
             case WM_PAINT:
-                Paint(hwnd);
+                PaintCatcher(hwnd);
                 return 0;
 
             default:
@@ -339,20 +420,17 @@ internal static unsafe class Overlay
 
     private static void StartAnimation()
     {
-        if (_motion == MotionStyle.Instant)
-        {
-            Carousel.Snap();
-            Invalidate();
-            return;
-        }
+        Render();
 
-        // Já animando: só o destino muda, e o deslize em curso continua sem tranco.
-        if (_lastFrame == 0)
+        // Já animando: só o destino muda, e o movimento em curso continua sem tranco.
+        if (_lastFrame == 0 && IsAnimating())
         {
             _lastFrame = Stopwatch.GetTimestamp();
             SetTimer(Disc, TimerAnimation, AnimationMs, 0);
         }
     }
+
+    private static bool IsAnimating() => Carousel.IsAnimating || Hover.Any(transition => !transition.IsDone);
 
     private static void AnimationFrame()
     {
@@ -362,8 +440,13 @@ internal static unsafe class Overlay
         _lastFrame = now;
 
         Carousel.Advance(elapsedMs);
-        Invalidate();
-        if (!Carousel.IsAnimating)
+        foreach (var transition in Hover)
+        {
+            transition.Advance(elapsedMs);
+        }
+
+        Render();
+        if (!IsAnimating())
         {
             KillTimer(Disc, TimerAnimation);
             _lastFrame = 0;
@@ -384,6 +467,12 @@ internal static unsafe class Overlay
         if (id == TimerAnimation)
         {
             AnimationFrame();
+            return;
+        }
+
+        if (id == TimerPulse)
+        {
+            FinishDrop();
             return;
         }
 
@@ -425,220 +514,15 @@ internal static unsafe class Overlay
         return (GetAsyncKeyState(button) & 0x8000) != 0;
     }
 
-    private static void Paint(nint hwnd)
+    /// <summary>A camada é quase invisível: só precisa de algo pintado para o Windows entregar o mouse a ela.</summary>
+    private static void PaintCatcher(nint hwnd)
     {
         PAINTSTRUCT ps;
         var hdc = BeginPaint(hwnd, &ps);
-        if (hwnd == Disc)
-        {
-            // Desenha fora da tela e copia de uma vez: é o que evita o piscar durante o deslize.
-            var buffer = CreateCompatibleDC(hdc);
-            var bitmap = CreateCompatibleBitmap(hdc, _size, _size);
-            var oldBitmap = SelectObject(buffer, bitmap);
-            PaintDisc(buffer);
-            BitBlt(hdc, 0, 0, _size, _size, buffer, 0, 0, SRCCOPY);
-            SelectObject(buffer, oldBitmap);
-            DeleteObject(bitmap);
-            DeleteDC(buffer);
-        }
-        else
-        {
-            var brush = CreateSolidBrush(0);
-            var area = ps.RcPaint;
-            FillRect(hdc, &area, brush);
-            DeleteObject(brush);
-        }
-
+        var brush = CreateSolidBrush(0);
+        var area = ps.RcPaint;
+        FillRect(hdc, &area, brush);
+        DeleteObject(brush);
         EndPaint(hwnd, &ps);
     }
-
-    private static void PaintDisc(nint hdc)
-    {
-        var whole = new RECT { Right = _size, Bottom = _size };
-        var background = CreateSolidBrush(DiscColor);
-        FillRect(hdc, &whole, background);
-        DeleteObject(background);
-
-        var margin = Scale(3);
-        var ring = CreatePen(PS_SOLID, Scale(4), Rgb(47, 107, 255));
-        var oldPen = SelectObject(hdc, ring);
-        var oldBrush = SelectObject(hdc, GetStockObject(NULL_BRUSH));
-        Ellipse(hdc, margin, margin, _size - margin, _size - margin);
-        SelectObject(hdc, oldBrush);
-        SelectObject(hdc, oldPen);
-        DeleteObject(ring);
-
-        SetBkMode(hdc, TRANSPARENT);
-        DrawSlices(hdc);
-        DrawTabs(hdc);
-        DrawTabDots(hdc);
-        DrawCenter(hdc);
-        DrawLine(hdc, "Role para trocar a aba", 292, 13, FW_NORMAL, Rgb(170, 182, 214));
-        DrawLine(hdc, "Solte o Ctrl e aperte Esc para cancelar", 314, 13, FW_NORMAL, Rgb(170, 182, 214));
-    }
-
-    /// <summary>Fatias da aba atual. Sem vidro: o visual final é da Fase 4.</summary>
-    private static void DrawSlices(nint hdc)
-    {
-        if (_files is not { } file)
-        {
-            return;
-        }
-
-        var slices = RadialMenu.Slices(Carousel.Target, file.First);
-        for (var slot = 0; slot < slices.Count; slot++)
-        {
-            var active = slot == _hoverSlot;
-            var fill = CreateSolidBrush(active ? Rgb(47, 107, 255) : Rgb(62, 72, 112));
-            var oldBrush = SelectObject(hdc, fill);
-            var oldPen = SelectObject(hdc, GetStockObject(NULL_PEN));
-            DrawSliceShape(hdc, RadialMenu.SlotAngle(slot));
-            SelectObject(hdc, oldPen);
-            SelectObject(hdc, oldBrush);
-            DeleteObject(fill);
-
-            // FR e Parte 2.4: a cor nunca é o único sinal da fatia ativa.
-            var angle = RadialMenu.SlotAngle(slot) * Math.PI / 180;
-            var labelRadius = (RadialMenu.InnerRadius + RadialMenu.OuterRadius) / 2;
-            var cx = (int)(190 + (labelRadius * Math.Cos(angle)));
-            var cy = (int)(190 + (labelRadius * Math.Sin(angle)));
-            DrawAt(hdc, slices[slot].Label, cx, cy - 10, active ? 18 : 15, active ? FW_BOLD : FW_SEMIBOLD, Rgb(255, 255, 255));
-            DrawAt(hdc, slices[slot].Caption, cx, cy + 12, 10, FW_NORMAL, Rgb(214, 222, 240));
-        }
-    }
-
-    private static void DrawSliceShape(nint hdc, double centerDegrees)
-    {
-        const int steps = 11;
-        var points = stackalloc POINT[(steps + 1) * 2];
-        for (var i = 0; i <= steps; i++)
-        {
-            var degrees = centerDegrees - RadialMenu.HalfSliceDegrees + (2 * RadialMenu.HalfSliceDegrees * i / steps);
-            points[i] = PointAt(degrees, RadialMenu.OuterRadius);
-            points[((steps + 1) * 2) - 1 - i] = PointAt(degrees, RadialMenu.InnerRadius);
-        }
-
-        Polygon(hdc, points, (steps + 1) * 2);
-    }
-
-    private static POINT PointAt(double degrees, double radius)
-    {
-        var angle = degrees * Math.PI / 180;
-        return new POINT { X = Scale(190) + (int)Math.Round(Scale(1000) * radius * Math.Cos(angle) / 1000), Y = Scale(190) + (int)Math.Round(Scale(1000) * radius * Math.Sin(angle) / 1000) };
-    }
-
-    private static void DrawCenter(nint hdc)
-    {
-        if (_files is not { } file)
-        {
-            return;
-        }
-
-        if (file.Count > 1)
-        {
-            DrawAt(hdc, $"{file.Count} arquivos", 190, 196, 13, FW_SEMIBOLD, Rgb(255, 255, 255));
-            DrawAt(hdc, "Por enquanto,", 190, 218, 10, FW_NORMAL, Rgb(214, 222, 240));
-            DrawAt(hdc, "um arquivo por vez", 190, 232, 10, FW_NORMAL, Rgb(214, 222, 240));
-            return;
-        }
-
-        var rect = new RECT { Left = Scale(122), Top = Scale(186), Right = Scale(258), Bottom = Scale(212) };
-        Draw(hdc, Path.GetFileName(file.First), &rect, 12, FW_SEMIBOLD, Rgb(255, 255, 255), DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
-    }
-
-    private static void DrawAt(nint hdc, string text, int centerX, int centerY, int fontSize, int weight, uint color)
-    {
-        var rect = new RECT { Left = Scale(centerX - 70), Top = Scale(centerY - fontSize), Right = Scale(centerX + 70), Bottom = Scale(centerY + fontSize) };
-        Draw(hdc, text, &rect, fontSize, weight, color, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
-    }
-
-    /// <summary>Nomes das abas numa faixa que desliza: a central acesa, as vizinhas apagando nas pontas.</summary>
-    private static void DrawTabs(nint hdc)
-    {
-        const int spacing = 118;
-        const int halfWidth = 70;
-        const int centerRadius = 76;
-        var center = _size / 2;
-
-        // As abas deslizam dentro do miolo e somem na borda dele, sem invadir as fatias.
-        var clip = CreateEllipticRgn(center - Scale(centerRadius), center - Scale(centerRadius), center + Scale(centerRadius), center + Scale(centerRadius));
-        SelectClipRgn(hdc, clip);
-        DeleteObject(clip);
-
-        for (var tab = 0; tab < MenuTabs.Names.Count; tab++)
-        {
-            var distance = Carousel.DistanceTo(tab);
-            var absolute = Math.Abs(distance);
-            if (absolute >= 1.5)
-            {
-                continue;
-            }
-
-            if (_motion == MotionStyle.Fade && absolute >= 1)
-            {
-                continue;
-            }
-
-            // Em "menos movimento" a aba não anda: só troca de opacidade no mesmo lugar.
-            var brightness = _motion == MotionStyle.Fade ? 1 - absolute
-                : absolute < 1 ? 1 - (0.75 * absolute) : 0.25 * (1.5 - absolute) / 0.5;
-            var x = _motion == MotionStyle.Fade ? center : center + (int)Math.Round(distance * Scale(spacing));
-            var rect = new RECT { Left = x - Scale(halfWidth), Top = Scale(128), Right = x + Scale(halfWidth), Bottom = Scale(162) };
-            Draw(hdc, MenuTabs.Names[tab], &rect, 20, FW_BOLD, Mix(DiscColor, Rgb(255, 255, 255), brightness), DT_CENTER | DT_SINGLELINE | DT_VCENTER);
-        }
-
-        SelectClipRgn(hdc, 0);
-    }
-
-    /// <summary>Um ponto por aba; o brilho acompanha a posição do deslize.</summary>
-    private static void DrawTabDots(nint hdc)
-    {
-        const int gap = 18;
-        const int radius = 4;
-        var count = MenuTabs.Names.Count;
-        var first = (_size / 2) - (Scale(gap) * (count - 1) / 2);
-        var y = Scale(172);
-        var oldPen = SelectObject(hdc, GetStockObject(NULL_PEN));
-
-        for (var tab = 0; tab < count; tab++)
-        {
-            var lit = Math.Max(0, 1 - Math.Abs(Carousel.DistanceTo(tab)));
-            var brush = CreateSolidBrush(Mix(Rgb(84, 96, 136), Rgb(47, 107, 255), lit));
-            var oldBrush = SelectObject(hdc, brush);
-            var x = first + (tab * Scale(gap));
-            Ellipse(hdc, x - Scale(radius), y - Scale(radius), x + Scale(radius), y + Scale(radius));
-            SelectObject(hdc, oldBrush);
-            DeleteObject(brush);
-        }
-
-        SelectObject(hdc, oldPen);
-    }
-
-    private static uint Mix(uint from, uint to, double amount)
-    {
-        static uint Channel(uint a, uint b, double t) => (uint)Math.Round(a + ((double)b - a) * t);
-
-        var r = Channel(from & 0xFF, to & 0xFF, amount);
-        var g = Channel((from >> 8) & 0xFF, (to >> 8) & 0xFF, amount);
-        var b = Channel((from >> 16) & 0xFF, (to >> 16) & 0xFF, amount);
-        return r | (g << 8) | (b << 16);
-    }
-
-    private static void DrawLine(nint hdc, string text, int top, int fontSize, int weight, uint color)
-    {
-        var rect = new RECT { Left = Scale(46), Top = Scale(top), Right = _size - Scale(46), Bottom = Scale(top + (fontSize * 2)) };
-        Draw(hdc, text, &rect, fontSize, weight, color, DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
-    }
-
-    private static void Draw(nint hdc, string text, RECT* rect, int fontSize, int weight, uint color, uint format)
-    {
-        var font = CreateFontW(-Scale(fontSize), 0, 0, 0, weight, 0, 0, 0, 1, 0, 0, CLEARTYPE_QUALITY, 0, "Segoe UI");
-        var old = SelectObject(hdc, font);
-        SetTextColor(hdc, color);
-        DrawTextW(hdc, text, -1, rect, format);
-        SelectObject(hdc, old);
-        DeleteObject(font);
-    }
-
-    private static int Scale(int value) => value * _size / DiscSize;
 }

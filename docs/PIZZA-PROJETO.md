@@ -731,6 +731,7 @@ Cada decisão também tem um arquivo próprio em [`docs/adr/`](adr/).
 | 020 | Menu do ícone próprio de vidro, com Play/Pause/Stop da fila | Pedido do mantenedor; menu curto | Linhas de texto no menu do Windows |
 | 021 | Pipe sem nome entre residente e Worker | Mais simples e sem como ser aberto por outro processo | Pipe com nome e ACL condicional |
 | 022 | Imagem → PDF com gerador próprio, folha A4 e margem de 10 mm | PDFsharp virou AGPL na 6.5.0; sem dependência nova | PDFsharp 6.2.4 ou AGPL; página do tamanho da imagem |
+| 023 | GDI+ e desfoque próprio do vidro, substituindo Direct2D e Acrylic do ADR-003 | Acrylic e composição do Windows não funcionam com o disco inativo; sem dependência nova | Vortice, Acrylic, composição, API não documentada |
 
 ---
 
