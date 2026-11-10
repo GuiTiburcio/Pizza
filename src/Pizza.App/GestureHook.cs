@@ -55,6 +55,12 @@ internal static unsafe class GestureHook
 
                     break;
 
+                case WM_RBUTTONDOWN:
+                    // ADR-025: botão direito fora do Pizza durante a escolha fecha o menu antes de o Windows
+                    // entregar o clique, que segue para a janela de baixo como de costume.
+                    Overlay.OnRightButtonDown(data->Pt);
+                    break;
+
                 case WM_MOUSEWHEEL when Overlay.IsVisible:
                     // Com o menu aberto, a roda é só nossa: a janela de baixo não rola.
                     PostMessageW(Overlay.Disc, Overlay.WmWheel, 0, (short)(data->MouseData >> 16));

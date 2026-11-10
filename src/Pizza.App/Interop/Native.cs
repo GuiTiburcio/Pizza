@@ -382,6 +382,9 @@ internal static unsafe partial class Native
     public static partial int SetForegroundWindow(nint hwnd);
 
     [LibraryImport("user32.dll")]
+    public static partial nint WindowFromPoint(POINT point);
+
+    [LibraryImport("user32.dll")]
     public static partial nint SetCapture(nint hwnd);
 
     [LibraryImport("user32.dll")]

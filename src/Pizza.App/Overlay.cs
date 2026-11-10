@@ -471,7 +471,7 @@ internal static unsafe class Overlay
                 return 0;
 
             case WM_RBUTTONDOWN or WM_RBUTTONUP when _picking:
-                // Botão direito fora das fatias não faz nada, nem chega à janela de baixo.
+                // Botão direito no disco, fora das fatias, não faz nada. Fora do disco, o hook já fechou o menu.
                 return 0;
 
             case WM_LBUTTONUP when _cancelOnRelease:
@@ -658,6 +658,18 @@ internal static unsafe class Overlay
         {
             _picking = false;
             SetWindowLongPtrW(_catcher, GWL_EXSTYLE, GetWindowLongPtrW(_catcher, GWL_EXSTYLE) | (nint)WS_EX_NOACTIVATE);
+        }
+    }
+
+    /// <summary>
+    /// Chamado pelo hook de mouse, na mesma thread, antes de o Windows decidir quem recebe o clique. Se o
+    /// botão direito desceu sobre a camada (fora do Pizza), ela some e o clique chega à janela de baixo.
+    /// </summary>
+    public static void OnRightButtonDown(POINT point)
+    {
+        if (_picking && WindowFromPoint(point) == _catcher)
+        {
+            CancelPicking();
         }
     }
 
