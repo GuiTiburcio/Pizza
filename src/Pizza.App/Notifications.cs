@@ -26,18 +26,17 @@ internal static unsafe class Notifications
     private const int OverflowId = 0;
     private const double SweepMs = 1200;
 
-    private static readonly uint White = Rgb(255, 255, 255);
-    private static readonly uint Ink = Rgb(15, 19, 32);
-    private static readonly uint Body = Rgb(58, 67, 87);
-    private static readonly uint Line = Rgb(221, 225, 234);
-    private static readonly uint Soft = Rgb(236, 239, 244);
-    private static readonly uint Accent = Rgb(47, 107, 255);
+    public static readonly uint White = Rgb(255, 255, 255);
+    public static readonly uint Ink = Rgb(15, 19, 32);
+    public static readonly uint Body = Rgb(58, 67, 87);
+    public static readonly uint Line = Rgb(221, 225, 234);
+    public static readonly uint Soft = Rgb(236, 239, 244);
+    public static readonly uint Accent = Rgb(47, 107, 255);
+    public static readonly uint Failure = Rgb(196, 60, 60);
     private static readonly uint Success = Rgb(46, 158, 98);
-    private static readonly uint Failure = Rgb(196, 60, 60);
 
     private static readonly NotificationStack Stack = new();
     private static readonly List<Card> Cards = [];
-    private static readonly Dictionary<long, Request> Requests = [];
 
     private static nint _host;
     private static nint _instance;
@@ -49,6 +48,12 @@ internal static unsafe class Notifications
     private static bool _clockRunning;
     private static int _dpi = 96;
     private static RECT _area;
+
+    public static ConversionHistory History { get; } = new() { InUse = Stack.Contains };
+
+    public static int Dpi => _dpi;
+
+    public static RECT WorkArea => _area;
 
     public static void Create()
     {
@@ -74,11 +79,12 @@ internal static unsafe class Notifications
     public static void Convert(string path, ConverterInfo converter, IReadOnlyDictionary<string, string> options)
     {
         var id = ++_nextId;
-        Requests[id] = new Request(path, converter, options);
+        History.Add(id, path, converter, options);
         Stack.Set(id, NotificationKind.Progress, "Convertendo…", $"{Path.GetFileName(path)} → {converter.Label}");
         Conversion.Start(id, path, converter, options, _host, WmConversionDone);
         RefreshHeld();
         Sync();
+        FilesPanel.Refresh();
     }
 
     private static void OnConversionDone()
@@ -96,7 +102,7 @@ internal static unsafe class Notifications
         }
 
         Log.Write(result.ErrorCode is null ? LogEvent.ConversionDone : LogEvent.ConversionFailed);
-        if (!Requests.TryGetValue(finished.Id, out var request))
+        if (History.Find(finished.Id) is not { } entry)
         {
             return;
         }
@@ -105,17 +111,20 @@ internal static unsafe class Notifications
         if (result.ErrorCode is { } code)
         {
             // FR-42 e PRIV-17: o motivo em português e só o nome do arquivo, nunca o caminho.
-            Stack.Set(finished.Id, NotificationKind.Error, "Não foi possível converter", $"{Path.GetFileName(request.Path)} → {request.Converter.Label} · {ConversionMessages.For(code)}");
+            var message = ConversionMessages.For(code);
+            History.Fail(finished.Id, message);
+            Stack.Set(finished.Id, NotificationKind.Error, "Não foi possível converter", $"{Path.GetFileName(entry.SourcePath)} → {entry.Converter.Label} · {message}");
             Play("erro.wav");
         }
         else
         {
-            request.OutputPath = Path.Combine(Path.GetDirectoryName(request.Path)!, result.OutputName!);
+            History.Complete(finished.Id, Path.Combine(Path.GetDirectoryName(entry.SourcePath)!, result.OutputName!));
             Stack.Set(finished.Id, NotificationKind.Success, "Conversão concluída", result.OutputName!);
             Play("concluido.wav");
         }
 
         Sync();
+        FilesPanel.Refresh();
     }
 
     /// <summary>FR-43: tocado pelo Windows; quem está retido não ouve nada, nem depois.</summary>
@@ -171,11 +180,6 @@ internal static unsafe class Notifications
         foreach (var card in Cards.Where(card => !card.Exiting && !live.Contains(card.Id)).ToArray())
         {
             Exit(card, motion);
-        }
-
-        foreach (var id in Requests.Keys.Where(id => !Stack.Contains(id)).ToArray())
-        {
-            Requests.Remove(id);
         }
 
         Apply();
@@ -265,7 +269,10 @@ internal static unsafe class Notifications
             }
 
             SetLayeredWindowAttributes(card.Hwnd, 0, (byte)(CardAlpha * card.Alpha.Value), LWA_ALPHA);
-            SetWindowPos(card.Hwnd, HWND_TOPMOST, left, (int)card.Top.Value, Scale(NotificationCardLayout.Width), card.Height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+
+            // Com o painel "Arquivos..." aberto, os cartões ficam logo abaixo dele, sem cobrir a lista.
+            var after = FilesPanel.IsOpen ? FilesPanel.Window : HWND_TOPMOST;
+            SetWindowPos(card.Hwnd, after, left, (int)card.Top.Value, Scale(NotificationCardLayout.Width), card.Height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
         }
     }
 
@@ -316,9 +323,10 @@ internal static unsafe class Notifications
         Sync();
     }
 
-    private static void OnAction(Card card, NotificationAction action)
+    /// <summary>Executa um botão, sempre sobre a própria conversão: do cartão ou do painel "Arquivos...".</summary>
+    public static void Perform(long id, NotificationAction action)
     {
-        if (!Requests.TryGetValue(card.Id, out var request))
+        if (History.Find(id) is not { } entry)
         {
             return;
         }
@@ -329,23 +337,23 @@ internal static unsafe class Notifications
         switch (action)
         {
             case NotificationAction.Cancel:
-                Conversion.Cancel(card.Id);
-                Stack.Dismiss(card.Id);
+                Conversion.Cancel(id);
+                Stack.Dismiss(id);
+                History.Remove(id);
                 break;
 
-            case NotificationAction.Open when request.OutputPath is { } output:
-                ShellExecuteW(0, "open", output, null, null, SW_SHOWNORMAL);
-                Stack.Dismiss(card.Id);
+            case NotificationAction.Open when entry.OutputPath is { } output:
+                OpenOutput(entry, output, () => ShellExecuteW(0, "open", output, null, null, SW_SHOWNORMAL));
                 break;
 
-            case NotificationAction.ShowInFolder when request.OutputPath is { } output:
-                ShowInFolder(output);
-                Stack.Dismiss(card.Id);
+            case NotificationAction.ShowInFolder when entry.OutputPath is { } output:
+                OpenOutput(entry, output, () => ShowInFolder(output));
                 break;
 
             case NotificationAction.Retry:
-                Stack.Dismiss(card.Id);
-                Convert(request.Path, request.Converter, request.Options);
+                Stack.Dismiss(id);
+                History.Remove(id);
+                Convert(entry.SourcePath, entry.Converter, entry.Options);
                 return;
 
             case NotificationAction.Details:
@@ -353,11 +361,30 @@ internal static unsafe class Notifications
                 break;
 
             case NotificationAction.Close:
-                Stack.Dismiss(card.Id);
+                Stack.Dismiss(id);
                 break;
         }
 
         Sync();
+        FilesPanel.Refresh();
+    }
+
+    /// <summary>Confere só na hora do clique: o arquivo pode ter sido movido ou apagado.</summary>
+    private static void OpenOutput(HistoryEntry entry, string output, Action open)
+    {
+        if (!File.Exists(output))
+        {
+            entry.Missing = true;
+            if (Stack.Contains(entry.Id))
+            {
+                Stack.Set(entry.Id, NotificationKind.Success, "Arquivo não encontrado", entry.Name);
+            }
+
+            return;
+        }
+
+        open();
+        Stack.Dismiss(entry.Id);
     }
 
     /// <summary>Pede ao shell para selecionar o arquivo, sem passar o caminho por linha de comando.</summary>
@@ -370,7 +397,7 @@ internal static unsafe class Notifications
         }
     }
 
-    private static void ReadWorkArea()
+    public static void ReadWorkArea()
     {
         var monitor = MonitorFromPoint(default, MONITOR_DEFAULTTOPRIMARY);
         uint dpiX, dpiY;
@@ -422,10 +449,14 @@ internal static unsafe class Notifications
                 return 0;
 
             case WM_LBUTTONDOWN:
-                if (card.Item is { } item
+                if (card.Id == OverflowId)
+                {
+                    FilesPanel.Show();
+                }
+                else if (card.Item is { } item
                     && NotificationCardLayout.ButtonAt(item.Kind, (short)(lParam & 0xFFFF) * 96 / _dpi, (short)((lParam >> 16) & 0xFFFF) * 96 / _dpi) is { } button)
                 {
-                    OnAction(card, button.Action);
+                    Perform(card.Id, button.Action);
                 }
 
                 return 0;
@@ -560,7 +591,7 @@ internal static unsafe class Notifications
         }
     }
 
-    private static void Round(nint hdc, RECT rect, int radius, uint color)
+    public static void Round(nint hdc, RECT rect, int radius, uint color)
     {
         var brush = CreateSolidBrush(color);
         var oldBrush = SelectObject(hdc, brush);
@@ -571,7 +602,7 @@ internal static unsafe class Notifications
         DeleteObject(brush);
     }
 
-    private static void Label(nint hdc, string text, RECT rect, int fontSize, int weight, uint color, uint format)
+    public static void Label(nint hdc, string text, RECT rect, int fontSize, int weight, uint color, uint format)
     {
         var font = CreateFontW(-Scale(fontSize), 0, 0, 0, weight, 0, 0, 0, 1, 0, 0, CLEARTYPE_QUALITY, 0, "Segoe UI");
         var old = SelectObject(hdc, font);
@@ -581,13 +612,7 @@ internal static unsafe class Notifications
         DeleteObject(font);
     }
 
-    private static int Scale(int value) => value * _dpi / 96;
-
-    /// <summary>O que é preciso para repetir ou abrir a conversão. Só em memória (ADR-018).</summary>
-    private sealed record Request(string Path, ConverterInfo Converter, IReadOnlyDictionary<string, string> Options)
-    {
-        public string? OutputPath { get; set; }
-    }
+    public static int Scale(int value) => value * _dpi / 96;
 
     private sealed class Card(long id, nint hwnd, int height, int top)
     {

@@ -226,6 +226,21 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
         AssertNothingWritten();
     }
 
+    [Fact]
+    public void Worker_encerrado_a_forca_nao_deixa_temporario_ao_terminar()
+    {
+        // SEC-34: encerrar é assíncrono; a limpeza só pode acabar depois de o Worker soltar o handle.
+        for (var round = 0; round < 40; round++)
+        {
+            var source = CopySample();
+
+            Runner(fixture.ProbePath, "--act wrong-job", TimeSpan.FromSeconds(30)).Run(source, "image.png", "png");
+
+            AssertNothingWritten();
+            File.Delete(source);
+        }
+    }
+
     private ConversionRunner Runner(string? worker = null, string arguments = "", TimeSpan? timeout = null) =>
         new(worker ?? fixture.WorkerPath, SandboxFixture.Profile, new TempJournal(_folder + ".journal"), timeout ?? TimeSpan.FromSeconds(60), arguments);
 

@@ -63,7 +63,7 @@ internal static unsafe class OptionsPanel
 
         SetWindowPos(_window, HWND_TOPMOST, left, top, width, height, SWP_SHOWWINDOW);
         InvalidateRect(_window, null, 0);
-        TakeFocus();
+        TakeFocus(_window);
     }
 
     /// <summary>Fecha sem avisar o overlay: é ele quem está pedindo.</summary>
@@ -77,20 +77,20 @@ internal static unsafe class OptionsPanel
     }
 
     /// <summary>Enter e Esc precisam do foco, mas quem estava em primeiro plano era o Explorer, no arraste.</summary>
-    private static void TakeFocus()
+    public static void TakeFocus(nint window)
     {
-        if (SetForegroundWindow(_window) == 0 || GetForegroundWindow() != _window)
+        if (SetForegroundWindow(window) == 0 || GetForegroundWindow() != window)
         {
             var theirs = GetWindowThreadProcessId(GetForegroundWindow(), null);
             var ours = GetCurrentThreadId();
             if (theirs != 0 && theirs != ours && AttachThreadInput(ours, theirs, 1) != 0)
             {
-                SetForegroundWindow(_window);
+                SetForegroundWindow(window);
                 AttachThreadInput(ours, theirs, 0);
             }
         }
 
-        SetFocus(_window);
+        SetFocus(window);
     }
 
     [System.Runtime.InteropServices.UnmanagedCallersOnly]
@@ -131,7 +131,7 @@ internal static unsafe class OptionsPanel
         }
     }
 
-    private static PanelKey? ToKey(int virtualKey) => virtualKey switch
+    public static PanelKey? ToKey(int virtualKey) => virtualKey switch
     {
         VK_TAB => GetKeyState(VK_SHIFT) < 0 ? PanelKey.ShiftTab : PanelKey.Tab,
         VK_LEFT => PanelKey.Left,
