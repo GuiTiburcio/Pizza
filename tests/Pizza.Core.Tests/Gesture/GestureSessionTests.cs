@@ -7,6 +7,66 @@ public class GestureSessionTests
     private readonly GestureSession _session = new();
 
     [Fact]
+    public void Soltar_fora_de_uma_fatia_deixa_o_menu_para_escolher_com_clique()
+    {
+        // ADR-025: soltar em qualquer lugar e escolher o formato com um clique.
+        _session.Begin();
+        _session.OnDragEnter(hasFiles: true);
+        _session.OnButtonReleased();
+
+        Assert.Equal(SessionAction.Pick, _session.OnReleaseSettled());
+        Assert.Equal(GestureState.Picking, _session.State);
+    }
+
+    [Fact]
+    public void Saida_do_arraste_depois_de_soltar_nao_cancela()
+    {
+        // Ao soltar fora, o Windows também avisa que o arraste saiu da nossa janela.
+        _session.Begin();
+        _session.OnDragEnter(hasFiles: true);
+        _session.OnButtonReleased();
+        _session.OnDragLeave();
+
+        Assert.Equal(SessionAction.None, _session.OnLeaveTimeout());
+        Assert.Equal(SessionAction.Pick, _session.OnReleaseSettled());
+    }
+
+    [Fact]
+    public void Esc_durante_o_arraste_continua_cancelando()
+    {
+        // Esc com o botão ainda apertado: o arraste sai sem o botão ter subido.
+        _session.Begin();
+        _session.OnDragEnter(hasFiles: true);
+        _session.OnDragLeave();
+
+        Assert.Equal(SessionAction.Close, _session.OnLeaveTimeout());
+        Assert.Equal(GestureState.Idle, _session.State);
+    }
+
+    [Fact]
+    public void Soltar_antes_de_o_menu_abrir_cancela()
+    {
+        _session.Begin();
+        _session.OnButtonReleased();
+
+        Assert.Equal(SessionAction.Close, _session.OnReleaseSettled());
+        Assert.Equal(GestureState.Idle, _session.State);
+    }
+
+    [Fact]
+    public void Escolhendo_ignora_eventos_do_arraste_que_terminou()
+    {
+        _session.Begin();
+        _session.OnDragEnter(hasFiles: true);
+        _session.OnButtonReleased();
+        _session.OnReleaseSettled();
+
+        Assert.Equal(SessionAction.None, _session.OnDragLeave());
+        Assert.Equal(SessionAction.None, _session.OnDragEnter(hasFiles: true));
+        Assert.Equal(GestureState.Picking, _session.State);
+    }
+
+    [Fact]
     public void Comecar_o_gesto_nao_mostra_o_menu()
     {
         _session.Begin();

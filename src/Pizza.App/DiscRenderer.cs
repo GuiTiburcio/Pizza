@@ -17,7 +17,8 @@ internal readonly record struct DiscFrame(
     int TargetTab,
     double Rotation,
     MotionStyle Motion,
-    int? PulseSlot);
+    int? PulseSlot,
+    bool Picking = false);
 
 /// <summary>
 /// Desenha o menu no visual do Dossiê (DES-1, WF-1, WF-2) com GDI+ e transparência por pixel (ADR-023).
@@ -203,7 +204,10 @@ internal static unsafe class DiscRenderer
 
         var hint = RoundedRect(DiscLayout.HintLeft, DiscLayout.HintTop, DiscLayout.HintWidth, DiscLayout.HintHeight, DiscLayout.HintHeight / 2f);
         Glass(g, hint, Math.Max(0.40, _glassAlpha), _palette.Border + 0.05);
-        Text(g, "Role para trocar a aba  ·  Solte o Ctrl e aperte Esc para cancelar", _regular, 12, StyleRegular, _palette.Ink, DiscLayout.HintLeft + 10, DiscLayout.HintTop, DiscLayout.HintWidth - 20, DiscLayout.HintHeight);
+        var hintText = frame.Picking
+            ? "Clique num formato  ·  Role para trocar a aba  ·  Esc ou clique fora para cancelar"
+            : "Solte numa fatia ou em qualquer lugar  ·  Role para trocar a aba";
+        Text(g, hintText, _regular, 12, StyleRegular, _palette.Ink, DiscLayout.HintLeft + 10, DiscLayout.HintTop, DiscLayout.HintWidth - 20, DiscLayout.HintHeight);
     }
 
     private static void DrawSlice(nint g, DiscFrame frame, int slot)

@@ -50,6 +50,7 @@ internal static unsafe class Overlay
     private static int _top;
     private static int? _hoverSlot;
     private static int? _pulseSlot;
+    private static bool _picking;
     private static DraggedFiles? _files;
     private static (string Path, ConverterInfo Converter)? _dropped;
     private static (string Path, ConverterInfo Converter)? _awaitingOptions;
@@ -171,6 +172,8 @@ internal static unsafe class Overlay
 
         _dropped = null;
         _pulseSlot = null;
+        ExitPicking();
+        ShowWindow(_catcher, SW_HIDE);
         if (dropped.Converter.HasPanel)
         {
             _awaitingOptions = dropped;
@@ -226,8 +229,17 @@ internal static unsafe class Overlay
     private static (int X, int Y) DiscCenter() =>
         (_left + (int)Math.Round(DiscLayout.CenterX * _scale), _top + (int)Math.Round(DiscLayout.CenterY * _scale));
 
+    /// <summary>
+    /// Soltou fora de uma fatia. Nada é copiado (SEC-05). Com o menu aberto e um arquivo só, ele fica
+    /// para a escolha por clique, que começa quando a espera depois de soltar termina (ADR-025).
+    /// </summary>
     public static void OnDropOutside()
     {
+        if (Session.State == GestureState.Menu && _files is { Count: 1 } && IsVisible)
+        {
+            return;
+        }
+
         Log.Write(LogEvent.MenuCancelled);
         Hide();
     }
@@ -241,6 +253,7 @@ internal static unsafe class Overlay
         _pulseSlot = null;
         KillTimer(Disc, TimerAfterRelease);
         KillTimer(Disc, TimerPulse);
+        ExitPicking();
         HideWindow();
         _files = null;
         Session.Begin();
@@ -310,6 +323,7 @@ internal static unsafe class Overlay
         KillTimer(Disc, TimerAfterRelease);
         KillTimer(Disc, TimerWatchdog);
         KillTimer(Disc, TimerPulse);
+        ExitPicking();
         ShowWindow(_catcher, SW_HIDE);
         HideWindow();
         _files = null;
@@ -376,7 +390,8 @@ internal static unsafe class Overlay
             Carousel.Target,
             rotation,
             _motion,
-            _pulseSlot);
+            _pulseSlot,
+            _picking);
         DiscRenderer.Show(Disc, _left, _top, frame);
     }
 
@@ -409,6 +424,38 @@ internal static unsafe class Overlay
 
             case WM_TIMER:
                 OnTimer(wParam);
+                return 0;
+
+            case WM_MOUSEMOVE when _picking:
+                var (moveX, moveY) = ScreenPoint(hwnd, lParam);
+                var hovered = hwnd == Disc ? TargetSlot(moveX, moveY) : null;
+                if (hovered != _hoverSlot)
+                {
+                    SetHover(hovered);
+                }
+
+                return 0;
+
+            case WM_LBUTTONDOWN or WM_RBUTTONDOWN when _picking:
+                if (hwnd == Disc)
+                {
+                    var (clickX, clickY) = ScreenPoint(hwnd, lParam);
+                    PickAt(clickX, clickY);
+                }
+                else
+                {
+                    CancelPicking();
+                }
+
+                return 0;
+
+            case WM_KEYDOWN when _picking && (int)wParam == VK_ESCAPE:
+                CancelPicking();
+                return 0;
+
+            case WM_ACTIVATE when _picking && hwnd == _catcher && (wParam & 0xFFFF) == 0:
+                // Outra janela tomou o foco (Alt+Tab, tecla Windows): a escolha termina.
+                CancelPicking();
                 return 0;
 
             case WM_ERASEBKGND:
@@ -504,12 +551,70 @@ internal static unsafe class Overlay
             return;
         }
 
-        if (id == TimerAfterRelease && Session.State == GestureState.Menu)
+        if (id == TimerAfterRelease)
         {
+            KillTimer(Disc, TimerAfterRelease);
+
+            // ADR-025: soltou fora de uma fatia, com um arquivo só: o menu fica para a escolha por clique.
+            if (Session.OnReleaseSettled() == SessionAction.Pick && _files is { Count: 1 } && IsVisible)
+            {
+                EnterPicking();
+                return;
+            }
+
             Log.Write(LogEvent.MenuCancelled);
         }
 
         Hide();
+    }
+
+    /// <summary>
+    /// A camada que cobre a tela recebe o foco: Esc chega por mensagem da própria janela, sem hook de
+    /// teclado (SEC-01), e um clique fora do menu cai nela e fecha, sem chegar à janela de baixo.
+    /// </summary>
+    private static void EnterPicking()
+    {
+        _picking = true;
+        SetWindowLongPtrW(_catcher, GWL_EXSTYLE, GetWindowLongPtrW(_catcher, GWL_EXSTYLE) & ~(nint)WS_EX_NOACTIVATE);
+        OptionsPanel.TakeFocus(_catcher);
+        Render();
+    }
+
+    private static void ExitPicking()
+    {
+        if (_picking)
+        {
+            _picking = false;
+            SetWindowLongPtrW(_catcher, GWL_EXSTYLE, GetWindowLongPtrW(_catcher, GWL_EXSTYLE) | (nint)WS_EX_NOACTIVATE);
+        }
+    }
+
+    private static void CancelPicking()
+    {
+        Log.Write(LogEvent.MenuCancelled);
+        Hide();
+    }
+
+    /// <summary>Clique no menu durante a escolha: a fatia sob o cursor converte, como se o arquivo tivesse caído nela.</summary>
+    private static void PickAt(int x, int y)
+    {
+        if (_files is not { Count: 1 } file || TargetSlot(x, y) is not { } slot)
+        {
+            return;
+        }
+
+        Log.Write(LogEvent.FileDropped);
+        _dropped = (file.First, RadialMenu.Slices(Carousel.Target, file.First)[slot]);
+        _pulseSlot = slot;
+        Render();
+        SetTimer(Disc, TimerPulse, _motion == MotionStyle.Instant ? 1 : PulseMs, 0);
+    }
+
+    private static (int X, int Y) ScreenPoint(nint hwnd, nint lParam)
+    {
+        var x = (short)(lParam & 0xFFFF);
+        var y = (short)((lParam >> 16) & 0xFFFF);
+        return hwnd == Disc ? (_left + x, _top + y) : (x + GetSystemMetrics(SM_XVIRTUALSCREEN), y + GetSystemMetrics(SM_YVIRTUALSCREEN));
     }
 
     private static bool IsPrimaryButtonDown()

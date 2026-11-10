@@ -1,11 +1,14 @@
 namespace Pizza.Core.Gesture;
 
-/// <summary>Estados do gesto (Parte 6): repouso, arrastando sem menu e menu aberto.</summary>
+/// <summary>Estados do gesto (Parte 6): repouso, arrastando sem menu, menu aberto e escolha por clique.</summary>
 public enum GestureState
 {
     Idle,
     WaitingForFile,
     Menu,
+
+    /// <summary>Soltou fora de uma fatia: o menu fica aberto e o formato é escolhido com um clique (ADR-025).</summary>
+    Picking,
 }
 
 /// <summary>O que o overlay deve fazer depois de um evento do arraste.</summary>
@@ -20,6 +23,9 @@ public enum SessionAction
     /// <summary>O botão subiu: a camada fica mais um instante, até o Windows concluir o arraste.</summary>
     WaitForDrop,
     Close,
+
+    /// <summary>O arraste terminou fora de uma fatia: o menu passa a esperar um clique.</summary>
+    Pick,
 }
 
 /// <summary>
@@ -62,9 +68,26 @@ public sealed class GestureSession
         return SessionAction.WaitForDrop;
     }
 
+    /// <summary>
+    /// Passou a espera depois de soltar e nenhuma fatia recebeu o drop. Com o menu aberto, ele fica
+    /// para a escolha por clique; antes disso, não havia o que escolher.
+    /// </summary>
+    public SessionAction OnReleaseSettled()
+    {
+        if (State == GestureState.Menu)
+        {
+            State = GestureState.Picking;
+            _waitingReentry = false;
+            return SessionAction.Pick;
+        }
+
+        End();
+        return SessionAction.Close;
+    }
+
     public SessionAction OnDragEnter(bool hasFiles)
     {
-        if (State == GestureState.Idle)
+        if (State is GestureState.Idle or GestureState.Picking)
         {
             return SessionAction.None;
         }
@@ -93,7 +116,7 @@ public sealed class GestureSession
 
     public SessionAction OnDragLeave()
     {
-        if (State == GestureState.Idle)
+        if (State is GestureState.Idle or GestureState.Picking)
         {
             return SessionAction.None;
         }
@@ -102,11 +125,15 @@ public sealed class GestureSession
         return SessionAction.WaitForReentry;
     }
 
-    /// <summary>Terminou a espera: sem nova entrada, o arraste foi cancelado (Esc).</summary>
+    /// <summary>
+    /// Terminou a espera: sem nova entrada, o arraste foi cancelado (Esc). Se o botão já subiu, a saída
+    /// é só o fim do arraste, e quem decide é <see cref="OnReleaseSettled"/>.
+    /// </summary>
     public SessionAction OnLeaveTimeout()
     {
-        if (!_waitingReentry)
+        if (!_waitingReentry || _released)
         {
+            _waitingReentry = false;
             return SessionAction.None;
         }
 
