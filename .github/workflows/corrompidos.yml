@@ -1,0 +1,49 @@
+name: Arquivos corrompidos
+
+# TST-03: rodada grande, semanal. Cada PR já roda 100 casos no CI principal.
+on:
+  schedule:
+    - cron: "47 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  corrompidos:
+    name: Arquivos corrompidos no Worker
+    runs-on: windows-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Restaurar
+        run: dotnet restore Pizza.slnx
+
+      - name: Compilar
+        run: dotnet build Pizza.slnx -c Release --no-restore
+
+      # A semente muda a cada rodada, para não repetir sempre os mesmos casos.
+      - name: Rodar
+        env:
+          PIZZA_FUZZ_CASES: 5000
+          PIZZA_FUZZ_SEED: ${{ github.run_number }}
+        run: dotnet test tests/Pizza.Integration.Tests -c Release --no-build --filter "FullyQualifiedName~CorruptedFilesTests"
+
+      - name: Guardar os casos reprovados
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: casos-reprovados
+          path: TestResults/fuzz
+          if-no-files-found: ignore
+          retention-days: 30
