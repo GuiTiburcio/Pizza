@@ -123,6 +123,7 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | FR-04 e FR-20 (Fase 4b) | Acima do disco, uma faixa mostra os níveis da fatia em hover, em todas as abas (exemplo: "Nível de compressão: Impressão, Escritório, Tela"). Soltar ou clicar usa o nível padrão, e o painel completo abre no botão direito. O desenho final, mesclando faixa e painel, sai num ADR da Fase 4b | — |
 | Barra de abas (Fase 4d) | Fica mais fina: entre 55% e 70% da altura atual | — |
 | Temas do vidro (Fase 8) | Na tela de Configuração, paletas opcionais em degradê pastel, no estilo do fundo das pranchas de referência do Dossiê | — |
+| Sobre (Fase 8) | A seção Sobre da Configuração mostra a frase do projeto: "Afinal, tudo acaba em pizza." | — |
 
 ---
 

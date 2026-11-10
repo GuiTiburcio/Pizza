@@ -1,5 +1,7 @@
 # Pizza
 
+> *Afinal, tudo acaba em pizza.*
+
 **Converta arquivos no Windows com um gesto.** Segure **Ctrl**, arraste o arquivo e escolha o formato num menu circular de vidro. Tudo acontece no seu PC: nada é enviado para a internet.
 
 <p align="center">
@@ -15,6 +17,8 @@
 ## De onde veio a ideia
 
 O Pizza nasceu de um vídeo aleatório que vi no TikTok, com um menu circular para converter arquivos. Gostei tanto da ideia que resolvi criar a minha própria versão, do zero, com foco em privacidade e segurança. O código, o desenho e as decisões deste repositório são próprios.
+
+O nome vem do formato do menu, que lembra uma pizza fatiada, e do ditado "afinal, tudo acaba em pizza". Aqui, todo arquivo arrastado acaba nela.
 
 ## Como funciona
 
