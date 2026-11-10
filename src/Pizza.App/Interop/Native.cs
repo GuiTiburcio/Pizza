@@ -8,6 +8,8 @@ internal static unsafe partial class Native
     // Mensagens
     public const uint WM_DESTROY = 0x0002;
     public const uint WM_ACTIVATE = 0x0006;
+    public const uint WM_MOUSEACTIVATE = 0x0021;
+    public const int MA_NOACTIVATE = 3;
     public const uint WM_CLOSE = 0x0010;
     public const uint WM_PAINT = 0x000F;
     public const uint WM_ERASEBKGND = 0x0014;

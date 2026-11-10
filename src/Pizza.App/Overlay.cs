@@ -488,7 +488,12 @@ internal static unsafe class Overlay
                 KeepPicking();
                 return 0;
 
-            case WM_ACTIVATE when (_picking || _cancelOnRelease) && hwnd == _catcher && (wParam & 0xFFFF) == 0:
+            case WM_MOUSEACTIVATE when hwnd == Disc:
+                // Com o Pizza em primeiro plano (escolha por clique), o WS_EX_NOACTIVATE não basta: sem isto,
+                // o clique ativa o disco, a camada perde o foco e a escolha é cancelada antes do clique.
+                return MA_NOACTIVATE;
+
+            case WM_ACTIVATE when (_picking || _cancelOnRelease) && hwnd == _catcher && (wParam & 0xFFFF) == 0 && lParam != Disc:
                 // Outra janela tomou o foco (Alt+Tab, tecla Windows): a escolha termina.
                 CancelPicking();
                 return 0;
