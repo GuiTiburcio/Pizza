@@ -43,17 +43,17 @@ public sealed class OptionsPanelState
 {
     public const int Padding = 24;
     public const int LabelHeight = 20;
+    public const int KeepRowHeight = 44;
 
     private const int PanelWidth = 480;
     private const int FirstRowTop = 88;
     private const int PillTop = 22;
-    private const int PillHeight = 36;
+    private const int PillHeight = 44;
     private const int RowGap = 14;
     private const int Gap = 8;
-    private const int KeepHeight = 24;
     private const int NoticeHeight = 20;
     private const int ButtonWidth = 140;
-    private const int ButtonHeight = 40;
+    private const int ButtonHeight = 44;
     private const int ButtonsGap = 20;
 
     private readonly int[] _selected;
@@ -80,10 +80,10 @@ public sealed class OptionsPanelState
         if (CanKeepMetadata)
         {
             _stops.Add((PanelTargetKind.Keep, 0));
-            _targets.Add(new PanelTarget(PanelTargetKind.Keep, 0, 0, new PanelRect(Padding, top, PanelWidth - Padding, top + KeepHeight)));
+            _targets.Add(new PanelTarget(PanelTargetKind.Keep, 0, 0, new PanelRect(Padding, top, PanelWidth - Padding, top + KeepRowHeight)));
         }
 
-        top += KeepHeight + NoticeHeight + ButtonsGap;
+        top += KeepRowHeight + NoticeHeight + ButtonsGap;
         var cancelLeft = PanelWidth - Padding - (2 * ButtonWidth) - Gap;
         _stops.Add((PanelTargetKind.Cancel, 0));
         _targets.Add(new PanelTarget(PanelTargetKind.Cancel, 0, 0, new PanelRect(cancelLeft, top, cancelLeft + ButtonWidth, top + ButtonHeight)));

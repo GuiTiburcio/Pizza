@@ -16,4 +16,12 @@ Para a verificação independente de metadados, defina `PIZZA_EXIFTOOL` com o ca
 
 Preserve lockfiles, mantenha diffs pequenos e descreva comportamento, requisito e validação no PR. Use Conventional Commits, por exemplo `fix(overlay): mantém menu após a soltura`.
 
+Quando houver participação do Codex, mantenha o autor humano do commit e acrescente o crédito ao final da mensagem, separado do corpo por uma linha em branco:
+
+```text
+Co-authored-by: Codex <noreply@openai.com>
+```
+
+Preserve esse crédito ao integrar por squash e mantenha os créditos de outros participantes quando aplicáveis. A seção de créditos do README registra também as ferramentas usadas; a lista automática de contribuidores depende das regras de associação de commits e contas do GitHub.
+
 Não inclua documentos pessoais, logs reais, certificados, senhas ou resultados de build no Git. Builds locais são para desenvolvimento; só o CI gera os artefatos distribuídos. Vulnerabilidades seguem [SECURITY.md](SECURITY.md).

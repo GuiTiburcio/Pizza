@@ -476,6 +476,9 @@ internal static unsafe partial class Native
     public static partial int RoundRect(nint hdc, int left, int top, int right, int bottom, int width, int height);
 
     [LibraryImport("gdi32.dll")]
+    public static partial int SetViewportOrgEx(nint hdc, int x, int y, POINT* previous);
+
+    [LibraryImport("gdi32.dll")]
     public static partial int Ellipse(nint hdc, int left, int top, int right, int bottom);
 
     [LibraryImport("gdi32.dll")]

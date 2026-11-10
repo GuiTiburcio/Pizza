@@ -88,6 +88,16 @@ O Pizza nasceu depois que vi, por acaso, um vídeo no **TikTok**. Gostei da idei
 
 O link e o autor do vídeo ainda não foram identificados. Quando eu localizar a referência, adicionarei o crédito aqui. O planejamento e o design foram elaborados com o auxílio do Claude; o desenvolvimento conta com apoio do Claude e do Codex.
 
+## Créditos e colaboradores
+
+| Participação | Crédito |
+| --- | --- |
+| Idealização, decisões de produto e manutenção | [Guilherme Tiburcio](https://github.com/GuiTiburcio) |
+| Apoio ao planejamento, design e desenvolvimento | [Claude / Claude Design](https://claude.ai/) |
+| Apoio ao desenvolvimento, testes, revisão de código e organização do repositório | [Codex / OpenAI](https://github.com/openai/codex) |
+
+Claude e Codex são as ferramentas de IA utilizadas na construção do projeto. As contribuições assistidas pelo Codex também recebem crédito de coautoria nos commits correspondentes.
+
 ## Dossiê e demonstração
 
 O [**Pizza — Dossiê do Projeto**, criado no Claude Design](https://claude.ai/artifact/LMrbTPnaY6EbVK1UPjcVDs#page-dcb81aee8d83), reúne a referência visual do projeto. A [documentação de design](docs/design/README.md) relaciona o artefato ao dossiê em Markdown e às decisões técnicas.

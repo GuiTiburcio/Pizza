@@ -1,10 +1,11 @@
 using Pizza.Core.Conversions;
+using Pizza.Core.Visual;
 using static Pizza.App.Interop.Native;
 
 namespace Pizza.App;
 
 /// <summary>
-/// Painel de opções (WF-3), aberto depois do drop. Visual provisório em GDI; o vidro é da Fase 4.
+/// Painel de opções (WF-3), com temas e cantos da Fase 4b. Vidro ainda pendente.
 /// Lê o teclado só pelas mensagens da própria janela, sem nenhum hook (SEC-01).
 /// </summary>
 internal static unsafe class OptionsPanel
@@ -12,16 +13,15 @@ internal static unsafe class OptionsPanel
     private const string ClassName = "PizzaPanel";
     private const string MetadataNotice = "Este formato não guarda metadados";
     private const int KeepBoxSize = 18;
+    private const int PanelRadius = 28;
+    private const int ButtonRadius = 12;
 
-    private static readonly uint Background = Rgb(26, 33, 64);
-    private static readonly uint Idle = Rgb(62, 72, 112);
-    private static readonly uint Accent = Rgb(47, 107, 255);
-    private static readonly uint Text = Rgb(255, 255, 255);
-    private static readonly uint Muted = Rgb(170, 182, 214);
-    private static readonly uint Border = Rgb(84, 96, 136);
+    private static PanelPalette _palette = PanelPalette.Light;
 
     private static nint _window;
     private static OptionsPanelState? _state;
+    private static PanelViewport? _viewport;
+    private static int _wheelRemainder;
     private static string _fileName = string.Empty;
     private static int _dpi = 96;
 
@@ -49,17 +49,27 @@ internal static unsafe class OptionsPanel
     {
         _state = new OptionsPanelState(converter);
         _fileName = fileName;
+        _palette = DarkTheme() ? PanelPalette.Dark : PanelPalette.Light;
 
         var monitor = MonitorFromPoint(new POINT { X = centerX, Y = centerY }, MONITOR_DEFAULTTONEAREST);
         uint dpiX, dpiY;
         _dpi = GetDpiForMonitor(monitor, 0, &dpiX, &dpiY) == S_OK ? (int)dpiX : 96;
         var info = new MONITORINFO { CbSize = (uint)sizeof(MONITORINFO) };
         GetMonitorInfoW(monitor, &info);
+        _viewport = new PanelViewport(_state.Height, (info.RcWork.Bottom - info.RcWork.Top) * 96 / _dpi);
+        _wheelRemainder = 0;
 
         var width = Scale(_state.Width);
-        var height = Scale(_state.Height);
+        var height = Scale(_viewport.Height);
         var left = Math.Max(info.RcWork.Left, Math.Min(centerX - (width / 2), info.RcWork.Right - width));
         var top = Math.Max(info.RcWork.Top, Math.Min(centerY - (height / 2), info.RcWork.Bottom - height));
+
+        var region = CreateRoundRectRgn(0, 0, width + 1, height + 1, Scale(PanelRadius * 2), Scale(PanelRadius * 2));
+        // Em sucesso a região pertence ao Windows, inclusive quando é substituída ao reabrir.
+        if (region != 0 && SetWindowRgn(_window, region, 0) == 0)
+        {
+            DeleteObject(region);
+        }
 
         SetWindowPos(_window, HWND_TOPMOST, left, top, width, height, SWP_SHOWWINDOW);
         InvalidateRect(_window, null, 0);
@@ -72,6 +82,7 @@ internal static unsafe class OptionsPanel
         if (_state is not null)
         {
             _state = null;
+            _viewport = null;
             ShowWindow(_window, SW_HIDE);
         }
     }
@@ -108,13 +119,24 @@ internal static unsafe class OptionsPanel
             case WM_KEYDOWN:
                 if (ToKey((int)wParam) is { } key && _state is { } state)
                 {
-                    Apply(state.Press(key));
+                    var action = state.Press(key);
+                    var focus = state.Targets.First(target =>
+                        (target.Kind, target.Row) == state.Focus &&
+                        (target.Kind != PanelTargetKind.Choice || state.IsSelected(target.Row, target.Choice)));
+                    _viewport?.Reveal(focus.Bounds);
+                    Apply(action);
                 }
 
                 return 0;
 
             case WM_LBUTTONDOWN:
                 OnClick((short)(lParam & 0xFFFF), (short)((lParam >> 16) & 0xFFFF));
+                return 0;
+
+            case WM_MOUSEWHEEL:
+                _wheelRemainder += (short)(wParam >> 16);
+                Scroll(-(_wheelRemainder / 120) * 44);
+                _wheelRemainder %= 120;
                 return 0;
 
             case WM_CLOSE:
@@ -146,10 +168,37 @@ internal static unsafe class OptionsPanel
 
     private static void OnClick(int x, int y)
     {
-        if (_state is { } state && state.TargetAt(x * 96 / _dpi, y * 96 / _dpi) is { } target)
+        if (_state is not { } state || _viewport is not { } viewport)
+        {
+            return;
+        }
+
+        x = x * 96 / _dpi;
+        y = y * 96 / _dpi;
+        if (viewport.CanScroll && y >= viewport.ContentHeight)
+        {
+            if (ScrollButton(state.Width, viewport.Height, next: false).Contains(x, y))
+            {
+                Scroll(-44);
+            }
+            else if (ScrollButton(state.Width, viewport.Height, next: true).Contains(x, y))
+            {
+                Scroll(44);
+            }
+
+            return;
+        }
+
+        if (state.TargetAt(x, y + viewport.Offset) is { } target)
         {
             Apply(state.Click(target));
         }
+    }
+
+    private static void Scroll(int distance)
+    {
+        _viewport?.Scroll(distance);
+        InvalidateRect(_window, null, 0);
     }
 
     private static void Apply(PanelAction action)
@@ -169,14 +218,14 @@ internal static unsafe class OptionsPanel
     {
         PAINTSTRUCT ps;
         var hdc = BeginPaint(hwnd, &ps);
-        if (_state is { } state)
+        if (_state is { } state && _viewport is { } viewport)
         {
             var width = Scale(state.Width);
-            var height = Scale(state.Height);
+            var height = Scale(viewport.Height);
             var buffer = CreateCompatibleDC(hdc);
             var bitmap = CreateCompatibleBitmap(hdc, width, height);
             var oldBitmap = SelectObject(buffer, bitmap);
-            Draw(buffer, state, width, height);
+            Draw(buffer, state, viewport, width, height);
             BitBlt(hdc, 0, 0, width, height, buffer, 0, 0, SRCCOPY);
             SelectObject(buffer, oldBitmap);
             DeleteObject(bitmap);
@@ -186,24 +235,49 @@ internal static unsafe class OptionsPanel
         EndPaint(hwnd, &ps);
     }
 
-    private static void Draw(nint hdc, OptionsPanelState state, int width, int height)
+    private static void Draw(nint hdc, OptionsPanelState state, PanelViewport viewport, int width, int height)
     {
         var whole = new RECT { Right = width, Bottom = height };
-        Fill(hdc, whole, Background);
-        Frame(hdc, whole, Border);
+        Fill(hdc, whole, _palette.Background);
+        Round(hdc, whole, PanelRadius, _palette.Border);
+        var inside = new RECT { Left = 1, Top = 1, Right = width - 1, Bottom = height - 1 };
+        Round(hdc, inside, PanelRadius, _palette.Background);
         SetBkMode(hdc, TRANSPARENT);
+        SetViewportOrgEx(hdc, 0, -Scale(viewport.Offset), null);
+        DrawContent(hdc, state, width);
+        SetViewportOrgEx(hdc, 0, 0, null);
+        if (viewport.CanScroll)
+        {
+            var footer = new RECT { Top = Scale(viewport.ContentHeight), Right = width, Bottom = height };
+            Fill(hdc, footer, _palette.Background);
+            var previous = Scaled(ScrollButton(state.Width, viewport.Height, next: false));
+            var next = Scaled(ScrollButton(state.Width, viewport.Height, next: true));
+            var hint = new RECT { Left = Scale(OptionsPanelState.Padding), Top = previous.Top, Right = previous.Left - Scale(8), Bottom = previous.Bottom };
+            Label(hdc, "Role para ver mais", hint, 13, FW_NORMAL, _palette.SecondaryText, DT_SINGLELINE | DT_VCENTER);
+            DrawButton(hdc, previous, "↑", _palette.Surface, _palette.Text, focused: false);
+            DrawButton(hdc, next, "↓", _palette.Surface, _palette.Text, focused: false);
+        }
+    }
 
+    private static PanelRect ScrollButton(int width, int height, bool next)
+    {
+        var right = width - OptionsPanelState.Padding - (next ? 0 : 52);
+        return new PanelRect(right - 44, height - 56, right, height - 12);
+    }
+
+    private static void DrawContent(nint hdc, OptionsPanelState state, int width)
+    {
         var inner = width - Scale(OptionsPanelState.Padding);
         var title = new RECT { Left = Scale(OptionsPanelState.Padding), Top = Scale(22), Right = inner, Bottom = Scale(52) };
-        Label(hdc, $"{_fileName} → {state.Converter.Label}", title, 18, FW_BOLD, Text, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
+        Label(hdc, $"{_fileName} → {state.Converter.Label}", title, 18, FW_BOLD, _palette.Text, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
         var subtitle = new RECT { Left = title.Left, Top = Scale(54), Right = inner, Bottom = Scale(76) };
-        Label(hdc, "Escolha como quer o arquivo", subtitle, 13, FW_NORMAL, Muted, DT_SINGLELINE | DT_VCENTER);
+        Label(hdc, "Escolha como quer o arquivo", subtitle, 13, FW_NORMAL, _palette.SecondaryText, DT_SINGLELINE | DT_VCENTER);
 
         for (var row = 0; row < state.Rows.Count; row++)
         {
             var top = OptionsPanelState.RowLabelTop(row);
             var caption = new RECT { Left = title.Left, Top = Scale(top), Right = inner, Bottom = Scale(top + OptionsPanelState.LabelHeight) };
-            Label(hdc, state.Rows[row].Label, caption, 13, FW_SEMIBOLD, Text, DT_SINGLELINE | DT_VCENTER);
+            Label(hdc, state.Rows[row].Label, caption, 13, FW_SEMIBOLD, _palette.Text, DT_SINGLELINE | DT_VCENTER);
         }
 
         foreach (var target in state.Targets)
@@ -214,8 +288,8 @@ internal static unsafe class OptionsPanel
         if (!state.CanKeepMetadata)
         {
             DrawKeep(hdc, state.KeepTop, enabled: false, isChecked: false);
-            var notice = new RECT { Left = title.Left, Top = Scale(state.KeepTop + 24), Right = inner, Bottom = Scale(state.KeepTop + 44) };
-            Label(hdc, MetadataNotice, notice, 12, FW_NORMAL, Muted, DT_SINGLELINE | DT_VCENTER);
+            var notice = new RECT { Left = title.Left, Top = Scale(state.KeepTop + OptionsPanelState.KeepRowHeight), Right = inner, Bottom = Scale(state.KeepTop + OptionsPanelState.KeepRowHeight + 20) };
+            Label(hdc, MetadataNotice, notice, 12, FW_NORMAL, _palette.SecondaryText, DT_SINGLELINE | DT_VCENTER);
         }
     }
 
@@ -226,11 +300,11 @@ internal static unsafe class OptionsPanel
         {
             case PanelTargetKind.Choice:
                 var selected = state.IsSelected(target.Row, target.Choice);
-                Fill(hdc, bounds, selected ? Accent : Idle);
+                Round(hdc, bounds, ButtonRadius, selected ? _palette.Accent : _palette.Surface);
 
                 // A cor nunca é o único sinal: a escolhida também ganha marca e negrito.
                 var choice = state.Rows[target.Row].Choices[target.Choice].Label;
-                Label(hdc, selected ? "✓ " + choice : choice, bounds, 13, selected ? FW_BOLD : FW_NORMAL, Text, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+                Label(hdc, selected ? "✓ " + choice : choice, bounds, 13, selected ? FW_BOLD : FW_NORMAL, selected ? _palette.OnAccent : _palette.Text, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
                 if (selected && state.Focus == (PanelTargetKind.Choice, target.Row))
                 {
                     FocusRing(hdc, bounds);
@@ -248,11 +322,11 @@ internal static unsafe class OptionsPanel
                 break;
 
             case PanelTargetKind.Cancel:
-                DrawButton(hdc, bounds, "Cancelar  Esc", Idle, state.Focus.Kind == PanelTargetKind.Cancel);
+                DrawButton(hdc, bounds, "Cancelar  Esc", _palette.Surface, _palette.Text, state.Focus.Kind == PanelTargetKind.Cancel);
                 break;
 
             case PanelTargetKind.Convert:
-                DrawButton(hdc, bounds, "Converter  Enter", Accent, state.Focus.Kind == PanelTargetKind.Convert);
+                DrawButton(hdc, bounds, "Converter  Enter", _palette.Accent, _palette.OnAccent, state.Focus.Kind == PanelTargetKind.Convert);
                 break;
         }
     }
@@ -260,23 +334,23 @@ internal static unsafe class OptionsPanel
     private static void DrawKeep(nint hdc, int top, bool enabled, bool isChecked)
     {
         var left = OptionsPanelState.Padding + 3;
-        var boxTop = top + 3;
+        var boxTop = top + ((OptionsPanelState.KeepRowHeight - KeepBoxSize) / 2);
         var box = new RECT { Left = Scale(left), Top = Scale(boxTop), Right = Scale(left + KeepBoxSize), Bottom = Scale(boxTop + KeepBoxSize) };
-        Fill(hdc, box, isChecked ? Accent : Background);
-        Frame(hdc, box, enabled ? Text : Border);
+        Fill(hdc, box, isChecked ? _palette.Accent : _palette.Background);
+        Frame(hdc, box, enabled ? _palette.Text : _palette.Border);
         if (isChecked)
         {
-            Label(hdc, "✓", box, 13, FW_BOLD, Text, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+            Label(hdc, "✓", box, 13, FW_BOLD, _palette.OnAccent, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
         }
 
-        var caption = new RECT { Left = Scale(left + KeepBoxSize + 10), Top = Scale(top), Right = Scale(440), Bottom = Scale(top + 24) };
-        Label(hdc, "Manter metadados", caption, 13, FW_NORMAL, enabled ? Text : Muted, DT_SINGLELINE | DT_VCENTER);
+        var caption = new RECT { Left = Scale(left + KeepBoxSize + 10), Top = Scale(top), Right = Scale(440), Bottom = Scale(top + OptionsPanelState.KeepRowHeight) };
+        Label(hdc, "Manter metadados", caption, 13, FW_NORMAL, enabled ? _palette.Text : _palette.SecondaryText, DT_SINGLELINE | DT_VCENTER);
     }
 
-    private static void DrawButton(nint hdc, RECT bounds, string text, uint color, bool focused)
+    private static void DrawButton(nint hdc, RECT bounds, string text, uint color, uint textColor, bool focused)
     {
-        Fill(hdc, bounds, color);
-        Label(hdc, text, bounds, 13, FW_SEMIBOLD, Text, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+        Round(hdc, bounds, ButtonRadius, color);
+        Label(hdc, text, bounds, 13, FW_SEMIBOLD, textColor, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
         if (focused)
         {
             FocusRing(hdc, bounds);
@@ -285,9 +359,24 @@ internal static unsafe class OptionsPanel
 
     private static void FocusRing(nint hdc, RECT bounds)
     {
-        Frame(hdc, bounds, Text);
-        var inside = new RECT { Left = bounds.Left + 1, Top = bounds.Top + 1, Right = bounds.Right - 1, Bottom = bounds.Bottom - 1 };
-        Frame(hdc, inside, Text);
+        var pen = CreatePen(0, Scale(2), _palette.Text);
+        var oldPen = SelectObject(hdc, pen);
+        var oldBrush = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+        RoundRect(hdc, bounds.Left + 1, bounds.Top + 1, bounds.Right - 1, bounds.Bottom - 1, Scale(ButtonRadius * 2), Scale(ButtonRadius * 2));
+        SelectObject(hdc, oldBrush);
+        SelectObject(hdc, oldPen);
+        DeleteObject(pen);
+    }
+
+    private static void Round(nint hdc, RECT rect, int radius, uint color)
+    {
+        var brush = CreateSolidBrush(color);
+        var oldBrush = SelectObject(hdc, brush);
+        var oldPen = SelectObject(hdc, GetStockObject(NULL_PEN));
+        RoundRect(hdc, rect.Left, rect.Top, rect.Right + 1, rect.Bottom + 1, Scale(radius * 2), Scale(radius * 2));
+        SelectObject(hdc, oldPen);
+        SelectObject(hdc, oldBrush);
+        DeleteObject(brush);
     }
 
     private static void Fill(nint hdc, RECT rect, uint color)
@@ -323,4 +412,12 @@ internal static unsafe class OptionsPanel
     };
 
     private static int Scale(int value) => value * _dpi / 96;
+
+    private static bool DarkTheme()
+    {
+        uint value = 1;
+        var size = (uint)sizeof(uint);
+        var result = RegGetValueW(HKEY_CURRENT_USER, @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "AppsUseLightTheme", RRF_RT_REG_DWORD, null, &value, &size);
+        return result == 0 && value == 0;
+    }
 }
