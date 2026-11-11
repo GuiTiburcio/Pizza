@@ -57,7 +57,7 @@ internal static unsafe partial class Overlay
     private static int? _hoverSlot;
     private static int? _pulseSlot;
     private static DraggedFiles? _files;
-    private static (string Path, ConverterInfo Converter)? _dropped;
+    private static (string Path, ConverterInfo Converter, IReadOnlyDictionary<string, string>? Options)? _dropped; // Options null: abrir o painel.
     private static (string Path, ConverterInfo Converter)? _awaitingOptions;
 
     /// <summary>Janela do menu; também recebe as mensagens enviadas pelos hooks.</summary>
@@ -120,6 +120,8 @@ internal static unsafe partial class Overlay
         _pages = RadialMenu.Pages(_files!.Value.First);
         Carousel.Reset(_pages.Count);
         _hoverSlot = null;
+        _levelHover = null;
+        Strip.Clear();
         foreach (var transition in Hover)
         {
             transition.Snap(0);
@@ -153,8 +155,11 @@ internal static unsafe partial class Overlay
         KillTimer(Disc, TimerWatchdog);
         KillTimer(Disc, TimerPulse);
         KillTimer(Disc, TimerChoice);
+        KillTimer(Disc, TimerStrip);
         ShowWindow(_catcher, SW_HIDE);
         HideWindow();
+        Strip.Clear();
+        _levelHover = null;
         _files = null;
         _dropped = null;
         _pulseSlot = null;
@@ -181,8 +186,9 @@ internal static unsafe partial class Overlay
 
         var fileName = _files is { } files ? Path.GetFileName(files.First) : null;
         var page = _pages[Carousel.Target];
-        var slices = _files is { } dragged ? RadialMenu.Slices(page.Tab, dragged.First, page.Turn) : [];
+        var slices = CurrentSlices();
         var rotation = Rotation();
+        var levels = Strip.Primary?.Choices.Select((choice, level) => (choice.Label, Strip.Detail(level))).ToArray();
         var frame = new DiscFrame(
             _scale,
             fileName,
@@ -196,7 +202,11 @@ internal static unsafe partial class Overlay
             _pulseSlot,
             page.Turn,
             _pages.Count(candidate => candidate.Tab == page.Tab),
-            Session.State == GestureState.Choosing);
+            Session.State == GestureState.Choosing,
+            Strip.Title,
+            levels,
+            Strip.Selected,
+            _levelHover);
         DiscRenderer.Show(Disc, _left, _top, frame);
     }
 
@@ -270,18 +280,10 @@ internal static unsafe partial class Overlay
                 return 0;
 
             case WmWheel:
-                if (IsVisible && _pulseSlot is null && Carousel.OnWheel((int)lParam))
-                {
-                    SetHover(null);
-                    if (_motion != MotionStyle.Slide)
-                    {
-                        Carousel.Snap();
-                    }
-
-                    StartAnimation();
-                }
-
-                KeepChoosing();
+                // O hook só manda o giro; a posição vem do cursor, sem dado novo do hook (SEC-01).
+                POINT cursor;
+                GetCursorPos(&cursor);
+                OnWheel((int)lParam, cursor.X, cursor.Y);
                 return 0;
 
             case WM_TIMER:
@@ -311,6 +313,12 @@ internal static unsafe partial class Overlay
         if (id == TimerPulse)
         {
             FinishDrop();
+            return;
+        }
+
+        if (id == TimerStrip)
+        {
+            OnStripTimer();
             return;
         }
 

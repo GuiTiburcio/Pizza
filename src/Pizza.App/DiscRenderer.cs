@@ -20,7 +20,11 @@ internal readonly record struct DiscFrame(
     int? PulseSlot,
     int Turn = 0,
     int TurnCount = 1,
-    bool Choosing = false);
+    bool Choosing = false,
+    string? StripTitle = null,
+    (string Label, string? Detail)[]? Levels = null,
+    int Level = 0,
+    int? LevelHover = null);
 
 /// <summary>
 /// Desenha o menu no visual do Dossiê (DES-1, WF-1, WF-2) com GDI+ e transparência por pixel (ADR-023).
@@ -209,10 +213,11 @@ internal static unsafe partial class DiscRenderer
 
         DrawCenter(g, frame);
         DrawTabBar(g, frame);
+        DrawStrip(g, frame);
 
         var hint = RoundedRect(DiscLayout.HintLeft, DiscLayout.HintTop, DiscLayout.HintWidth, DiscLayout.HintHeight, DiscLayout.HintHeight / 2f);
         Glass(g, hint, Math.Max(0.40, _glassAlpha), _palette.Border + 0.05);
-        Text(g, frame.Choosing ? "Clique no formato · Role para mais · Esc cancela" : "Solte onde estiver e clique · Ou solte no formato", _regular, 12, StyleRegular, _palette.Ink, DiscLayout.HintLeft + 10, DiscLayout.HintTop, DiscLayout.HintWidth - 20, DiscLayout.HintHeight);
+        Text(g, frame.Choosing ? "Clique no nível ou na fatia · Direito: opções · Esc cancela" : "Solte no nível ou na fatia · Role sobre a faixa para trocar o nível", _regular, 12, StyleRegular, _palette.Ink, DiscLayout.HintLeft + 10, DiscLayout.HintTop, DiscLayout.HintWidth - 20, DiscLayout.HintHeight);
     }
 
     private static double ScaleOf() => _width / (double)DiscLayout.Width;

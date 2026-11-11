@@ -12,6 +12,7 @@ public sealed class QuickOptionsState
     {
         if (converter is null || converter.Id == Converter?.Id) return;
         Converter = converter;
+        _wheelDelta = 0;
         Primary = converter.Options.FirstOrDefault(option => option.Key != ConverterCatalog.MetadataKey);
         Selected = Primary is null ? 0 : Primary.Choices.ToList().FindIndex(choice => choice.Value == Primary.Default);
     }
@@ -25,6 +26,60 @@ public sealed class QuickOptionsState
         }
     }
 
+    /// <summary>Um dente da roda. Touchpads e rodas de alta precisão enviam frações disso.</summary>
+    private const int WheelNotch = 120;
+
+    private int _wheelDelta;
+
+    /// <summary>Título da faixa, como "Qualidade do WEBP" (prancha 4b-1).</summary>
+    public string? Title => Primary is null ? null : $"{Primary.Label} do {Converter!.Label}";
+
+    /// <summary>Valor embaixo do nome do nível; o padrão ganha "padrão". Null quando o nome já diz o valor.</summary>
+    public string? Detail(int level)
+    {
+        if (Primary is null)
+        {
+            return null;
+        }
+
+        var choice = Primary.Choices[level];
+        var value = (Primary.Key, choice.Value) switch
+        {
+            ("quality", var quality) => $"{quality}%",
+            ("size", var size) => $"{size} px",
+            ("resolution", var dpi) when Converter!.Extension == "pdf" && dpi != "original" => $"{dpi} dpi",
+            _ => null,
+        };
+
+        if (value == choice.Label)
+        {
+            value = null;
+        }
+
+        return choice.Value != Primary.Default ? value : value is null ? "padrão" : $"{value} · padrão";
+    }
+
+    /// <summary>Roda sobre a faixa (ADR-027): para baixo avança, como na troca de aba. Devolve verdadeiro se o nível mudou.</summary>
+    public bool Wheel(int delta)
+    {
+        if (Primary is null || delta == 0)
+        {
+            return false;
+        }
+
+        if (Math.Sign(delta) != Math.Sign(_wheelDelta))
+        {
+            _wheelDelta = 0;
+        }
+
+        _wheelDelta += delta;
+        var notches = _wheelDelta / WheelNotch;
+        _wheelDelta -= notches * WheelNotch;
+        var before = Selected;
+        Step(-notches);
+        return Selected != before;
+    }
+
     /// <summary>Opções para uma confirmação futura: só a principal muda; demais usam padrões do Worker.</summary>
     public IReadOnlyDictionary<string, string>? Options()
     {
@@ -36,6 +91,7 @@ public sealed class QuickOptionsState
     public void Clear()
     {
         Converter = null;
+        _wheelDelta = 0;
         Primary = null;
         Selected = 0;
     }

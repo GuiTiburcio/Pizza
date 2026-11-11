@@ -1,6 +1,7 @@
 using System.Reflection;
 using Pizza.App;
 using Pizza.App.Interop;
+using Pizza.Core.Conversions;
 using Pizza.Core.Gesture;
 using Pizza.Core.Notifications;
 using Pizza.Core.Visual;
@@ -149,6 +150,77 @@ public sealed class OverlayDropTests
         Assert.Equal(GestureState.Choosing, Session.State);
     }
 
+    // ADR-027: entrada.jpg mostra PNG, WEBP, AVIF, PDF, TIFF e ICO; a fatia 1 é o WEBP.
+    [Fact]
+    public void Soltar_num_nivel_converte_com_esse_nivel()
+    {
+        Prepare();
+        HoverSlice(1);
+
+        Assert.True(Overlay.OnDrop(new DraggedFiles("entrada.jpg", 1), LevelX(0, 4), LevelY));
+
+        Assert.Equal("image.webp", Dropped!.Value.Converter.Id);
+        Assert.Equal("95", Dropped!.Value.Options!["quality"]);
+        Assert.Equal(1, (int?)Get("_pulseSlot"));
+    }
+
+    [Fact]
+    public void Soltar_na_fatia_converte_com_o_nivel_marcado_sem_abrir_o_painel()
+    {
+        Prepare();
+        var (x, y) = SliceCenter(1);
+        HoverSlice(1);
+
+        Assert.True(Overlay.OnDrop(new DraggedFiles("entrada.jpg", 1), x, y));
+
+        Assert.Equal("75", Dropped!.Value.Options!["quality"]);
+    }
+
+    [Fact]
+    public void Roda_sobre_a_faixa_troca_o_nivel_e_fora_dela_troca_a_aba()
+    {
+        Prepare();
+        HoverSlice(1);
+        Wheel(-120, LevelX(1, 4), LevelY);
+        Assert.Equal(0, Carousel.Target);
+
+        var (x, y) = SliceCenter(1);
+        Assert.True(Overlay.OnDrop(new DraggedFiles("entrada.jpg", 1), x, y));
+        Assert.Equal("60", Dropped!.Value.Options!["quality"]);
+
+        Prepare();
+        Wheel(-120, DiscLayout.CenterX, DiscLayout.CenterY);
+        Assert.Equal(1, Carousel.Target);
+    }
+
+    [Fact]
+    public void Passar_de_raspao_por_outra_fatia_nao_troca_a_faixa()
+    {
+        // A caminho da faixa, o cursor cruza a fatia de cima; só uma parada nela troca os níveis.
+        Prepare();
+        HoverSlice(1);
+        HoverSlice(0);
+        Assert.Equal("image.webp", Strip.Converter!.Id);
+
+        typeof(Overlay).GetMethod("OnTimer", PrivateStatic)!.Invoke(null, [StripTimer]);
+        Assert.Equal("image.png", Strip.Converter!.Id);
+    }
+
+    [Theory]
+    [InlineData(Native.WM_LBUTTONDOWN, Native.WM_LBUTTONUP, false)]
+    [InlineData(Native.WM_RBUTTONDOWN, Native.WM_RBUTTONUP, true)]
+    public void Botao_direito_na_fatia_abre_o_painel_e_o_esquerdo_converte(uint down, uint up, bool panel)
+    {
+        PrepareChoice();
+        var (x, y) = SliceCenter(1);
+        var choose = typeof(Overlay).GetMethod("OnChoiceButton", PrivateStatic)!;
+        choose.Invoke(null, [down, x, y]);
+        choose.Invoke(null, [up, x, y]);
+
+        Assert.Equal("image.webp", Dropped!.Value.Converter.Id);
+        Assert.Equal(panel, Dropped!.Value.Options is null);
+    }
+
     [Fact]
     public void Efeito_sem_copy_nao_e_aceito()
     {
@@ -203,6 +275,8 @@ public sealed class OverlayDropTests
         Set("_motion", MotionStyle.Slide);
         Set("_choiceDeadline", 0L);
         Set("_clickArmed", false);
+        Set("_levelHover", null);
+        Strip.Clear();
         typeof(Overlay).GetProperty(nameof(Overlay.IsVisible))!.SetValue(null, true);
         ((TabCarousel)typeof(Overlay).GetField("Carousel", PrivateStatic)!.GetValue(null)!).Reset();
         var session = (GestureSession)typeof(Overlay).GetField("Session", PrivateStatic)!.GetValue(null)!;
@@ -220,7 +294,38 @@ public sealed class OverlayDropTests
     }
 
     private static bool ChooseAt(int x, int y) =>
-        (bool)typeof(Overlay).GetMethod("ChooseAt", PrivateStatic)!.Invoke(null, [DiscLayout.CenterX + x, DiscLayout.CenterY + y])!;
+        (bool)typeof(Overlay).GetMethod("ChooseAt", PrivateStatic)!.Invoke(null, [DiscLayout.CenterX + x, DiscLayout.CenterY + y, false])!;
+
+    private static TabCarousel Carousel => (TabCarousel)Get("Carousel")!;
+    private static QuickOptionsState Strip => (QuickOptionsState)Get("Strip")!;
+    private static nuint StripTimer => Convert.ToUInt32(typeof(Overlay).GetField("TimerStrip", PrivateStatic)!.GetRawConstantValue());
+    private static int LevelY => DiscLayout.LevelTop + (DiscLayout.LevelHeight / 2);
+
+    private static (string Path, ConverterInfo Converter, IReadOnlyDictionary<string, string>? Options)? Dropped =>
+        ((string, ConverterInfo, IReadOnlyDictionary<string, string>?)?)Get("_dropped");
+
+    private static int LevelX(int level, int count)
+    {
+        var (left, right) = DiscLayout.LevelSpan(level, count);
+        return (int)((left + right) / 2);
+    }
+
+    private static (int X, int Y) SliceCenter(int slot)
+    {
+        var angle = RadialMenu.SlotAngle(slot) * Math.PI / 180;
+        return (DiscLayout.CenterX + (int)(130 * Math.Cos(angle)), DiscLayout.CenterY + (int)(130 * Math.Sin(angle)));
+    }
+
+    private static void HoverSlice(int slot)
+    {
+        var (x, y) = SliceCenter(slot);
+        Assert.True(Overlay.OnDragOver(x, y));
+    }
+
+    private static void Wheel(int delta, int x, int y) =>
+        typeof(Overlay).GetMethod("OnWheel", PrivateStatic)!.Invoke(null, [delta, x, y]);
+
+    private static object? Get(string name) => typeof(Overlay).GetField(name, PrivateStatic)!.GetValue(null);
 
     private static int? TargetAt(int x, int y) =>
         (int?)typeof(Overlay).GetMethod("TargetSlot", PrivateStatic)!.Invoke(null, [DiscLayout.CenterX + x, DiscLayout.CenterY + y]);

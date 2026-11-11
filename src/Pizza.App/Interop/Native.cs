@@ -305,6 +305,9 @@ internal static unsafe partial class Native
     public static partial int PostMessageW(nint hwnd, uint msg, nuint wParam, nint lParam);
 
     [LibraryImport("user32.dll")]
+    public static partial int GetCursorPos(POINT* point);
+
+    [LibraryImport("user32.dll")]
     public static partial void PostQuitMessage(int exitCode);
 
     [LibraryImport("user32.dll")]

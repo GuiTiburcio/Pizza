@@ -9,7 +9,8 @@ public class DiscLayoutTests
     [Fact]
     public void Disco_de_380_px_cabe_na_tela_com_a_barra_acima_e_a_dica_abaixo()
     {
-        Assert.Equal(DiscLayout.DiscTop - DiscLayout.TabBarHeight, DiscLayout.BarGap);
+        Assert.Equal(DiscLayout.StripTop - DiscLayout.TabBarHeight, DiscLayout.BarGap);
+        Assert.Equal(DiscLayout.DiscTop - (DiscLayout.StripTop + DiscLayout.StripHeight), DiscLayout.BarGap);
         Assert.True(DiscLayout.CenterX - 190 >= 0 && DiscLayout.CenterX + 190 <= DiscLayout.Width);
         Assert.True(DiscLayout.HintTop >= DiscLayout.CenterY + 190);
         Assert.True(DiscLayout.HintTop + DiscLayout.HintHeight <= DiscLayout.Height);
@@ -39,6 +40,41 @@ public class DiscLayoutTests
                 Assert.True(left >= DiscLayout.TabSpan(tab - 1).Right);
             }
         }
+    }
+
+    [Theory]
+    [InlineData(3)]
+    [InlineData(4)]
+    public void Niveis_ficam_centrados_dentro_da_janela_sem_se_sobrepor(int count)
+    {
+        // ADR-027: até quatro níveis de 84 px, centrados acima do disco.
+        Assert.Equal(DiscLayout.Width - DiscLayout.LevelSpan(count - 1, count).Right, DiscLayout.LevelSpan(0, count).Left, 3);
+        for (var level = 1; level < count; level++)
+        {
+            Assert.True(DiscLayout.LevelSpan(level, count).Left > DiscLayout.LevelSpan(level - 1, count).Right);
+        }
+
+        Assert.True(DiscLayout.LevelTop + DiscLayout.LevelHeight <= DiscLayout.DiscTop);
+    }
+
+    [Fact]
+    public void Nivel_sob_o_cursor()
+    {
+        var (left, right) = DiscLayout.LevelSpan(2, 4);
+        var y = DiscLayout.LevelTop + (DiscLayout.LevelHeight / 2.0);
+
+        Assert.Equal(2, DiscLayout.LevelAt((left + right) / 2, y, 4));
+        Assert.Null(DiscLayout.LevelAt((left + right) / 2, DiscLayout.DiscTop + 5, 4));
+        Assert.Null(DiscLayout.LevelAt(2, y, 4));
+        Assert.Null(DiscLayout.LevelAt((left + right) / 2, y, 0));
+    }
+
+    [Fact]
+    public void Roda_troca_o_nivel_so_na_faixa()
+    {
+        Assert.True(DiscLayout.InStrip(DiscLayout.CenterX, DiscLayout.StripTop + 1));
+        Assert.False(DiscLayout.InStrip(DiscLayout.CenterX, DiscLayout.CenterY));
+        Assert.False(DiscLayout.InStrip(DiscLayout.CenterX, DiscLayout.TabBarHeight / 2.0));
     }
 
     [Theory]

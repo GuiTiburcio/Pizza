@@ -234,7 +234,7 @@ O Pizza é uma **ferramenta** que roda no computador do cliente. Quem decide con
 
 | ID | Requisito | Critério de aceite |
 | --- | --- | --- |
-| FR-20 | Soltar numa fatia com opções DEVE abrir o painel (WF-3) já com o padrão marcado | Enter converte sem nenhuma outra escolha |
+| FR-20 | Soltar numa fatia com opções DEVE converter com o nível marcado na faixa, que é o padrão se a roda não o mudou (ADR-027). O botão direito na fatia abre o painel (WF-3) já com o padrão marcado | No painel, Enter converte sem nenhuma outra escolha |
 | FR-21 | Conversões sem opções DEVEM começar ao soltar | TIFF, GIF, Juntar e Word não abrem painel |
 | FR-22 | "Usar sempre estas opções" DEVE pular o painel nas próximas vezes | Desfazível em Configurações › Qualidade |
 | FR-23 | O painel DEVE ter a opção "Manter metadados", desmarcada por padrão | Ver PRIV-30 |
