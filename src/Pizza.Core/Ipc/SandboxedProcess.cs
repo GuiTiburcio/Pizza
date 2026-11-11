@@ -158,6 +158,11 @@ public sealed unsafe partial class SandboxedProcess : IDisposable
     /// Encerra e espera sair. TerminateProcess é assíncrono: até o fim, o processo ainda segura os
     /// handles duplicados, e o temporário marcado para exclusão continuaria existindo (SEC-34).
     /// </summary>
+    /// <summary>ADR-029: pausa congelando o processo inteiro; o libvips cria threads durante a conversão.</summary>
+    public void Suspend() => NtSuspendProcess(_process);
+
+    public void Resume() => NtResumeProcess(_process);
+
     public void Kill()
     {
         TerminateProcess(_process, 1);
@@ -335,6 +340,12 @@ public sealed unsafe partial class SandboxedProcess : IDisposable
 
     [LibraryImport("advapi32.dll")]
     private static partial nint FreeSid(nint sid);
+
+    [LibraryImport("ntdll.dll")]
+    private static partial int NtSuspendProcess(nint process);
+
+    [LibraryImport("ntdll.dll")]
+    private static partial int NtResumeProcess(nint process);
 
     [LibraryImport("kernel32.dll")]
     private static partial nint LocalFree(nint memory);

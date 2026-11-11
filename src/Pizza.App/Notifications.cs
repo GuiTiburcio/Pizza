@@ -16,13 +16,13 @@ internal static unsafe class Notifications
 {
     private const string ClassName = "PizzaNotification";
     private const uint WmConversionDone = WM_APP + 1;
+    private const uint WmConversionProgress = WM_APP + 2;
     private const nuint TimerFrame = 1;
     private const nuint TimerHeld = 2;
     private const uint FrameMs = 33;
     private const uint HeldCheckMs = 5000;
 
     private const int OverflowId = 0;
-    private const double SweepMs = 1200;
 
     public static readonly uint White = Rgb(255, 255, 255);
     public static readonly uint Ink = Rgb(15, 19, 32);
@@ -34,12 +34,12 @@ internal static unsafe class Notifications
 
     private static readonly NotificationStack Stack = new();
     private static readonly List<Card> Cards = [];
+    private static readonly Dictionary<long, ConversionClock> Clocks = []; // ADR-029: tempo e porcentagem de cada conversão.
 
     private static nint _host;
     private static nint _instance;
     private static long _nextId;
     private static long _lastFrame;
-    private static double _sweep;
     private static bool _locked;
     private static bool _tracking;
     private static bool _clockRunning;
@@ -78,7 +78,8 @@ internal static unsafe class Notifications
         var id = ++_nextId;
         History.Add(id, path, converter, options);
         Stack.Set(id, NotificationKind.Progress, "Convertendo…", $"{Path.GetFileName(path)} → {converter.Label}");
-        Conversion.Start(id, path, converter, options, _host, WmConversionDone);
+        Clocks[id] = new ConversionClock(Environment.TickCount64);
+        Conversion.Start(id, path, converter, options, _host, WmConversionDone, WmConversionProgress);
         RefreshHeld();
         Sync();
         FilesPanel.Refresh();
@@ -92,6 +93,7 @@ internal static unsafe class Notifications
         }
 
         var result = finished.Result;
+        var took = Clocks.Remove(finished.Id, out var clock) ? clock.Took(Environment.TickCount64) : null;
         if (result.ErrorCode == ConversionRunner.Cancelled)
         {
             Log.Write(LogEvent.ConversionCancelled);
@@ -116,7 +118,7 @@ internal static unsafe class Notifications
         else
         {
             History.Complete(finished.Id, Path.Combine(Path.GetDirectoryName(entry.SourcePath)!, result.OutputName!));
-            Stack.Set(finished.Id, NotificationKind.Success, "Conversão concluída", result.OutputName!);
+            Stack.Set(finished.Id, NotificationKind.Success, "Conversão concluída", took is null ? result.OutputName! : $"{result.OutputName} · {took}");
             Play("concluido.wav");
         }
 
@@ -275,7 +277,7 @@ internal static unsafe class Notifications
     {
         var needed = Stack.NeedsClock
             || Cards.Exists(card => !card.Alpha.IsDone || !card.Top.IsDone)
-            || (Overlay.ResolveMotion() == MotionStyle.Slide && Stack.Visible.Any(item => item.Kind == NotificationKind.Progress));
+            || Stack.Visible.Any(item => item.Kind == NotificationKind.Progress); // O tempo do aviso anda a cada segundo (ADR-029).
         if (needed && !_clockRunning)
         {
             _clockRunning = true;
@@ -308,7 +310,6 @@ internal static unsafe class Notifications
             card.Alpha.Advance(elapsed);
         }
 
-        _sweep = (_sweep + (elapsed / SweepMs)) % 1;
         Sync();
     }
 
@@ -325,7 +326,18 @@ internal static unsafe class Notifications
         _tracking = false;
         switch (action)
         {
+            case NotificationAction.Pause when Clocks.TryGetValue(id, out var running):
+                Conversion.SetPaused(id, true);
+                running.Pause(Environment.TickCount64);
+                break;
+
+            case NotificationAction.Resume when Clocks.TryGetValue(id, out var paused):
+                Conversion.SetPaused(id, false);
+                paused.Resume(Environment.TickCount64);
+                break;
+
             case NotificationAction.Cancel:
+                Clocks.Remove(id);
                 Conversion.Cancel(id);
                 Stack.Dismiss(id);
                 History.Remove(id);
@@ -460,6 +472,15 @@ internal static unsafe class Notifications
                 OnConversionDone();
                 return 0;
 
+            case WmConversionProgress:
+                if (Clocks.TryGetValue((long)wParam, out var clock))
+                {
+                    clock.Report(Conversion.Percent((long)wParam));
+                    Sync();
+                }
+
+                return 0;
+
             case WM_TIMER when wParam == TimerFrame:
                 Frame();
                 return 0;
@@ -486,9 +507,14 @@ internal static unsafe class Notifications
 
     private static void Render(Card card, int left, int top)
     {
-        var frame = card.Item is { } item
-            ? new CardFrame(item.Kind, item.Title, item.Detail, 0, _sweep, Overlay.ResolveMotion() == MotionStyle.Slide)
-            : new CardFrame(null, string.Empty, string.Empty, Stack.Overflow, 0, false);
+        var now = Environment.TickCount64;
+        var frame = card.Item switch
+        {
+            { Kind: NotificationKind.Progress } item when Clocks.TryGetValue(card.Id, out var clock) =>
+                new CardFrame(item.Kind, clock.IsPaused ? "Pausado" : item.Title, item.Detail, 0, clock.Percent, clock.Text(now), clock.IsPaused),
+            { } item => new CardFrame(item.Kind, item.Title, item.Detail, 0, 0, string.Empty, false),
+            _ => new CardFrame(null, string.Empty, string.Empty, Stack.Overflow, 0, string.Empty, false),
+        };
         DiscRenderer.ShowCard(card.Hwnd, left, top, Scale(NotificationCardLayout.Width), card.Height, _dpi, frame, DiscRenderer.DarkTheme(), card.Alpha.Value);
     }
     public static void Round(nint hdc, RECT rect, int radius, uint color)

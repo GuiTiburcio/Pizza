@@ -10,6 +10,8 @@ public enum NotificationAction
     Retry,
     Details,
     Close,
+    Pause,
+    Resume,
 }
 
 public readonly record struct NotificationButton(NotificationAction Action, string Label, PanelRect Bounds);
@@ -22,20 +24,27 @@ public static class NotificationCardLayout
     public const int OverflowHeight = 44;
     public const int Margin = 16;
     public const int Gap = 8;
-    public const int ProgressBarTop = 104;
+    public const int ProgressTextTop = 76;
+    public const int ProgressBarTop = 100;
+
+    /// <summary>ADR-029: continuar, pausar e parar, ao lado do título; o desenho tem 32 px dentro do alvo de 44 px.</summary>
+    public const int ControlSize = 44;
 
     private const int ButtonTop = 88;
     private const int ButtonHeight = 44;
-    private const int CancelWidth = 120;
     private const int CloseSize = 32;
 
     private static readonly int HalfWidth = (Width - (2 * Margin) - Gap) / 2;
     private static readonly PanelRect Left = new(Margin, ButtonTop, Margin + HalfWidth, ButtonTop + ButtonHeight);
     private static readonly PanelRect Right = new(Margin + HalfWidth + Gap, ButtonTop, Width - Margin, ButtonTop + ButtonHeight);
     private static readonly PanelRect CloseBox = new(Width - 8 - CloseSize, 8, Width - 8, 8 + CloseSize);
-    private static readonly PanelRect CancelBox = new(Width - Margin - CancelWidth, ButtonTop, Width - Margin, ButtonTop + ButtonHeight);
 
-    private static readonly NotificationButton[] ProgressButtons = [new(NotificationAction.Cancel, "Cancelar", CancelBox)];
+    private static readonly NotificationButton[] ProgressButtons =
+    [
+        new(NotificationAction.Resume, "Continuar", Control(2)),
+        new(NotificationAction.Pause, "Pausar", Control(1)),
+        new(NotificationAction.Cancel, "Parar", Control(0)),
+    ];
 
     private static readonly NotificationButton[] SuccessButtons =
     [
@@ -57,6 +66,13 @@ public static class NotificationCardLayout
         NotificationKind.Success => SuccessButtons,
         _ => ErrorButtons,
     };
+
+    /// <summary>Alvo do controle na posição dada, da direita para a esquerda.</summary>
+    private static PanelRect Control(int fromRight)
+    {
+        var right = Width - Margin - (fromRight * (ControlSize + 4));
+        return new PanelRect(right - ControlSize, 6, right, 6 + ControlSize);
+    }
 
     public static NotificationButton? ButtonAt(NotificationKind kind, int x, int y)
     {

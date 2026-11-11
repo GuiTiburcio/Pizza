@@ -18,6 +18,53 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
     }
 
     [Fact]
+    public void Worker_informa_a_porcentagem_so_avancando()
+    {
+        // ADR-029: a porcentagem chega pelo canal, de 0 a 100, sem voltar.
+        // Imagem grande: em arquivos pequenos o libvips termina antes de avisar o andamento.
+        var reported = new List<int>();
+        var control = new ConversionControl { Progress = reported.Add };
+        var source = Path.Combine(_folder, "grande.png");
+        File.WriteAllBytes(source, LargePng(3000, 2000));
+
+        var result = Runner().Run(source, "image.jpg", "jpg", control: control);
+
+        Assert.Null(result.ErrorCode);
+        Assert.NotEmpty(reported);
+        Assert.All(reported, percent => Assert.InRange(percent, 0, 100));
+        Assert.Equal(reported.Order().ToList(), reported);
+    }
+
+    [Fact]
+    public void Tempo_pausado_nao_conta_no_prazo()
+    {
+        // ADR-029 / SEC-43: com prazo de 1 s, 2,5 s pausado não viram TIMEOUT; parar continua funcionando.
+        var control = new ConversionControl { Paused = true };
+        using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(2.5));
+
+        var result = Runner(fixture.ProbePath, "--act hang", TimeSpan.FromSeconds(1)).Run(CopySample(), "image.png", "png", cancellation: cancel.Token, control: control);
+
+        Assert.Equal(ConversionRunner.Cancelled, result.ErrorCode);
+        AssertNothingWritten();
+    }
+
+    [Fact]
+    public void Pausar_e_continuar_termina_a_conversao()
+    {
+        var control = new ConversionControl { Paused = true };
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(600);
+            control.Paused = false;
+        });
+
+        var result = Runner().Run(CopySample(), "image.png", "png", control: control);
+
+        Assert.Null(result.ErrorCode);
+        Assert.Equal("fachada.png", result.OutputName);
+    }
+
+    [Fact]
     public void Jpg_real_vira_png_ao_lado_do_original()
     {
         var source = CopySample();
@@ -272,6 +319,67 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
         var target = Path.Combine(_folder, "fachada.jpg");
         File.Copy(Path.Combine(repository.FullName, "tests", "samples", "fachada.jpg"), target);
         return target;
+    }
+
+    /// <summary>PNG RGB válido, com um degradê, gerado sem biblioteca de imagem.</summary>
+    private static byte[] LargePng(int width, int height)
+    {
+        var raw = new byte[height * ((width * 3) + 1)];
+        for (var y = 0; y < height; y++)
+        {
+            var row = y * ((width * 3) + 1);
+            for (var x = 0; x < width; x++)
+            {
+                raw[row + 1 + (x * 3)] = (byte)x;
+                raw[row + 2 + (x * 3)] = (byte)y;
+                raw[row + 3 + (x * 3)] = (byte)(x ^ y);
+            }
+        }
+
+        using var compressed = new MemoryStream();
+        using (var zlib = new System.IO.Compression.ZLibStream(compressed, System.IO.Compression.CompressionLevel.Fastest, leaveOpen: true))
+        {
+            zlib.Write(raw);
+        }
+
+        var header = new byte[13];
+        BinaryPrimitives.WriteInt32BigEndian(header, width);
+        BinaryPrimitives.WriteInt32BigEndian(header.AsSpan(4), height);
+        header[8] = 8; // 8 bits por canal
+        header[9] = 2; // RGB
+
+        using var png = new MemoryStream();
+        png.Write([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+        WriteChunk(png, "IHDR", header);
+        WriteChunk(png, "IDAT", compressed.ToArray());
+        WriteChunk(png, "IEND", []);
+        return png.ToArray();
+    }
+
+    private static void WriteChunk(Stream png, string type, byte[] data)
+    {
+        Span<byte> number = stackalloc byte[4];
+        BinaryPrimitives.WriteInt32BigEndian(number, data.Length);
+        png.Write(number);
+        var body = System.Text.Encoding.ASCII.GetBytes(type).Concat(data).ToArray();
+        png.Write(body);
+        BinaryPrimitives.WriteUInt32BigEndian(number, Crc32(body));
+        png.Write(number);
+    }
+
+    private static uint Crc32(byte[] data)
+    {
+        var crc = 0xFFFFFFFFu;
+        foreach (var value in data)
+        {
+            crc ^= value;
+            for (var bit = 0; bit < 8; bit++)
+            {
+                crc = (crc & 1) != 0 ? (crc >> 1) ^ 0xEDB88320u : crc >> 1;
+            }
+        }
+
+        return ~crc;
     }
 
     private void AssertNoTemporaries() =>

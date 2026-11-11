@@ -6,7 +6,7 @@ using static Pizza.App.Interop.Native;
 namespace Pizza.App;
 
 /// <summary>O que um aviso mostra. <c>Kind</c> nulo é o cartão "+N".</summary>
-internal readonly record struct CardFrame(NotificationKind? Kind, string Title, string Detail, int Overflow, double Sweep, bool Moving);
+internal readonly record struct CardFrame(NotificationKind? Kind, string Title, string Detail, int Overflow, int Percent, string Time, bool Paused);
 
 /// <summary>
 /// Avisos do canto da tela (ADR-028, prancha 4c-1): vidro translúcido com transparência por pixel. O fundo real
@@ -89,8 +89,9 @@ internal static unsafe partial class DiscRenderer
             DrawDocument(g, 19, 11, kind == NotificationKind.Success ? Argb(255, 22, 163, 127) : Tint);
         }
 
-        Text(g, frame.Title, _semibold, 14, StyleBold, _palette.Ink, 50, 12, width - 96, 24, AlignNear);
-        Text(g, frame.Detail, _regular, 12, StyleRegular, _palette.SliceInk, 50, 38, width - 66, 20, AlignNear);
+        var textWidth = kind == NotificationKind.Progress ? NotificationCardLayout.Buttons(kind)[0].Bounds.Left - 56 : width - 96;
+        Text(g, frame.Title, _semibold, 14, StyleBold, _palette.Ink, 50, 12, textWidth, 24, AlignNear);
+        Text(g, frame.Detail, _regular, 12, StyleRegular, _palette.SliceInk, 50, 38, kind == NotificationKind.Progress ? textWidth : width - 66, 20, AlignNear);
 
         if (kind == NotificationKind.Progress)
         {
@@ -101,6 +102,12 @@ internal static unsafe partial class DiscRenderer
         foreach (var button in NotificationCardLayout.Buttons(kind))
         {
             var bounds = button.Bounds;
+            if (button.Action is NotificationAction.Resume or NotificationAction.Pause or NotificationAction.Cancel)
+            {
+                DrawControl(g, button.Action, bounds, frame.Paused);
+                continue;
+            }
+
             if (button.Action == NotificationAction.Close)
             {
                 Text(g, button.Label, _regular, 18, StyleRegular, _palette.SliceInk, bounds.Left, bounds.Top, bounds.Right - bounds.Left, bounds.Bottom - bounds.Top);
@@ -125,27 +132,79 @@ internal static unsafe partial class DiscRenderer
         }
     }
 
-    /// <summary>O Worker de imagem não informa porcentagem: a bolha de vidro corre pela barra, ou fica parada em "menos movimento".</summary>
+    /// <summary>
+    /// ADR-029, prancha 4c-2: o tempo acima e a linha verde, translúcida mas legível, com a porcentagem no fim.
+    /// </summary>
     private static void DrawCardProgress(nint g, CardFrame frame)
     {
         const float left = 16;
-        const float width = 228;
-        const float segment = 80;
+        const float width = NotificationCardLayout.Width - 32 - 46;
         const float top = NotificationCardLayout.ProgressBarTop;
-        var track = RoundedRect(left, top, width, 8, 4);
+        Text(g, frame.Time, _regular, 11.5f, StyleRegular, _palette.SliceInk, left, NotificationCardLayout.ProgressTextTop, NotificationCardLayout.Width - 32, 18, AlignNear);
+
+        var track = RoundedRect(left, top, width, 10, 5);
         Fill(g, WithAlpha(_palette.Ink, 0.12), track);
         GdipDeletePath(track);
-        if (!frame.Moving)
+        if (frame.Percent > 0)
         {
-            return;
+            var filled = Math.Max(10, width * frame.Percent / 100f);
+            var bar = RoundedRect(left, top, filled, 10, 5);
+            Gradient(g, bar, top, top + 10, Argb(235, 52, 211, 153), Argb(210, 22, 163, 127));
+            GdipSetClipRect(g, left, top, filled, 3, CombineReplace);
+            Fill(g, Argb(120, 255, 255, 255), bar);
+            GdipResetClip(g);
+            GdipDeletePath(bar);
         }
 
-        var x = left + (float)((width + segment) * frame.Sweep) - segment;
-        GdipSetClipRect(g, left, top - 6, width, 20, CombineReplace);
-        Lens(g, RoundedRect(x, top - 3, segment, 14, 7), x + (segment / 2), top + 4, 0, 1);
-        GdipResetClip(g);
+        Text(g, $"{frame.Percent}%", _semibold, 12.5f, StyleBold, _palette.Ink, left + width + 4, top - 5, 42, 20, AlignNear);
     }
 
+    /// <summary>Continuar, pausar e parar: círculo de vidro de 32 px; o ativo ganha a bolha, o que não se aplica fica apagado.</summary>
+    private static void DrawControl(nint g, NotificationAction action, PanelRect bounds, bool paused)
+    {
+        var cx = (bounds.Left + bounds.Right) / 2f;
+        var cy = (bounds.Top + bounds.Bottom) / 2f;
+        var active = (action == NotificationAction.Pause && !paused) || (action == NotificationAction.Resume && paused);
+        var dim = (action == NotificationAction.Resume && !paused) || (action == NotificationAction.Pause && paused);
+        var strength = dim ? 0.35 : 1;
+        if (active)
+        {
+            Lens(g, Ellipse(cx, cy, 16), cx, cy, 0, 1);
+        }
+        else
+        {
+            var circle = Ellipse(cx, cy, 16);
+            Fill(g, WithAlpha(Argb(255, 255, 255, 255), (_palette == Dark ? 0.08 : 0.6) * strength), circle);
+            Stroke(g, WithAlpha(_palette == Dark ? Argb(255, 255, 255, 255) : Argb(255, 15, 19, 32), (_palette == Dark ? 0.22 : 0.12) * strength), 1, circle);
+            GdipDeletePath(circle);
+        }
+
+        var ink = action == NotificationAction.Cancel ? Argb(255, 210, 59, 59) : _palette.Ink;
+        ink = WithAlpha(ink, strength);
+        GdipCreatePath(0, out var icon);
+        switch (action)
+        {
+            case NotificationAction.Resume:
+                GdipAddPathLine(icon, cx - 3, cy - 5, cx + 5, cy);
+                GdipAddPathLine(icon, cx + 5, cy, cx - 3, cy + 5);
+                GdipClosePathFigure(icon);
+                break;
+            case NotificationAction.Pause:
+                GdipDeletePath(icon);
+                icon = RoundedRect(cx - 4.5f, cy - 5, 3, 10, 1);
+                Fill(g, ink, icon);
+                GdipDeletePath(icon);
+                icon = RoundedRect(cx + 1.5f, cy - 5, 3, 10, 1);
+                break;
+            default:
+                GdipDeletePath(icon);
+                icon = RoundedRect(cx - 4.5f, cy - 4.5f, 9, 9, 1.5f);
+                break;
+        }
+
+        Fill(g, ink, icon);
+        GdipDeletePath(icon);
+    }
     /// <summary>Documento com a faixa colorida do formato, como o ícone do miolo do menu.</summary>
     private static void DrawDocument(nint g, float x, float y, uint band)
     {

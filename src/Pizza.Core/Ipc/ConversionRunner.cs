@@ -25,9 +25,10 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     private const int ErrorHandleDiskFull = unchecked((int)0x80070027);
     private const int ErrorDiskFull = unchecked((int)0x80070070);
     private const int ExitPollMs = 50;
+    private const int PauseCheckMs = 50;
     private static readonly TimeSpan ExitGrace = TimeSpan.FromSeconds(5);
 
-    public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null, CancellationToken cancellation = default)
+    public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null, CancellationToken cancellation = default, ConversionControl? control = null)
     {
         if (cancellation.IsCancellationRequested)
         {
@@ -40,7 +41,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
             using var output = PendingOutput.Create(source, Path.GetDirectoryName(Path.GetFullPath(sourcePath))!, journal);
             output.CopyZoneFrom(sourcePath);
 
-            var error = RunWorker(source, output.Handle, converterId, options ?? new Dictionary<string, string>(), cancellation);
+            var error = RunWorker(source, output.Handle, converterId, options ?? new Dictionary<string, string>(), cancellation, control);
             return error is null
                 ? new ConversionResult(output.Commit(OutputNaming.Candidates(sourcePath, extension)), null)
                 : ConversionResult.Failed(error);
@@ -67,7 +68,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         }
     }
 
-    private string? RunWorker(SafeFileHandle source, SafeFileHandle destination, string converterId, IReadOnlyDictionary<string, string> options, CancellationToken cancellation)
+    private string? RunWorker(SafeFileHandle source, SafeFileHandle destination, string converterId, IReadOnlyDictionary<string, string> options, CancellationToken cancellation, ConversionControl? control)
     {
         using var worker = SandboxedProcess.Start(workerPath, profile, workerArguments);
         var jobId = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(6));
@@ -81,13 +82,42 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         }));
 
         // A leitura bloqueia; encerrar o Worker fecha o canal e a libera.
-        var reply = Task.Run(() => ReadOutcome(worker.Output, jobId));
+        var reply = Task.Run(() => ReadOutcome(worker.Output, jobId, control?.Progress));
+        // ADR-029: pausar congela o Worker, e o prazo do SEC-43 conta só o tempo ativo.
+        var active = Stopwatch.StartNew();
+        var suspended = false;
         try
         {
-            if (!reply.Wait((int)timeout.TotalMilliseconds, cancellation))
+            while (!reply.Wait(PauseCheckMs, cancellation))
             {
-                worker.Kill();
-                return "TIMEOUT";
+                var paused = control?.Paused == true;
+                if (paused != suspended)
+                {
+                    if (paused)
+                    {
+                        worker.Suspend();
+                        active.Stop();
+                    }
+                    else
+                    {
+                        worker.Resume();
+                        active.Start();
+                    }
+
+                    suspended = paused;
+                }
+
+                if (active.Elapsed >= timeout)
+                {
+                    worker.Kill();
+                    return "TIMEOUT";
+                }
+            }
+
+            if (suspended)
+            {
+                // A resposta já tinha saído quando a pausa chegou: o Worker precisa terminar.
+                worker.Resume();
             }
         }
         catch (OperationCanceledException)
@@ -129,7 +159,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     }
 
     /// <summary>Lê até o resultado. Tudo que vem do Worker é não confiável (SEC-13, SEC-24).</summary>
-    private static string? ReadOutcome(Stream output, string jobId)
+    private static string? ReadOutcome(Stream output, string jobId, Action<int>? progress)
     {
         try
         {
@@ -148,6 +178,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
                     case IpcType.Error:
                         return message.Code;
                     case IpcType.Progress:
+                        progress?.Invoke(message.Percent!.Value);
                         continue;
                     default:
                         return "WORKER_CRASHED";
