@@ -221,4 +221,39 @@ public class OptionsPanelStateTests
         Assert.Equal(convert, panel.TargetAt((convert.Bounds.Left + convert.Bounds.Right) / 2, convert.Bounds.Top + 1));
         Assert.Null(panel.TargetAt(1, 1));
     }
+
+    [Fact]
+    public void Bolha_parada_cobre_a_opcao_escolhida()
+    {
+        // ADR-027: a opção escolhida em cada grupo é marcada pela bolha de vidro.
+        var state = new OptionsPanelState(ConverterCatalog.Find("image.png")!);
+        var choice = state.Targets.First(target => target.Kind == PanelTargetKind.Choice && target.Row == 1 && target.Choice == state.Selected(1)).Bounds;
+
+        var bubble = state.BubbleAt(1, state.Selected(1));
+
+        Assert.Equal((choice.Left, choice.Right, choice.Top, choice.Bottom), (bubble.Left, bubble.Right, bubble.Top, bubble.Bottom));
+    }
+
+    [Fact]
+    public void Bolha_no_meio_fica_entre_as_duas_opcoes_e_nao_passa_das_pontas()
+    {
+        var state = new OptionsPanelState(ConverterCatalog.Find("image.jpg")!);
+        var first = state.BubbleAt(0, 0);
+        var second = state.BubbleAt(0, 1);
+
+        Assert.Equal((first.Left + second.Left) / 2, state.BubbleAt(0, 0.5).Left, 3);
+        Assert.Equal(first.Left, state.BubbleAt(0, -1).Left, 3);
+        Assert.Equal(state.BubbleAt(0, 3).Left, state.BubbleAt(0, 9).Left, 3);
+    }
+
+    [Fact]
+    public void Setas_mudam_a_opcao_que_a_bolha_segue()
+    {
+        var state = new OptionsPanelState(ConverterCatalog.Find("image.jpg")!);
+        var before = state.Selected(0);
+
+        state.Press(PanelKey.Right);
+
+        Assert.Equal(before + 1, state.Selected(0));
+    }
 }
