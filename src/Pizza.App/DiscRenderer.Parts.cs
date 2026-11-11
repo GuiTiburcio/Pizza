@@ -148,6 +148,55 @@ internal static unsafe partial class DiscRenderer
         }
     }
 
+    /// <summary>Faixa de níveis da fatia em hover (ADR-027, prancha 4b-1). A bolha de vidro chega na etapa 2.</summary>
+    private static void DrawStrip(nint g, DiscFrame frame)
+    {
+        if (frame.StripTitle is not { } title || frame.Levels is not { } levels)
+        {
+            return;
+        }
+
+        const float titleLeft = (DiscLayout.Width - DiscLayout.StripTitleWidth) / 2f;
+        var chip = RoundedRect(titleLeft, DiscLayout.StripTop, DiscLayout.StripTitleWidth, DiscLayout.StripTitleHeight, DiscLayout.StripTitleHeight / 2f);
+        Glass(g, chip, Math.Max(0.40, _glassAlpha), _palette.Border + 0.05);
+        Text(g, title, _semibold, 11.5f, StyleRegular, _palette.Ink, titleLeft, DiscLayout.StripTop, DiscLayout.StripTitleWidth, DiscLayout.StripTitleHeight);
+
+        for (var level = 0; level < levels.Length; level++)
+        {
+            var left = (float)DiscLayout.LevelSpan(level, levels.Length).Left;
+            var picked = level == frame.Level;
+            if (level == frame.LevelHover)
+            {
+                // O mesmo brilho colorido da fatia em hover.
+                var glow = RoundedRect(left, DiscLayout.LevelTop, DiscLayout.LevelWidth, DiscLayout.LevelHeight, 13);
+                foreach (var (width, alpha) in new[] { (9f, 0.12), (5f, 0.18), (2f, 0.26) })
+                {
+                    Stroke(g, WithAlpha(Tint, alpha), width, glow);
+                }
+
+                GdipDeletePath(glow);
+            }
+
+            Glass(g, RoundedRect(left, DiscLayout.LevelTop, DiscLayout.LevelWidth, DiscLayout.LevelHeight, 13), Math.Max(0.30, _glassAlpha), _palette.Border);
+            if (picked)
+            {
+                var mark = RoundedRect(left, DiscLayout.LevelTop, DiscLayout.LevelWidth, DiscLayout.LevelHeight, 13);
+                Fill(g, _palette.Highlight, mark);
+                Stroke(g, Argb(230, 255, 255, 255), 1, mark);
+                GdipDeletePath(mark);
+            }
+
+            var (label, detail) = levels[level];
+            var labelTop = detail is null ? DiscLayout.LevelTop : DiscLayout.LevelTop + 4;
+            var labelHeight = detail is null ? DiscLayout.LevelHeight : 20;
+            Text(g, label, picked ? _semibold : _regular, 12, StyleRegular, _palette.Ink, left, labelTop, DiscLayout.LevelWidth, labelHeight);
+            if (detail is not null)
+            {
+                Text(g, detail, _regular, 10, StyleRegular, _palette.SliceInk, left, DiscLayout.LevelTop + 22, DiscLayout.LevelWidth, 16);
+            }
+        }
+    }
+
     private static double Distance(int tab, double position)
     {
         var count = MenuTabs.Names.Count;

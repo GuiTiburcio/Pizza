@@ -57,6 +57,13 @@ internal static unsafe partial class Overlay
             SetHover(slot);
         }
 
+        var level = TargetLevel(x, y);
+        if (level != _levelHover)
+        {
+            _levelHover = level;
+            Render();
+        }
+
         // ADR-025 / SEC-05: qualquer posição prepara o arquivo; só uma fatia seleciona o formato.
         return Session.State == GestureState.Menu && _files is { Count: 1 } && IsVisible && _pulseSlot is null;
     }
@@ -70,6 +77,11 @@ internal static unsafe partial class Overlay
             !RadialMenu.CanConvert(file.First) || !IsVisible || _pulseSlot is not null)
         {
             return false;
+        }
+
+        if (selectSlice && TargetLevel(x, y) is { } level)
+        {
+            return SelectLevel(file.First, level);
         }
 
         var slot = selectSlice ? TargetSlot(x, y) : null;
@@ -90,7 +102,11 @@ internal static unsafe partial class Overlay
         return true;
     }
 
-    private static bool Select(string path, int slot)
+    /// <summary>
+    /// ADR-027: a fatia converte direto com o nível marcado na faixa, que é o padrão se a roda não mexeu.
+    /// Com <paramref name="panel"/>, o painel completo abre antes (botão direito).
+    /// </summary>
+    private static bool Select(string path, int slot, bool panel = false)
     {
         var page = _pages[Carousel.Target];
         var converter = RadialMenu.Slices(page.Tab, path, page.Turn).ElementAtOrDefault(slot);
@@ -99,13 +115,17 @@ internal static unsafe partial class Overlay
             return false;
         }
 
+        // Outra fatia que não a da faixa volta ao padrão dela.
+        Strip.PointAt(converter);
+        var options = panel && converter.HasPanel ? null : Strip.Options() ?? new Dictionary<string, string>();
+
         Log.Write(LogEvent.FileDropped);
         Session.End();
         StopDragTimers();
         ShowWindow(_catcher, SW_HIDE);
 
         // O resto acontece depois que o Drop retornar: o Explorer fica preso até lá.
-        _dropped = (path, converter);
+        _dropped = (path, converter, options);
         _pulseSlot = slot;
         Render();
         SetTimer(Disc, TimerPulse, _motion == MotionStyle.Instant ? 1 : PulseMs, 0);
@@ -130,9 +150,9 @@ internal static unsafe partial class Overlay
 
         _dropped = null;
         _pulseSlot = null;
-        if (dropped.Converter.HasPanel)
+        if (dropped.Options is null)
         {
-            _awaitingOptions = dropped;
+            _awaitingOptions = (dropped.Path, dropped.Converter);
             var (centerX, centerY) = DiscCenter();
             HideWindow();
             OptionsPanel.Show(dropped.Converter, Path.GetFileName(dropped.Path), centerX, centerY);
@@ -140,7 +160,7 @@ internal static unsafe partial class Overlay
         else
         {
             Hide();
-            Notifications.Convert(dropped.Path, dropped.Converter, new Dictionary<string, string>());
+            Notifications.Convert(dropped.Path, dropped.Converter, dropped.Options);
         }
     }
 

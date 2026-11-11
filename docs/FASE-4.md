@@ -7,8 +7,8 @@ Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste), 
 | Etapa | Entrega | Situação |
 | --- | --- | --- |
 | 4a — disco | Vidro, fatias, hover, animação, temas e escolha por clique | Implementado nos PRs #26 e #30; conferência visual ampla pendente |
-| 4r — reorganização | Separar `Overlay.cs` e `DiscRenderer.cs` por assunto, sem mudar comportamento | Implementada no PR #37 |
-| 4b — painel de opções | Temas, cantos, foco, legibilidade e vidro | Base de temas, cantos e alvos implementada; vidro e aceite visual pendentes |
+| 4r — reorganização | Separar `Overlay.cs` e `DiscRenderer.cs` por assunto, sem mudar comportamento | Concluída no PR #37 |
+| 4b — faixa, bolha e painel (ADR-027) | Faixa de níveis, bolha de vidro e painel em vidro, em três partes | Base do painel implementada; parte 1 (faixa de níveis) em validação; bolha e painel em vidro pendentes |
 | 4c — notificações e Arquivos | Aplicar linguagem visual e temas aos componentes da Fase 3 | Aguardando 4b |
 | 4d — bandeja | Janela própria de vidro com teclado, conforme ADR-020 | Aguardando 4c |
 | 4e — aceite da fase | Comparar o conjunto com o dossiê e conferir NFR-06/NFR-08 | Pendente; libera a Fase 5 |

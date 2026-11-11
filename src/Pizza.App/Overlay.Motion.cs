@@ -42,6 +42,7 @@ internal static unsafe partial class Overlay
         if (slot is { } next)
         {
             Move(Hover[next], 1);
+            PointStripAt(next);
         }
 
         _hoverSlot = slot;

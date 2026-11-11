@@ -26,9 +26,13 @@ internal static unsafe partial class Overlay
         KeepChoosing();
     }
 
-    /// <summary>Clique durante a escolha, com qualquer botão: a fatia sob o cursor escolhe o formato.</summary>
-    private static bool ChooseAt(int x, int y) =>
-        Session.State == GestureState.Choosing && _files is { } file && TargetSlot(x, y) is { } slot && Select(file.First, slot);
+    /// <summary>
+    /// Clique durante a escolha: o nível sob o cursor converte com ele; a fatia converte com o nível marcado
+    /// ou, com o botão direito, abre o painel completo (ADR-027).
+    /// </summary>
+    private static bool ChooseAt(int x, int y, bool panel) =>
+        Session.State == GestureState.Choosing && _files is { } file &&
+        (TargetLevel(x, y) is { } level ? SelectLevel(file.First, level) : TargetSlot(x, y) is { } slot && Select(file.First, slot, panel));
 
     /// <summary>Qualquer interação na escolha (mouse, roda, teclado) reinicia o prazo até fechar.</summary>
     private static void KeepChoosing()
@@ -54,7 +58,7 @@ internal static unsafe partial class Overlay
         {
             if (_clickArmed)
             {
-                ChooseAt(x, y);
+                ChooseAt(x, y, panel: message == WM_RBUTTONUP);
             }
 
             _clickArmed = false;

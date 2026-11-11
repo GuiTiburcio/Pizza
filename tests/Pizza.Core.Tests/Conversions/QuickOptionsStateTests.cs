@@ -59,6 +59,53 @@ public class QuickOptionsStateTests
         Assert.Null(state.Options());
     }
 
+    [Theory]
+    [InlineData("image.webp", "Qualidade do WEBP", 2, "75% · padrão")]
+    [InlineData("image.jpg", "Qualidade do JPG", 0, "95%")]
+    [InlineData("image.png", "Resolução do PNG", 0, "padrão")]
+    [InlineData("image.pdf", "Resolução do PDF", 1, "150 dpi")]
+    [InlineData("image.ico", "Tamanho do ICO", 2, "48 px")]
+    public void Faixa_mostra_titulo_e_detalhe_de_cada_nivel(string id, string title, int level, string detail)
+    {
+        // Prancha 4b-1: "Qualidade do WEBP", com o valor embaixo do nome e o padrão marcado.
+        var state = new QuickOptionsState();
+        state.PointAt(ConverterCatalog.Find(id));
+        Assert.Equal(title, state.Title);
+        Assert.Equal(detail, state.Detail(level));
+    }
+
+    [Fact]
+    public void Detalhe_nao_repete_o_nome_do_nivel()
+    {
+        var state = new QuickOptionsState();
+        state.PointAt(ConverterCatalog.Find("image.png"));
+        Assert.Equal("75%", state.Primary!.Choices[1].Label);
+        Assert.Null(state.Detail(1));
+    }
+
+    [Fact]
+    public void Roda_troca_o_nivel_so_a_cada_dente_inteiro()
+    {
+        // Touchpads mandam frações de 120; para baixo avança, como na troca de aba.
+        var state = new QuickOptionsState();
+        state.PointAt(ConverterCatalog.Find("image.jpg"));
+        Assert.False(state.Wheel(-60));
+        Assert.True(state.Wheel(-60));
+        Assert.Equal("60", state.Options()!["quality"]);
+        Assert.True(state.Wheel(240));
+        Assert.Equal("85", state.Options()!["quality"]);
+    }
+
+    [Fact]
+    public void Roda_no_extremo_nao_muda_nada()
+    {
+        var state = new QuickOptionsState();
+        state.PointAt(ConverterCatalog.Find("image.jpg"));
+        state.Step(int.MinValue);
+        Assert.False(state.Wheel(120));
+        Assert.False(new QuickOptionsState().Wheel(-120));
+    }
+
     [Fact]
     public void Troca_de_pagina_ou_fim_do_menu_limpa_contexto()
     {
