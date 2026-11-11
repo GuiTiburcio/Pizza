@@ -55,7 +55,7 @@ Decidido em 10/11/2026: **B · Curva completa**, mostrada nos temas claro e escu
 
 ### Referência · barra de abas para seis abas
 
-Para escolher na Fase 4d: A (texto curto, 38 px) ou B (ícone e nome, 44 px), nos dois temas. A barra 70% mais fina deixa os alvos abaixo dos 44 px de acessibilidade (NFR-06).
+Decidido em 11/11/2026: **B · ícone e nome, 44 px**, para a Fase 4d. A versão A (texto curto, 38 px) foi descartada porque deixa os alvos abaixo dos 44 px de acessibilidade (NFR-06).
 
 ![Barra de abas](ref-barra-abas.png)
 
