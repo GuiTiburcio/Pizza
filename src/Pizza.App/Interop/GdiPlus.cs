@@ -21,6 +21,7 @@ internal static unsafe partial class GdiPlus
     public const int LineJoinRound = 2;
     public const int LineCapRound = 2;
     public const int CombineReplace = 0;
+    public const int CombineExclude = 4;
     public const int WrapTileFlipXY = 3;
 
     private const string Library = "gdiplus.dll";

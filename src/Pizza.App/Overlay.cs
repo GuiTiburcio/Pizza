@@ -122,6 +122,8 @@ internal static unsafe partial class Overlay
         _hoverSlot = null;
         _levelHover = null;
         Strip.Clear();
+        SliceGlide.Snap(0);
+        LevelGlide.Snap(0);
         foreach (var transition in Hover)
         {
             transition.Snap(0);
@@ -206,7 +208,11 @@ internal static unsafe partial class Overlay
             Strip.Title,
             levels,
             Strip.Selected,
-            _levelHover);
+            _levelHover,
+            SliceGlide.Position,
+            SliceGlide.Swell,
+            LevelGlide.Position,
+            LevelGlide.Swell);
         DiscRenderer.Show(Disc, _left, _top, frame);
     }
 
