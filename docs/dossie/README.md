@@ -11,6 +11,8 @@ Pranchas do planejamento do Pizza, feitas antes do código, em 08/11/2026 e 09/1
 - implantação;
 - wireframes.
 
+> **Padrão desde 11/11/2026:** pranchas de documentação em tema claro, 1600 × 1000, fundo único; telas do Pizza em claro e escuro lado a lado.
+>
 > **Revisão de 10/11/2026:** as pranchas foram atualizadas para bater com a SPECS v1.2. Se alguma ainda divergir, valem as [SPECS](../SPECS.md) (em especial a §2.1, com as emendas) e os [ADRs](../adr/).
 >
 > As principais mudanças desde o planejamento são estas:
@@ -47,9 +49,15 @@ Pranchas do planejamento do Pizza, feitas antes do código, em 08/11/2026 e 09/1
 
 ### Referência · texto das fatias
 
-Decidido em 10/11/2026: **B · Curva completa**. A versão A, sem girar, foi descartada porque a descrição longa não cabia nas fatias laterais sem quebrar a linha.
+Decidido em 10/11/2026: **B · Curva completa**, mostrada nos temas claro e escuro. A versão A, sem girar, foi descartada porque a descrição longa não cabia nas fatias laterais sem quebrar a linha.
 
 ![Texto das fatias](ref-texto-fatias.png)
+
+### Referência · barra de abas para seis abas
+
+Para escolher na Fase 4d: A (texto curto, 38 px) ou B (ícone e nome, 44 px), nos dois temas. A barra 70% mais fina deixa os alvos abaixo dos 44 px de acessibilidade (NFR-06).
+
+![Barra de abas](ref-barra-abas.png)
 
 ## Arquitetura
 
