@@ -135,9 +135,9 @@ Telas do design aprovado, nos temas claro e escuro. No Claude Design, a Ref-Imag
 
 ![Fluxo 6 · pronto](fluxo-6.png)
 
-## Fase 4b · para aprovar
+## Fase 4b · aprovado
 
-Pranchas da próxima etapa do código, nos temas claro e escuro. Depois da aprovação do mantenedor, viram ADR e só então código.
+Aprovado pelo mantenedor em 11/11/2026, com a bolha de vidro B (franjas coloridas) também no painel de opções e entre as fatias. Detalhes no [ADR-027](../adr/027-faixa-de-niveis-e-bolha-de-vidro.md).
 
 ### Faixa de níveis acima do disco
 

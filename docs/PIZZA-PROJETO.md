@@ -743,6 +743,7 @@ Cada decisão também tem um arquivo próprio em [`docs/adr/`](adr/).
 | 023 | GDI+ e desfoque próprio do vidro, substituindo Direct2D e Acrylic do ADR-003 | Acrylic e composição do Windows não funcionam com o disco inativo; sem dependência nova | Vortice, Acrylic, composição, API não documentada |
 | 025 | Soltar em qualquer posição e escolher por clique; soltar na fatia continua como atalho | Não exige sustentar o botão nem mirar no centro | Exigir soltura no centro; selecionar apenas por drop |
 | 026 | Aba Vídeo separada de Áudio, com Media Foundation e FFmpeg | O menu abre na aba do arquivo; cada aba cabe numa volta; o trabalho pesado é dos codecs nativos | Aba única de Áudio e Vídeo, só FFmpeg, só Media Foundation, Rust |
+| 027 | Faixa de níveis acima do disco e bolha de vidro com franjas (Fase 4b) | Converter num gesto, com o padrão ou o nível escolhido; vidro igual em todo o Pizza | Painel a cada soltura, várias linhas de níveis, roda sobre a fatia, bolha sem franjas |
 
 ---
 
