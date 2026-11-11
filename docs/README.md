@@ -2,6 +2,8 @@
 
 | Comece por | Conteúdo |
 | --- | --- |
+| [Instalar e configurar](INSTALACAO.md) | Passo a passo no próprio PC, configuração e desinstalação |
+| [Guia de TI (GPO e Intune)](TI-GPO.md) | Implantação por máquina, políticas e conferência |
 | [Como usar](USO.md) | Executar a prévia, gesto, opções e solução de problemas |
 | [Dossiê e design](dossie/README.md) | Artefato do Claude Design, pranchas e wireframes |
 | [Ideias descartadas](ideias-descartadas/README.md) | O que ficou pelo caminho, e por quê |
