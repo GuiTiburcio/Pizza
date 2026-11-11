@@ -10,8 +10,11 @@ public sealed class TabCarousel(int count)
     /// <summary>Um "dente" da roda. Touchpads e rodas de alta precisão enviam frações disso.</summary>
     private const int WheelNotch = 120;
 
-    /// <summary>Duração da animação (token da Parte 4.2). Com esta mola, 98% do caminho sai em cerca de 167 ms.</summary>
-    private const double DurationMs = 180;
+    /// <summary>
+    /// Duração da troca de aba. Com esta mola, metade do caminho sai em cerca de 64 ms e 98% em cerca de 222 ms:
+    /// dá para perceber o giro sem esperar por ele (pedido do mantenedor em 10/11/2026; era 180 ms).
+    /// </summary>
+    private const double DurationMs = 240;
 
     private const double AngularFrequency = 2 * Math.PI / DurationMs;
     private const double SnapDistance = 0.002;

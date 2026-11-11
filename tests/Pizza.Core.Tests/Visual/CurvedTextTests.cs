@@ -72,6 +72,18 @@ public class CurvedTextTests
     }
 
     [Fact]
+    public void Durante_o_giro_de_aba_o_texto_nao_vira_de_lado()
+    {
+        // A fatia de repouso em 30° (embaixo) pode passar de 0° num giro rápido de várias abas. A orientação
+        // vem da posição de repouso, então o texto acompanha o giro sem trocar de lado no meio da animação.
+        var resting = CurvedText.Place(30, 130, ThreeLetters, 30);
+        var spinning = CurvedText.Place(-18, 130, ThreeLetters, 30, restDegrees: 30);
+
+        Assert.Equal(resting[1].Rotation - 48, spinning[1].Rotation, 6);
+        Assert.Equal(CurvedText.NameRadius(30, 0), CurvedText.NameRadius(-18, 0, restDegrees: 30), 6);
+    }
+
+    [Fact]
     public void No_hover_o_texto_acompanha_a_fatia_que_cresce()
     {
         // WF-2: a fatia cresce 6% e sai 5 px; o texto vai junto.

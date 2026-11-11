@@ -7,6 +7,8 @@ public readonly record struct CurvedGlyph(double X, double Y, double Rotation);
 /// Nome e descrição da fatia seguindo o arco, como num rótulo de pizza (prancha Ref-Texto-Fatias, versão B).
 /// Na metade de cima o texto corre no sentido horário; na de baixo, ao contrário, para nunca ficar de cabeça
 /// para baixo. Em qualquer fatia, lê-se da esquerda para a direita, com o nome acima da descrição.
+/// O lado é decidido pela posição de repouso da fatia (<c>restDegrees</c>), para o texto não trocar de lado
+/// enquanto as fatias giram na troca de aba.
 /// </summary>
 public static class CurvedText
 {
@@ -18,19 +20,19 @@ public static class CurvedText
 
     public static bool IsTopHalf(double centerDegrees) => Math.Sin(centerDegrees * Math.PI / 180) < 0;
 
-    public static double NameRadius(double centerDegrees, double hover) =>
-        WithHover(IsTopHalf(centerDegrees) ? TopName : BottomName, hover);
+    public static double NameRadius(double centerDegrees, double hover, double? restDegrees = null) =>
+        WithHover(IsTopHalf(restDegrees ?? centerDegrees) ? TopName : BottomName, hover);
 
-    public static double CaptionRadius(double centerDegrees, double hover) =>
-        WithHover(IsTopHalf(centerDegrees) ? TopCaption : BottomCaption, hover);
+    public static double CaptionRadius(double centerDegrees, double hover, double? restDegrees = null) =>
+        WithHover(IsTopHalf(restDegrees ?? centerDegrees) ? TopCaption : BottomCaption, hover);
 
     /// <summary>
     /// Posição de cada letra. <paramref name="charCenters"/> é o centro de cada letra medido ao longo da linha
     /// reta do texto, e <paramref name="totalWidth"/> a largura dessa linha; o meio do texto fica no meio da fatia.
     /// </summary>
-    public static CurvedGlyph[] Place(double centerDegrees, double radius, IReadOnlyList<double> charCenters, double totalWidth)
+    public static CurvedGlyph[] Place(double centerDegrees, double radius, IReadOnlyList<double> charCenters, double totalWidth, double? restDegrees = null)
     {
-        var top = IsTopHalf(centerDegrees);
+        var top = IsTopHalf(restDegrees ?? centerDegrees);
         var glyphs = new CurvedGlyph[charCenters.Count];
         for (var i = 0; i < glyphs.Length; i++)
         {

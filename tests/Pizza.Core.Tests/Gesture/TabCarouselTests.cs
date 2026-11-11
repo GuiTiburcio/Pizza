@@ -39,10 +39,10 @@ public class TabCarouselTests
     }
 
     [Fact]
-    public void Chega_ao_destino_em_cerca_de_300_ms()
+    public void Chega_ao_destino_em_cerca_de_400_ms()
     {
         _carousel.OnWheel(-120);
-        for (var i = 0; i < 20; i++)
+        for (var i = 0; i < 25; i++)
         {
             _carousel.Advance(16);
         }
@@ -51,6 +51,16 @@ public class TabCarouselTests
         Assert.Equal(1, _carousel.Position);
     }
 
+    [Fact]
+    public void O_giro_dura_o_bastante_para_ser_percebido()
+    {
+        // Pedido do mantenedor: perceber que girou, sem demorar. Com a mola de 240 ms, a metade do
+        // caminho fica em cerca de 64 ms; a de 180 ms passava da metade antes de 50 ms.
+        _carousel.OnWheel(-120);
+        _carousel.Advance(55);
+
+        Assert.True(_carousel.Position < 0.5);
+    }
     [Fact]
     public void A_posicao_so_anda_em_direcao_ao_destino()
     {

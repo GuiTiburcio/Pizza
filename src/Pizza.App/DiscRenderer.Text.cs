@@ -7,7 +7,7 @@ namespace Pizza.App;
 internal static unsafe partial class DiscRenderer
 {
     /// <summary>Mede o texto letra a letra e desenha cada uma girada sobre o arco, com o meio no meio da fatia.</summary>
-    private static void CurvedLabel(nint g, string text, nint family, float size, int style, uint color, double angle, double radius)
+    private static void CurvedLabel(nint g, string text, nint family, float size, int style, uint color, double angle, double rest, double radius)
     {
         GdipCreateFont(family, size, style, UnitPixel, out var font);
         GdipStringFormatGetGenericTypographic(out var typographic);
@@ -32,7 +32,7 @@ internal static unsafe partial class DiscRenderer
             centers[i] = (edges[i] + edges[i + 1]) / 2;
         }
 
-        var glyphs = CurvedText.Place(angle, radius, centers, edges[text.Length]);
+        var glyphs = CurvedText.Place(angle, radius, centers, edges[text.Length], rest);
         var scale = (float)ScaleOf();
         GdipCreateSolidFill(color, out var brush);
         for (var i = 0; i < text.Length; i++)

@@ -34,7 +34,7 @@ internal static unsafe partial class Overlay
     private const uint AfterReleaseMs = 400;
     private const uint PulseMs = 120; // WF-2: pulso ao soltar.
     private const double HoverMs = 180; // WF-2: 180 ms, curva "ease".
-    private const double TabRotation = 12; // FR-04: as fatias giram levemente ao trocar de aba.
+    private const double TabRotation = 24; // FR-04: as fatias giram ao trocar de aba; 24° deixa o giro visível.
 
     // A camada precisa de alfa maior que zero, senão o Windows deixa o mouse atravessar.
     private const byte CatcherAlpha = 1;

@@ -9,7 +9,9 @@ internal static unsafe partial class DiscRenderer
 {
     private static void DrawSlice(nint g, DiscFrame frame, int slot)
     {
-        var angle = RadialMenu.SlotAngle(slot) + frame.Rotation;
+        // O lado do texto vem do repouso (rest), para não trocar enquanto as fatias giram na troca de aba.
+        var rest = RadialMenu.SlotAngle(slot);
+        var angle = rest + frame.Rotation;
         var pulse = frame.PulseSlot == slot;
         var hover = pulse ? 1 : frame.Hover[slot];
         var movement = frame.Motion == MotionStyle.Slide ? hover : 0;
@@ -53,8 +55,8 @@ internal static unsafe partial class DiscRenderer
         // Nome e descrição seguem o arco da fatia, sempre de pé (escolha "B · Curva completa", Ref-Texto-Fatias).
         var ink = pulse ? Argb(255, 255, 255, 255) : Mix(_palette.SliceInk, _palette.HoverInk, hover);
         var bold = hover >= 0.5;
-        CurvedLabel(g, slice.Label, bold ? _regular : _semibold, 14 + (2 * (float)hover), bold ? StyleBold : StyleRegular, ink, angle, CurvedText.NameRadius(angle, movement));
-        CurvedLabel(g, slice.Caption, _regular, 10.5f, StyleRegular, ink, angle, CurvedText.CaptionRadius(angle, movement));
+        CurvedLabel(g, slice.Label, bold ? _regular : _semibold, 14 + (2 * (float)hover), bold ? StyleBold : StyleRegular, ink, angle, rest, CurvedText.NameRadius(angle, movement, rest));
+        CurvedLabel(g, slice.Caption, _regular, 10.5f, StyleRegular, ink, angle, rest, CurvedText.CaptionRadius(angle, movement, rest));
     }
 
     private static void DrawCenter(nint g, DiscFrame frame)

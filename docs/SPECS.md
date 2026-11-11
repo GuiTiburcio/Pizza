@@ -92,7 +92,7 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | --- | --- | --- |
 | Licença e repositório | Gratuito e GPL-3.0. O repositório fica privado até corrigir os desvios da auditoria | 014 |
 | NFR-06 | Opção Animações: Sempre (padrão) / Seguir o Windows / Nunca. Em Seguir o Windows com animações desligadas, a transição só troca a opacidade | 015 |
-| FR-04 | Um entalhe inteiro = uma aba; frações de touchpad se acumulam. Ao trocar de aba, as fatias giram levemente em volta do miolo enquanto os formatos trocam, em 180 ms | 015 |
+| FR-04 | Um entalhe inteiro = uma aba; frações de touchpad se acumulam. Ao trocar de aba, as fatias giram em volta do miolo enquanto os formatos trocam: 24° numa mola de 240 ms, que faz metade do caminho em cerca de 64 ms (pedido do mantenedor em 10/11/2026; era 12° em 180 ms). Durante o giro, o texto mantém o lado da posição de repouso | 015 |
 | SEC-01, SEC-02, SEC-03, FR-07 | Sem hook de teclado, para todos. O Ctrl é lido só no início do arraste. O menu orienta "Solte o Ctrl e aperte Esc para cancelar"; Ctrl + Esc abre o Menu Iniciar | 016 |
 | FR-09 (novo) | Arquivo sem conversão disponível não abre o menu; o Ctrl + arrastar segue como cópia normal do Windows | — |
 | FR-28, FR-01 | Lote passa para a v1.x. Antes disso (FR-30, novo), arrastar vários mostra a quantidade, recusa o drop e avisa "Por enquanto, um arquivo por vez", sem copiar nada | 017 |
