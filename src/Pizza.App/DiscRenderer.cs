@@ -98,6 +98,7 @@ internal static unsafe partial class DiscRenderer
     private static int _width;
     private static int _height;
     private static double _glassAlpha;
+    private static double _scale = 1;
 
     public static void Start()
     {
@@ -112,6 +113,7 @@ internal static unsafe partial class DiscRenderer
     {
         Release();
         _width = width;
+        _scale = dpi / 96.0;
         _height = height;
         _memory = CreateCompatibleDC(0);
         _target = CreateDib(_memory, width, height, out _bits, out _originalTarget);
@@ -245,7 +247,7 @@ internal static unsafe partial class DiscRenderer
         Text(g, frame.Choosing ? "Clique no nível ou na fatia · Direito: opções · Esc cancela" : "Solte no nível ou na fatia · Role sobre a faixa para trocar o nível", _regular, 12, StyleRegular, _palette.Ink, DiscLayout.HintLeft + 10, DiscLayout.HintTop, DiscLayout.HintWidth - 20, DiscLayout.HintHeight);
     }
 
-    private static double ScaleOf() => _width / (double)DiscLayout.Width;
+    private static double ScaleOf() => _scale;
 
     private static double AverageLuminance(Span<byte> bgra)
     {

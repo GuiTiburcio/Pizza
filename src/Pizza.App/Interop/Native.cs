@@ -97,7 +97,6 @@ internal static unsafe partial class Native
     public const uint SPI_GETCLIENTAREAANIMATION = 0x1042;
     public const int TRANSPARENT = 1;
     public const int PS_SOLID = 0;
-    public const int NULL_BRUSH = 5;
     public const int NULL_PEN = 8;
     public const int FW_NORMAL = 400;
     public const int FW_SEMIBOLD = 600;
@@ -307,6 +306,10 @@ internal static unsafe partial class Native
     [LibraryImport("user32.dll")]
     public static partial int GetCursorPos(POINT* point);
 
+    // dwmapi: espera a próxima composição da tela.
+    [LibraryImport("dwmapi.dll")]
+    public static partial int DwmFlush();
+
     [LibraryImport("user32.dll")]
     public static partial void PostQuitMessage(int exitCode);
 
@@ -460,9 +463,6 @@ internal static unsafe partial class Native
     public static partial nint CreateSolidBrush(uint color);
 
     [LibraryImport("gdi32.dll")]
-    public static partial nint CreatePen(int style, int width, uint color);
-
-    [LibraryImport("gdi32.dll")]
     public static partial int DeleteObject(nint obj);
 
     [LibraryImport("gdi32.dll")]
@@ -479,9 +479,6 @@ internal static unsafe partial class Native
 
     [LibraryImport("gdi32.dll")]
     public static partial int RoundRect(nint hdc, int left, int top, int right, int bottom, int width, int height);
-
-    [LibraryImport("gdi32.dll")]
-    public static partial int SetViewportOrgEx(nint hdc, int x, int y, POINT* previous);
 
     [LibraryImport("gdi32.dll")]
     public static partial int Ellipse(nint hdc, int left, int top, int right, int bottom);

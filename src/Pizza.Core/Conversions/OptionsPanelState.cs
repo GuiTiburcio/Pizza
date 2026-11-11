@@ -116,6 +116,27 @@ public sealed class OptionsPanelState
 
     public bool IsSelected(int row, int choice) => _selected[row] == choice;
 
+    public int Selected(int row) => _selected[row];
+
+    /// <summary>
+    /// Bolha de vidro da opção escolhida (ADR-027) numa posição contínua: 0,5 fica entre a primeira e a segunda
+    /// opção do grupo. Fora do grupo, fica na opção da ponta.
+    /// </summary>
+    public (double Left, double Right, int Top, int Bottom) BubbleAt(int row, double position)
+    {
+        var last = Rows[row].Choices.Count - 1;
+        position = Math.Clamp(position, 0, last);
+        var from = (int)Math.Floor(position);
+        var to = Math.Min(from + 1, last);
+        var a = ChoiceBounds(row, from);
+        var b = ChoiceBounds(row, to);
+        var amount = position - from;
+        return (a.Left + ((b.Left - a.Left) * amount), a.Right + ((b.Right - a.Right) * amount), a.Top, a.Bottom);
+    }
+
+    private PanelRect ChoiceBounds(int row, int choice) =>
+        _targets.First(target => target.Kind == PanelTargetKind.Choice && target.Row == row && target.Choice == choice).Bounds;
+
     public PanelTarget? TargetAt(int x, int y)
     {
         foreach (var target in _targets)

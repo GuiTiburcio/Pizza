@@ -20,6 +20,13 @@ public sealed class PanelViewport
 
     public int Offset { get; private set; }
 
+    /// <summary>Botões ↑ e ↓ do rodapé, quando o painel precisa rolar.</summary>
+    public PanelRect ScrollButton(int width, bool next)
+    {
+        var right = width - OptionsPanelState.Padding - (next ? 0 : 52);
+        return new PanelRect(right - 44, Height - 56, right, Height - 12);
+    }
+
     public void Scroll(int distance) => Offset = Math.Clamp(Offset + distance, 0, _fullHeight - ContentHeight);
 
     public void Reveal(PanelRect bounds)

@@ -57,11 +57,11 @@ internal static unsafe partial class DiscRenderer
         GdipDeleteFont(font);
     }
 
-    private static void Text(nint g, string text, nint family, float size, int style, uint color, float x, float y, float width, float height)
+    private static void Text(nint g, string text, nint family, float size, int style, uint color, float x, float y, float width, float height, int align = AlignCenter)
     {
         GdipCreateFont(family, size, style, UnitPixel, out var font);
         GdipCreateStringFormat(NoWrap, 0, out var format);
-        GdipSetStringFormatAlign(format, AlignCenter);
+        GdipSetStringFormatAlign(format, align);
         GdipSetStringFormatLineAlign(format, AlignCenter);
         GdipSetStringFormatTrimming(format, TrimmingEllipsis);
         GdipCreateSolidFill(color, out var brush);

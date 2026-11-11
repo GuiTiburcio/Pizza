@@ -1,6 +1,6 @@
 namespace Pizza.Core.Visual;
 
-/// <summary>Cores opacas do painel em COLORREF; o vidro será aplicado na etapa seguinte da Fase 4b.</summary>
+/// <summary>Cores do texto, da borda e do destaque do painel, em COLORREF. O fundo do painel é vidro (ADR-027).</summary>
 public readonly record struct PanelPalette(
     uint Background, uint Surface, uint Text, uint SecondaryText, uint Accent, uint OnAccent, uint Border)
 {
