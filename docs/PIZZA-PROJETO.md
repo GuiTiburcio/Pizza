@@ -742,6 +742,7 @@ Cada decisão também tem um arquivo próprio em [`docs/adr/`](adr/).
 | 024 | AVIF depois do WEBP e voltas de fatias quando há mais de 6 | Nenhum formato fica de fora, sem tecla extra no arraste | Fatia "Mais", Shift + roda, AVIF no fim |
 | 023 | GDI+ e desfoque próprio do vidro, substituindo Direct2D e Acrylic do ADR-003 | Acrylic e composição do Windows não funcionam com o disco inativo; sem dependência nova | Vortice, Acrylic, composição, API não documentada |
 | 025 | Soltar em qualquer posição e escolher por clique; soltar na fatia continua como atalho | Não exige sustentar o botão nem mirar no centro | Exigir soltura no centro; selecionar apenas por drop |
+| 026 | Aba Vídeo separada de Áudio, com Media Foundation e FFmpeg | O menu abre na aba do arquivo; cada aba cabe numa volta; o trabalho pesado é dos codecs nativos | Aba única de Áudio e Vídeo, só FFmpeg, só Media Foundation, Rust |
 
 ---
 

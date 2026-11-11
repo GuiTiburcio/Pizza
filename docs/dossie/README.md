@@ -95,6 +95,12 @@ Decidido em 10/11/2026: **B · Curva completa**. A versão A, sem girar, foi des
 
 ![Sequência](eng-4-sequencia.png)
 
+## Decisões recentes
+
+### DEC-1 · O que mudou no caminho, e o que vem depois
+
+![Decisões recentes e próximos passos](dec-1-decisoes.png)
+
 ## Wireframes
 
 ### WF-1 · Anatomia do menu radial
