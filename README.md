@@ -12,6 +12,8 @@
 
 *Afinal, tudo acaba em pizza.*
 
+*"A perfeição não é alcançada quando não há mais nada a ser incluído. A perfeição é alcançada quando não há mais nada a ser retirado."* — Antoine de Saint-Exupéry
+
 Conversor de imagens para Windows com menu circular, processamento local e arquivo original preservado.
 
 [Instalar](docs/INSTALACAO.md) · [Guia de TI](docs/TI-GPO.md) · [Como usar](docs/USO.md) · [Dossiê e design](docs/dossie/README.md) · [Documentação](docs/README.md) · [Próximas etapas](docs/ROADMAP.md)
