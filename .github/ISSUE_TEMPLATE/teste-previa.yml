@@ -1,0 +1,46 @@
+name: Resultado de teste da prévia
+description: Registrar um caso reproduzível com versão e ambiente, sem dados pessoais.
+title: "[Teste] Pxx — descrição curta"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use imagens de exemplo. Não publique documentos pessoais, caminhos completos, logs brutos ou capturas da tela inteira. Suspeitas de vulnerabilidade seguem SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Versão e build
+      description: Commit completo e link do build CI utilizado.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Ambiente
+      description: Edição/build do Windows, escala, tema e quantidade de monitores. Não informe nome do computador ou usuário.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Caso e passos
+      description: Caso Pxx de docs/VALIDACAO-PILOTO.md, formato da imagem, passos e frequência da falha.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Esperado e observado
+      description: Inclua se houve saída, se abriu corretamente e como recuperou a interface.
+    validations:
+      required: true
+  - type: dropdown
+    id: original
+    attributes:
+      label: Integridade do original
+      options:
+        - Não verificada
+        - SHA-256 igual antes e depois
+        - SHA-256 diferente — interrompi a rodada
+    validations:
+      required: true

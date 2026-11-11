@@ -172,6 +172,7 @@ internal static unsafe partial class Overlay
     /// <summary>Estado 2: só a camada invisível, até o OLE confirmar que o arraste é de arquivos.</summary>
     private static void BeginGesture()
     {
+        _dropDeadline = 0;
         OptionsPanel.Close();
         _awaitingOptions = null;
         _dropped = null;
@@ -198,7 +199,8 @@ internal static unsafe partial class Overlay
         KillTimer(Disc, TimerWatchdog);
         if (Session.OnButtonReleased() == SessionAction.WaitForDrop)
         {
-            SetTimer(Disc, TimerAfterRelease, AfterReleaseMs, 0);
+            _dropDeadline = Environment.TickCount64 + AfterReleaseMs;
+            if (Disc != 0) SetTimer(Disc, TimerAfterRelease, AfterReleaseMs, 0);
         }
     }
 

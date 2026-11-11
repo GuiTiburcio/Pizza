@@ -29,8 +29,24 @@ public class ReadyGestureTests
     {
         var session = new GestureSession();
         session.Begin();
+        session.OnButtonReleased();
         Assert.Equal(SessionAction.Close, session.OnDropTimeout());
         Assert.Equal(GestureState.Idle, session.State);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Timeout_do_gesto_anterior_nao_fecha_novo_arraste_ainda_pressionado(bool hasMenu)
+    {
+        var session = new GestureSession();
+        session.Begin();
+        session.OnButtonReleased();
+        session.Begin();
+        if (hasMenu) session.OnDragEnter(true);
+
+        Assert.Equal(SessionAction.None, session.OnDropTimeout());
+        Assert.Equal(hasMenu ? GestureState.Menu : GestureState.WaitingForFile, session.State);
     }
 
     [Fact]
