@@ -9,7 +9,7 @@ namespace Pizza.Core.Visual;
 public static class DiscLayout
 {
     public const int Width = 400;
-    public const int TabBarHeight = 54;
+    public const int TabBarHeight = 44; // ADR-026, barra B: 81% dos 54 px de antes, o mínimo dos alvos (NFR-06).
     public const int BarGap = 10;
 
     // ADR-027: faixa de níveis entre a barra e o disco. Título em cima e até quatro níveis (prancha 4b-1).
@@ -33,7 +33,13 @@ public static class DiscLayout
     public const int Height = HintTop + HintHeight;
 
     public const int TabWidth = 84;
-    public const int TabPadding = 5;
+    public const int TabPadding = 4;
+
+    // Barra B (prancha Ref-Barra-Abas): ícone em cima e o nome curto embaixo.
+    public const int TabIconSize = 18;
+    public const int TabIconTop = 5;
+    public const int TabLabelTop = 25;
+    public const int TabLabelHeight = 14;
     public const int TabBarWidth = (TabWidth * 4) + (TabPadding * 2);
     public const int TabBarLeft = (Width - TabBarWidth) / 2;
 

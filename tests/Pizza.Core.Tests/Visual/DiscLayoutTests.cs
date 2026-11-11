@@ -29,6 +29,17 @@ public class DiscLayoutTests
     }
 
     [Fact]
+    public void Barra_B_tem_44_px_com_alvos_de_pelo_menos_44_px()
+    {
+        // ADR-026: 81% dos 54 px de antes; os alvos não ficam abaixo do mínimo do NFR-06.
+        Assert.Equal(44, DiscLayout.TabBarHeight);
+        Assert.True(DiscLayout.TabWidth >= 44);
+        Assert.True(DiscLayout.TabIconTop >= DiscLayout.TabPadding);
+        Assert.True(DiscLayout.TabLabelTop >= DiscLayout.TabIconTop + DiscLayout.TabIconSize);
+        Assert.True(DiscLayout.TabLabelTop + DiscLayout.TabLabelHeight <= DiscLayout.TabBarHeight - DiscLayout.TabPadding);
+    }
+
+    [Fact]
     public void Abas_ficam_dentro_da_barra_sem_se_sobrepor()
     {
         for (var tab = 0; tab < MenuTabs.Names.Count; tab++)

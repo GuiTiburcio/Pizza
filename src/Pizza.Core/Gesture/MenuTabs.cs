@@ -4,4 +4,7 @@ namespace Pizza.Core.Gesture;
 public static class MenuTabs
 {
     public static IReadOnlyList<string> Names { get; } = ["Imagem", "PDF", "Documento", "Áudio"];
+
+    /// <summary>Nome curto embaixo do ícone na barra B (ADR-026); o completo é <see cref="Names"/>.</summary>
+    public static IReadOnlyList<string> ShortNames { get; } = ["Imagem", "PDF", "Docs", "Áudio"];
 }
