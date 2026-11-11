@@ -127,6 +127,8 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | Barra de abas (Fase 4d) | Fica mais fina, entre 55% e 70% da altura atual, e cabe seis abas (com Vídeo e Web). Escolhida em 11/11/2026 a versão B: ícone com o nome curto embaixo, 44 px de altura (81% da atual, o mínimo de acessibilidade), alvos de cerca de 65 × 44 px e nome completo para o leitor de tela (prancha Ref-Barra-Abas) | 026 |
 | Temas do vidro (Fase 8) | Na tela de Configuração, paletas opcionais em degradê pastel, no estilo do fundo das pranchas de referência do Dossiê | — |
 | Sobre (Fase 8) | A seção Sobre da Configuração mostra a frase do projeto: "Afinal, tudo acaba em pizza." | — |
+| Faixa de níveis nas Configurações (Fase 8) | Opção "Mostrar faixa de níveis", ligada por padrão. Desligada, o menu mostra só as fatias e soltar ou clicar na fatia converte com o padrão. Pedido em 11/11/2026; prancha e ADR antes do código | — |
+| Sempre abrir o painel (Fase 8) | Opção "Sempre abrir o painel", desligada por padrão. Ligada, soltar ou clicar numa fatia com opções abre o painel completo antes de converter, como no FR-20 original. Pedido em 11/11/2026; prancha e ADR antes do código | — |
 | NFR-01 | A meta de 20 MB vale para a **memória privada** do residente, a coluna Memória do Gerenciador de Tarefas. O conjunto de trabalho total também conta DLLs do Windows compartilhadas com o Explorer (shell32, windows.storage, combase), exigidas pelo arrastar e soltar em qualquer linguagem. Medição de 10/11/2026, em repouso: 7,8 MB privados e 24 MB de conjunto de trabalho. A Fase 5 mede também com o menu aberto | — |
 
 ---
