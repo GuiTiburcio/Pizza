@@ -93,21 +93,10 @@ internal static unsafe partial class Native
     public const int IDC_ARROW = 32512;
 
     // GDI
-    public const uint SRCCOPY = 0x00CC0020;
     public const uint SPI_GETCLIENTAREAANIMATION = 0x1042;
-    public const int TRANSPARENT = 1;
     public const int PS_SOLID = 0;
-    public const int NULL_PEN = 8;
-    public const int FW_NORMAL = 400;
-    public const int FW_SEMIBOLD = 600;
-    public const int FW_BOLD = 700;
-    public const uint CLEARTYPE_QUALITY = 5;
-    public const uint DT_CENTER = 0x1;
-    public const uint DT_VCENTER = 0x4;
     public const uint DT_WORDBREAK = 0x10;
     public const uint DT_EDITCONTROL = 0x2000;
-    public const uint DT_SINGLELINE = 0x20;
-    public const uint DT_END_ELLIPSIS = 0x8000;
     public const uint DT_PATH_ELLIPSIS = 0x4000;
 
     // OLE
@@ -324,12 +313,6 @@ internal static unsafe partial class Native
     public static partial int SetLayeredWindowAttributes(nint hwnd, uint key, byte alpha, uint flags);
 
     [LibraryImport("user32.dll")]
-    public static partial int SetWindowRgn(nint hwnd, nint rgn, int redraw);
-
-    [LibraryImport("user32.dll")]
-    public static partial int InvalidateRect(nint hwnd, RECT* rect, int erase);
-
-    [LibraryImport("user32.dll")]
     public static partial nint BeginPaint(nint hwnd, PAINTSTRUCT* ps);
 
     [LibraryImport("user32.dll")]
@@ -337,9 +320,6 @@ internal static unsafe partial class Native
 
     [LibraryImport("user32.dll")]
     public static partial int FillRect(nint hdc, RECT* rect, nint brush);
-
-    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
-    public static partial int DrawTextW(nint hdc, string text, int length, RECT* rect, uint format);
 
     [LibraryImport("user32.dll")]
     public static partial nuint SetTimer(nint hwnd, nuint id, uint ms, nint proc);
@@ -426,9 +406,6 @@ internal static unsafe partial class Native
     public static partial short GetKeyState(int key);
 
     [LibraryImport("user32.dll")]
-    public static partial int FrameRect(nint hdc, RECT* rect, nint brush);
-
-    [LibraryImport("user32.dll")]
     public static partial nint LoadCursorW(nint instance, nint name);
 
     [LibraryImport("user32.dll")]
@@ -452,9 +429,6 @@ internal static unsafe partial class Native
     public static partial nint CreateCompatibleDC(nint hdc);
 
     [LibraryImport("gdi32.dll")]
-    public static partial nint CreateCompatibleBitmap(nint hdc, int width, int height);
-
-    [LibraryImport("gdi32.dll")]
     public static partial int BitBlt(nint target, int x, int y, int width, int height, nint source, int sourceX, int sourceY, uint operation);
 
     [LibraryImport("gdi32.dll")]
@@ -470,16 +444,7 @@ internal static unsafe partial class Native
     public static partial nint SelectObject(nint hdc, nint obj);
 
     [LibraryImport("gdi32.dll")]
-    public static partial nint GetStockObject(int index);
-
-    [LibraryImport("gdi32.dll")]
     public static partial nint CreateEllipticRgn(int left, int top, int right, int bottom);
-
-    [LibraryImport("gdi32.dll")]
-    public static partial nint CreateRoundRectRgn(int left, int top, int right, int bottom, int widthEllipse, int heightEllipse);
-
-    [LibraryImport("gdi32.dll")]
-    public static partial int RoundRect(nint hdc, int left, int top, int right, int bottom, int width, int height);
 
     [LibraryImport("gdi32.dll")]
     public static partial int Ellipse(nint hdc, int left, int top, int right, int bottom);
@@ -489,17 +454,6 @@ internal static unsafe partial class Native
 
     [LibraryImport("gdi32.dll")]
     public static partial int SelectClipRgn(nint hdc, nint region);
-
-    [LibraryImport("gdi32.dll")]
-    public static partial uint SetTextColor(nint hdc, uint color);
-
-    [LibraryImport("gdi32.dll")]
-    public static partial int SetBkMode(nint hdc, int mode);
-
-    [LibraryImport("gdi32.dll", StringMarshalling = StringMarshalling.Utf16)]
-    public static partial nint CreateFontW(int height, int width, int escapement, int orientation, int weight,
-        uint italic, uint underline, uint strikeOut, uint charSet, uint outPrecision, uint clipPrecision,
-        uint quality, uint pitchAndFamily, string faceName);
 
     // kernel32
     [LibraryImport("kernel32.dll")]

@@ -24,3 +24,12 @@ Funciona igual em qualquer Windows 10 e 11, sem depender de configuração do si
 - **Cópia da tela, como o menu:** fundo desatualizado nos avisos que ficam abertos; o mantenedor preferiu a transparência ao vivo.
 - **Acrílico do Windows 11:** apareceu sólido no PC do mantenedor e exige cantos de 8 px.
 - **Cópia renovada a cada segundo:** exigiria esconder os avisos de capturas e compartilhamento de tela.
+
+## Adendo — Arquivos compacto (prancha 4c-3, 11/11/2026)
+
+Aceito pelo mantenedor na prancha 4c-3, que substitui a janela Arquivos da 4c-1.
+
+- Cada linha mostra só o ícone, o nome e o status ("Concluído · PNG", "Convertendo…", "Erro · motivo", "Arquivo não encontrado").
+- Só a linha em foco fica aberta e mostra os botões: "Abrir" e "Mostrar na pasta", ou "Tentar de novo" no erro, com alvo de 44 px. Tab e as setas levam o foco de botão em botão, e a linha acompanha; clicar numa linha fechada a abre sem executar nada.
+- A bolha de vidro B marca o botão em foco, e não a linha inteira.
+- Como sempre há no máximo uma linha aberta, a altura da janela não muda quando o foco anda.

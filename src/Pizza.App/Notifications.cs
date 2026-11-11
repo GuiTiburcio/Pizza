@@ -24,14 +24,6 @@ internal static unsafe class Notifications
 
     private const int OverflowId = 0;
 
-    public static readonly uint White = Rgb(255, 255, 255);
-    public static readonly uint Ink = Rgb(15, 19, 32);
-    public static readonly uint Body = Rgb(58, 67, 87);
-    public static readonly uint Line = Rgb(221, 225, 234);
-    public static readonly uint Soft = Rgb(236, 239, 244);
-    public static readonly uint Accent = Rgb(47, 107, 255);
-    public static readonly uint Failure = Rgb(196, 60, 60);
-
     private static readonly NotificationStack Stack = new();
     private static readonly List<Card> Cards = [];
     private static readonly Dictionary<long, ConversionClock> Clocks = []; // ADR-029: tempo e porcentagem de cada conversão.
@@ -517,27 +509,6 @@ internal static unsafe class Notifications
         };
         DiscRenderer.ShowCard(card.Hwnd, left, top, Scale(NotificationCardLayout.Width), card.Height, _dpi, frame, DiscRenderer.DarkTheme(), card.Alpha.Value);
     }
-    public static void Round(nint hdc, RECT rect, int radius, uint color)
-    {
-        var brush = CreateSolidBrush(color);
-        var oldBrush = SelectObject(hdc, brush);
-        var oldPen = SelectObject(hdc, GetStockObject(NULL_PEN));
-        RoundRect(hdc, rect.Left, rect.Top, rect.Right + 1, rect.Bottom + 1, radius * 2, radius * 2);
-        SelectObject(hdc, oldPen);
-        SelectObject(hdc, oldBrush);
-        DeleteObject(brush);
-    }
-
-    public static void Label(nint hdc, string text, RECT rect, int fontSize, int weight, uint color, uint format)
-    {
-        var font = CreateFontW(-Scale(fontSize), 0, 0, 0, weight, 0, 0, 0, 1, 0, 0, CLEARTYPE_QUALITY, 0, "Segoe UI");
-        var old = SelectObject(hdc, font);
-        SetTextColor(hdc, color);
-        DrawTextW(hdc, text, -1, &rect, format);
-        SelectObject(hdc, old);
-        DeleteObject(font);
-    }
-
     public static int Scale(int value) => value * _dpi / 96;
 
     private sealed class Card(long id, nint hwnd, int height, int top)
