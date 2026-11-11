@@ -135,7 +135,7 @@ Telas do design aprovado, nos temas claro e escuro. No Claude Design, a Ref-Imag
 
 ![Fluxo 6 · pronto](fluxo-6.png)
 
-## Fase 4b · aprovado
+## Fase 4b · aprovado e implementado
 
 Aprovado pelo mantenedor em 11/11/2026, com a bolha de vidro B (franjas coloridas) também no painel de opções e entre as fatias. Detalhes no [ADR-027](../adr/027-faixa-de-niveis-e-bolha-de-vidro.md).
 
@@ -150,6 +150,18 @@ Aprovado pelo mantenedor em 11/11/2026, com a bolha de vidro B (franjas colorida
 ### Painel de opções em vidro
 
 ![Painel de opções em vidro](4b-3-painel-vidro.png)
+
+### Menu implementado, nos dois temas
+
+Captura do Pizza com a faixa de níveis e a bolha de vidro (PRs #46 e #47).
+
+![Menu implementado](4b-4-menu-implementado.png)
+
+### Painel implementado, nos dois temas
+
+Captura do painel de opções em vidro, com a bolha nas opções (PR #49).
+
+![Painel implementado](4b-5-painel-implementado.png)
 
 ## Wireframes
 
