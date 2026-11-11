@@ -5,7 +5,7 @@
 
 ## Contexto
 
-O aviso de conversão mostrava uma barra indeterminada, porque o Worker não informava o andamento. O mantenedor pediu uma linha verde com a porcentagem, o tempo decorrido e o estimado, e botões pequenos para continuar, pausar e parar.
+O aviso de conversão mostrava uma barra indeterminada, porque o Worker não informava o andamento. O mantenedor pediu uma linha azul com a porcentagem, o tempo decorrido e o estimado, e botões pequenos para continuar, pausar e parar.
 
 ## Decisão
 

@@ -133,7 +133,7 @@ internal static unsafe partial class DiscRenderer
     }
 
     /// <summary>
-    /// ADR-029, prancha 4c-2: o tempo acima e a linha verde, translúcida mas legível, com a porcentagem no fim.
+    /// ADR-029, prancha 4c-2: o tempo acima e a linha no azul do "Abrir", translúcida mas legível, com a porcentagem no fim.
     /// </summary>
     private static void DrawCardProgress(nint g, CardFrame frame)
     {
@@ -149,7 +149,7 @@ internal static unsafe partial class DiscRenderer
         {
             var filled = Math.Max(10, width * frame.Percent / 100f);
             var bar = RoundedRect(left, top, filled, 10, 5);
-            Gradient(g, bar, top, top + 10, Argb(235, 52, 211, 153), Argb(210, 22, 163, 127));
+            Gradient(g, bar, top, top + 10, Argb(235, 84, 134, 255), Argb(225, 47, 106, 255));
             GdipSetClipRect(g, left, top, filled, 3, CombineReplace);
             Fill(g, Argb(120, 255, 255, 255), bar);
             GdipResetClip(g);
