@@ -13,7 +13,7 @@ Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equival
 | Vidro, temas e movimento reduzido | Implementados no disco; validação manual ampla ainda necessária |
 | PDF → outros formatos e operações em PDF | Planejados |
 | Documento, áudio e web | Planejados |
-| Vídeo, em aba própria (Media Foundation e FFmpeg) | Planejado para v1.x ([ADR-026](adr/026-aba-video-e-motores.md)) |
+| Vídeo, em aba própria (Media Foundation e FFmpeg) | Planejado para v1.x ([ADR-026](adr/026-aba-video-e-motores.md)); [estudo da barra compacta](propostas/barra-compacta.svg) para a Fase 4d |
 | Lotes | Planejados para v1.x |
 | Configurações completas e políticas de TI | Planejadas |
 | Instaladores assinados, atualização verificada, SBOM e proveniência de release | Pendentes antes da distribuição estável |

@@ -1,6 +1,6 @@
 # ADR-026 — Aba Vídeo separada e dois motores de vídeo
 
-- **Status:** Aceita pelo mantenedor em 11/11/2026. Detalha a linha "Áudio/Vídeo (v1.x)" da SPECS §2.1.
+- **Status:** Aceita pelo mantenedor em 11/11/2026. Detalha a linha "Áudio/Vídeo (v1.x)" da SPECS §2.1. Consolida também o PR #40, preparado com o Codex.
 - **Data:** 2026-11-11
 
 ## Contexto
@@ -10,9 +10,9 @@ A SPECS previa uma aba única de Áudio/Vídeo para a v1.x. O mantenedor pediu u
 ## Decisão
 
 - **Duas abas:** Áudio e Vídeo ficam separadas. O menu já abre na aba do tipo do arquivo arrastado, então quem arrasta um vídeo cai direto nos formatos de vídeo. Separadas, cada aba cabe numa volta de seis fatias, ou quase; juntas, passariam de onze formatos. "Extrair áudio" fica na aba Vídeo, porque é o vídeo que se arrasta.
-- **Dois motores:** o Media Foundation do Windows cobre os casos comuns (MP4, H.264, extrair áudio, reduzir resolução), com aceleração por placa de vídeo e sem licença de patente a mais. O FFmpeg empacotado cobre o que o Windows não traz (WebM, AV1, MKV). Antes de entrar, o FFmpeg passa pela análise de licença e de patentes que a SPECS já exige para o HEVC, e roda como os demais interpretadores: só dentro do Worker isolado, sem rede (SEC-20).
+- **Dois motores:** o Media Foundation do Windows cobre os casos comuns (MP4, H.264, extrair áudio, reduzir resolução), com aceleração por placa de vídeo e sem licença de patente a mais. O FFmpeg empacotado cobre o que o Windows não traz (WebM, AV1, MKV). Antes de entrar, o FFmpeg passa pela análise de licença e de patentes que a SPECS já exige para o HEVC, e roda como os demais interpretadores: só dentro do Worker isolado, sem rede (SEC-20). A regra de qual motor atende cada formato, e o que fazer quando um codec não estiver disponível, é definida antes do código. Ter o codec instalado no Windows não resolve, por si só, os direitos de distribuição do Pizza: isso entra na mesma análise.
 - **Linguagem:** o C# continua. O trabalho pesado é decodificar e codificar, e isso acontece dentro dos codecs nativos; a linguagem do Pizza só orquestra.
-- **Barra de abas:** com Vídeo e Web, serão seis abas. A barra mais fina da Fase 4d (55–70% da altura atual) precisa caber nelas: texto encurtado ou ícone com o nome pequeno embaixo, a escolher numa prancha do Dossiê.
+- **Barra de abas:** com Vídeo e Web, serão seis abas. A barra mais fina da Fase 4d (55–70% da altura atual) precisa caber nelas. A proposta é ícone com o nome curto embaixo (Imagem, PDF, Docs, Áudio, Vídeo, Web), com o nome completo para o leitor de tela, foco visível e alvos de pelo menos 44 px ([estudo](../propostas/barra-compacta.svg)). A escolha final, contra o texto encurtado, sai numa prancha do Dossiê. Nenhuma aba futura é ativada antes da sua fase.
 
 ## Consequências
 

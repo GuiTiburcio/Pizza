@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="164" viewBox="0 0 440 164">
+<title>Proposta de barra compacta do Pizza</title>
+<desc>Estudo para a fase 4d. Seis abas futuras com ícone e nome curto. Não é captura do aplicativo.</desc>
+<rect width="440" height="164" rx="16" fill="#0e111b"/>
+<g font-family="Segoe UI, sans-serif" fill="#eef1f8">
+<text x="24" y="27" font-size="14" font-weight="600">Pizza · estudo da barra compacta</text>
+<rect x="24" y="44" width="392" height="64" rx="24" fill="#252b3c" stroke="#555d72"/>
+<rect x="30" y="49" width="62" height="54" rx="18" fill="#414c69"/>
+<g fill="none" stroke="#eef1f8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(53 59)"><rect width="16" height="14" rx="2"/><circle cx="5" cy="4" r="1"/><path d="M2 12l4-4 3 2 3-4 3 6"/></g>
+<g transform="translate(117 58)"><path d="M0 0h10l5 5v12H0zM10 0v5h5M3 9h8M3 12h6"/></g>
+<g transform="translate(181 58)"><path d="M0 0h14v17H0zM3 4h8M3 8h8M3 12h5"/></g>
+<g transform="translate(247 58)"><path d="M4 13V2l10-2v11M4 4l10-2"/><ellipse cx="1" cy="14" rx="3" ry="2"/><ellipse cx="11" cy="12" rx="3" ry="2"/></g>
+<g transform="translate(309 59)"><rect width="18" height="14" rx="3"/><path d="M7 4l5 3-5 3z"/></g>
+<g transform="translate(375 65)"><circle r="8"/><ellipse rx="3" ry="8"/><path d="M-8 0H8"/></g>
+</g>
+<g font-size="11.5" text-anchor="middle">
+<text x="61" y="92">Imagem</text><text x="125" y="92">PDF</text><text x="189" y="92">Docs</text>
+<text x="253" y="92">Áudio</text><text x="317" y="92">Vídeo</text><text x="381" y="92">Web</text>
+</g>
+<g fill="#b6bfd3" font-size="11">
+<text x="24" y="130">Alvos: 62 × 54 px · nomes completos na acessibilidade</text>
+<text x="24" y="148">Vídeo e Web são futuras · estudo, não captura do app</text>
+</g></g></svg>
