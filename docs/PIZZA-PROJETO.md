@@ -75,8 +75,7 @@ A conversão acontece no próprio gesto de arrastar, sem abrir nada, e o arquivo
 
 ### 1.3 Público
 
-- **Primário:** escritórios que lidam com documentos o dia todo, como cartórios, contabilidades, farmácias de manipulação e distribuidoras.
-- **Secundário:** qualquer usuário de Windows que converte imagens e PDFs com frequência.
+Qualquer pessoa que usa Windows, em casa ou no trabalho. O público não é um setor: é quem hoje procura um site para converter um arquivo. Escritórios e empresas de qualquer área entram aqui, e os que lidam com dados sensíveis (jurídico, saúde, RH, contabilidade) ganham ainda mais com o arquivo que não sai do PC.
 
 ### 1.4 Diferenciais de venda
 
@@ -596,7 +595,7 @@ Arquivo `.ico` com 16, 20, 24, 32, 48, 64 e 256 px.
 ### 10.4 Comercial
 
 - Versão gratuita limitada + versão paga (licença única ou assinatura: decisão em aberto).
-- Piloto em um cliente (cartório ou contabilidade) antes da venda aberta.
+- Piloto em um escritório antes da venda aberta.
 
 ---
 

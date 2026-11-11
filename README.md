@@ -1,6 +1,6 @@
 <div align="center">
 
-![Pizza — conversão de arquivos no gesto](docs/assets/pizza-overview.svg)
+![Pizza: menu de vidro aberto sobre fachada.jpg, com as abas Imagem, PDF, Docs e Áudio, a faixa de qualidade do WEBP e a fatia WEBP em destaque](docs/assets/pizza-capa.png)
 
 [![CI](https://github.com/GuiTiburcio/Pizza/actions/workflows/ci.yml/badge.svg)](https://github.com/GuiTiburcio/Pizza/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/GuiTiburcio/Pizza/actions/workflows/codeql.yml/badge.svg)](https://github.com/GuiTiburcio/Pizza/actions/workflows/codeql.yml)
