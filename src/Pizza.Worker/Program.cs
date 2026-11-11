@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Globalization;
 using Microsoft.Win32.SafeHandles;
 using Pizza.Converters;
@@ -35,7 +35,8 @@ internal static class Program
                 var message = IpcCodec.Parse(frame);
                 if (message.Type == IpcType.Convert)
                 {
-                    IpcFraming.WriteFrame(writer, IpcCodec.Serialize(Convert(message)));
+                    var channel = new ProgressChannel(writer, message.JobId);
+                    channel.Write(Convert(message, channel));
                     return 0;
                 }
             }
@@ -48,7 +49,7 @@ internal static class Program
         }
     }
 
-    private static IpcMessage Convert(IpcMessage request)
+    private static IpcMessage Convert(IpcMessage request, IProgress<int> progress)
     {
         // SPECS §10.3: só o que está no registro, e só com opções dentro do esquema.
         if (ConverterRegistry.Find(request.ConverterId!) is not { } converter
@@ -65,7 +66,7 @@ internal static class Program
         using (var source = OpenHandle(request.SrcHandle!.Value, FileAccess.Read))
         using (var destination = OpenHandle(request.DstHandle!.Value, FileAccess.Write, DestinationBufferBytes))
         {
-            error = converter.Convert(source, destination, options);
+            error = converter.Convert(source, destination, options, progress);
         }
 
         return error is null
@@ -75,4 +76,44 @@ internal static class Program
 
     private static FileStream OpenHandle(long value, FileAccess access, int bufferBytes = 0) =>
         new(new SafeFileHandle((nint)value, ownsHandle: true), access, bufferBytes, false);
+
+    /// <summary>
+    /// ADR-029: só a porcentagem sai pelo canal, uma vez por ponto novo. O libvips avisa de outras threads,
+    /// então a escrita é serializada com a resposta final.
+    /// </summary>
+    private sealed class ProgressChannel(Stream writer, string jobId) : IProgress<int>
+    {
+        private readonly Lock _gate = new();
+        private int _last = -1;
+
+        public void Report(int value)
+        {
+            var percent = Math.Clamp(value, 0, 100);
+            lock (_gate)
+            {
+                if (percent <= _last)
+                {
+                    return;
+                }
+
+                _last = percent;
+                try
+                {
+                    IpcFraming.WriteFrame(writer, IpcCodec.Serialize(new IpcMessage(IpcType.Progress, jobId) { Percent = percent }));
+                }
+                catch (IOException)
+                {
+                    // O residente fechou o canal (cancelou): a conversão é encerrada por ele.
+                }
+            }
+        }
+
+        public void Write(IpcMessage message)
+        {
+            lock (_gate)
+            {
+                IpcFraming.WriteFrame(writer, IpcCodec.Serialize(message));
+            }
+        }
+    }
 }

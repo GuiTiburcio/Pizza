@@ -310,6 +310,7 @@ internal static unsafe partial class Native
     [LibraryImport("dwmapi.dll")]
     public static partial int DwmFlush();
 
+
     [LibraryImport("user32.dll")]
     public static partial void PostQuitMessage(int exitCode);
 

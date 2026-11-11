@@ -30,7 +30,7 @@ public abstract class ImageConverter : IConverter
 
     public abstract string Id { get; }
 
-    public string? Convert(Stream source, Stream destination, IReadOnlyDictionary<string, string> options)
+    public string? Convert(Stream source, Stream destination, IReadOnlyDictionary<string, string> options, IProgress<int>? progress = null)
     {
         if (source.Length > MaxSourceBytes)
         {
@@ -51,7 +51,9 @@ public abstract class ImageConverter : IConverter
                 return "LIMIT_EXCEEDED";
             }
 
-            WriteUpright(header, source, destination, options);
+            // ADR-029: as etapas seguintes herdam o aviso de andamento da imagem de entrada.
+            Track(header, progress);
+            WriteUpright(header, source, destination, options, progress);
             return null;
         }
         catch (VipsException)
@@ -74,7 +76,15 @@ public abstract class ImageConverter : IConverter
     protected static int Number(IReadOnlyDictionary<string, string> options, string key) =>
         int.Parse(options[key], CultureInfo.InvariantCulture);
 
-    private void WriteUpright(Image image, Stream source, Stream destination, IReadOnlyDictionary<string, string> options)
+    private static void Track(Image image, IProgress<int>? progress)
+    {
+        if (progress is not null)
+        {
+            image.SetProgress(progress);
+        }
+    }
+
+    private void WriteUpright(Image image, Stream source, Stream destination, IReadOnlyDictionary<string, string> options, IProgress<int>? progress)
     {
         var orientation = image.Contains("orientation") ? (int)image.Get("orientation") : 1;
         if (orientation <= 1)
@@ -86,6 +96,7 @@ public abstract class ImageConverter : IConverter
         // Girar exige acesso aleatório aos pixels. O limite de pixels já foi conferido.
         source.Seek(0, SeekOrigin.Begin);
         using var loaded = Image.NewFromStream(source, access: Enums.Access.Random, failOn: Enums.FailOn.Error);
+        Track(loaded, progress);
         using var rotated = loaded.Autorot();
         Encode(rotated, destination, options);
     }

@@ -263,7 +263,7 @@ internal static unsafe partial class DiscRenderer
     }
 
     /// <summary>Segue o tema dos aplicativos no Windows, como a opção padrão "Seguir o Windows" da Parte 4.</summary>
-    private static bool DarkTheme()
+    internal static bool DarkTheme()
     {
         uint value = 1;
         var size = (uint)sizeof(uint);

@@ -151,6 +151,36 @@ public class ImagePngConverterTests
         Assert.True(maximum.Length <= fast.Length);
     }
 
+    [Fact]
+    public void Informa_o_andamento_da_conversao()
+    {
+        // ADR-029: o aviso mostra a porcentagem real; precisa chegar ao menos um valor, de 0 a 100.
+        using var noise = Image.Gaussnoise(2400, 1800).Cast(Enums.BandFormat.Uchar);
+        var jpeg = noise.JpegsaveBuffer(q: 90);
+        var reported = new Collected();
+
+        using var input = new MemoryStream(jpeg);
+        using var output = new MemoryStream();
+        var error = new ImagePngConverter().Convert(input, output, ConverterCatalog.ResolveOptions(ConverterCatalog.Find(ImagePngConverter.ConverterId)!, new Dictionary<string, string>())!, reported);
+
+        Assert.Null(error);
+        Assert.NotEmpty(reported.Values);
+        Assert.All(reported.Values, percent => Assert.InRange(percent, 0, 100));
+    }
+
+    private sealed class Collected : IProgress<int>
+    {
+        public List<int> Values { get; } = [];
+
+        public void Report(int value)
+        {
+            lock (Values)
+            {
+                Values.Add(value);
+            }
+        }
+    }
+
     private static (string? Error, byte[] Png) Convert(byte[] source, params (string Key, string Value)[] options)
     {
         var given = options.ToDictionary(o => o.Key, o => o.Value);

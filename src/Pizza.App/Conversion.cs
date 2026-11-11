@@ -14,6 +14,8 @@ internal static class Conversion
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(2); // SEC-43
     private static readonly ConcurrentQueue<(long Id, ConversionResult Result)> Results = new();
     private static readonly ConcurrentDictionary<long, CancellationTokenSource> Running = new();
+    private static readonly ConcurrentDictionary<long, ConversionControl> Controls = new();
+    private static readonly ConcurrentDictionary<long, int> Percents = new();
     private static readonly Lock Gate = new();
     private static ConversionRunner _runner = null!;
 
@@ -34,10 +36,21 @@ internal static class Conversion
         _runner = new ConversionRunner(Path.Combine(AppContext.BaseDirectory, "Pizza.Worker.exe"), Profile, journal, Timeout);
     }
 
-    public static void Start(long id, string sourcePath, ConverterInfo converter, IReadOnlyDictionary<string, string> options, nint notifyWindow, uint notifyMessage)
+    public static void Start(long id, string sourcePath, ConverterInfo converter, IReadOnlyDictionary<string, string> options, nint notifyWindow, uint notifyMessage, uint progressMessage)
     {
         var cancellation = new CancellationTokenSource();
         Running[id] = cancellation;
+
+        // ADR-029: a porcentagem chega na thread da conversão; o aviso é chamado só quando ela muda.
+        var control = new ConversionControl
+        {
+            Progress = percent =>
+            {
+                Percents[id] = percent;
+                PostMessageW(notifyWindow, progressMessage, (nuint)id, 0);
+            },
+        };
+        Controls[id] = control;
         Task.Run(() =>
         {
             ConversionResult result;
@@ -45,7 +58,7 @@ internal static class Conversion
             {
                 lock (Gate)
                 {
-                    result = _runner.Run(sourcePath, converter.Id, converter.Extension, options, cancellation.Token);
+                    result = _runner.Run(sourcePath, converter.Id, converter.Extension, options, cancellation.Token, control);
                 }
             }
             catch (Exception)
@@ -55,10 +68,23 @@ internal static class Conversion
             }
 
             Running.TryRemove(id, out _);
+            Controls.TryRemove(id, out _);
+            Percents.TryRemove(id, out _);
             Results.Enqueue((id, result));
             PostMessageW(notifyWindow, notifyMessage, 0, 0);
         });
     }
+
+    /// <summary>ADR-029: congela ou retoma o Worker desta conversão; a que ainda espera na fila é congelada assim que começar.</summary>
+    public static void SetPaused(long id, bool paused)
+    {
+        if (Controls.TryGetValue(id, out var control))
+        {
+            control.Paused = paused;
+        }
+    }
+
+    public static int Percent(long id) => Percents.TryGetValue(id, out var percent) ? percent : 0;
 
     public static void Cancel(long id)
     {

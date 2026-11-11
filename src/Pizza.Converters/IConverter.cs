@@ -5,6 +5,9 @@ public interface IConverter
 {
     string Id { get; }
 
-    /// <summary>Converte e devolve null, ou o código de erro da SPECS §10.4. As opções já vêm validadas.</summary>
-    string? Convert(Stream source, Stream destination, IReadOnlyDictionary<string, string> options);
+    /// <summary>
+    /// Converte e devolve null, ou o código de erro da SPECS §10.4. As opções já vêm validadas.
+    /// <paramref name="progress"/> recebe a porcentagem de 0 a 100 (ADR-029).
+    /// </summary>
+    string? Convert(Stream source, Stream destination, IReadOnlyDictionary<string, string> options, IProgress<int>? progress = null);
 }
