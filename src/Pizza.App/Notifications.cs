@@ -10,7 +10,7 @@ namespace Pizza.App;
 
 /// <summary>
 /// Notificações em janela própria no canto inferior direito (ADR-018, WF-4). Nunca tomam o foco.
-/// Fundo sólido por enquanto: o vidro é da Fase 4.
+/// Vidro translúcido com transparência por pixel, nos dois temas (ADR-028).
 /// </summary>
 internal static unsafe class Notifications
 {
@@ -20,9 +20,7 @@ internal static unsafe class Notifications
     private const nuint TimerHeld = 2;
     private const uint FrameMs = 33;
     private const uint HeldCheckMs = 5000;
-    private const byte CardAlpha = 235; // Sem vidro: "branco sólido 92%" do sistema visual.
-    private const int CardRadius = 16;
-    private const int ButtonRadius = 12;
+
     private const int OverflowId = 0;
     private const double SweepMs = 1200;
 
@@ -33,7 +31,6 @@ internal static unsafe class Notifications
     public static readonly uint Soft = Rgb(236, 239, 244);
     public static readonly uint Accent = Rgb(47, 107, 255);
     public static readonly uint Failure = Rgb(196, 60, 60);
-    private static readonly uint Success = Rgb(46, 158, 98);
 
     private static readonly NotificationStack Stack = new();
     private static readonly List<Card> Cards = [];
@@ -210,7 +207,6 @@ internal static unsafe class Notifications
 
             card.Text = text;
             card.Item = item;
-            InvalidateRect(card.Hwnd, null, 0);
         }
     }
 
@@ -239,13 +235,11 @@ internal static unsafe class Notifications
 
     private static Card CreateCard(long id, int height, int top)
     {
+        // Transparência por pixel (ADR-028): o fundo real aparece pelo vidro, e os cantos são desenhados suaves.
         const uint exStyle = WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED | WS_EX_NOACTIVATE;
         var hwnd = CreateWindowExW(exStyle, ClassName, "Pizza", WS_POPUP, 0, 0, Scale(NotificationCardLayout.Width), height, 0, 0, _instance, 0);
-        var radius = Scale(CardRadius) * 2;
-        SetWindowRgn(hwnd, CreateRoundRectRgn(0, 0, Scale(NotificationCardLayout.Width) + 1, height + 1, radius, radius), 0);
         return new Card(id, hwnd, height, top);
     }
-
     /// <summary>Leitor de tela (SPECS §2.1): o texto vira o nome da janela e o Windows recebe um alerta.</summary>
     private static void Announce(Card card, Notification? item)
     {
@@ -268,7 +262,7 @@ internal static unsafe class Notifications
                 continue;
             }
 
-            SetLayeredWindowAttributes(card.Hwnd, 0, (byte)(CardAlpha * card.Alpha.Value), LWA_ALPHA);
+            Render(card, left, (int)card.Top.Value);
 
             // Com o painel "Arquivos..." aberto, os cartões ficam logo abaixo dele, sem cobrir a lista.
             var after = FilesPanel.IsOpen ? FilesPanel.Window : HWND_TOPMOST;
@@ -315,11 +309,6 @@ internal static unsafe class Notifications
         }
 
         _sweep = (_sweep + (elapsed / SweepMs)) % 1;
-        foreach (var card in Cards.Where(card => card.Item?.Kind == NotificationKind.Progress))
-        {
-            InvalidateRect(card.Hwnd, null, 0);
-        }
-
         Sync();
     }
 
@@ -426,9 +415,6 @@ internal static unsafe class Notifications
             case WM_ERASEBKGND:
                 return 1;
 
-            case WM_PAINT:
-                Paint(card);
-                return 0;
 
             case WM_MOUSEMOVE:
                 if (!_tracking)
@@ -498,99 +484,13 @@ internal static unsafe class Notifications
         }
     }
 
-    private static void Paint(Card card)
+    private static void Render(Card card, int left, int top)
     {
-        PAINTSTRUCT ps;
-        var hdc = BeginPaint(card.Hwnd, &ps);
-        var width = Scale(NotificationCardLayout.Width);
-        var buffer = CreateCompatibleDC(hdc);
-        var bitmap = CreateCompatibleBitmap(hdc, width, card.Height);
-        var oldBitmap = SelectObject(buffer, bitmap);
-
-        Draw(buffer, card, width);
-        BitBlt(hdc, 0, 0, width, card.Height, buffer, 0, 0, SRCCOPY);
-
-        SelectObject(buffer, oldBitmap);
-        DeleteObject(bitmap);
-        DeleteDC(buffer);
-        EndPaint(card.Hwnd, &ps);
+        var frame = card.Item is { } item
+            ? new CardFrame(item.Kind, item.Title, item.Detail, 0, _sweep, Overlay.ResolveMotion() == MotionStyle.Slide)
+            : new CardFrame(null, string.Empty, string.Empty, Stack.Overflow, 0, false);
+        DiscRenderer.ShowCard(card.Hwnd, left, top, Scale(NotificationCardLayout.Width), card.Height, _dpi, frame, DiscRenderer.DarkTheme(), card.Alpha.Value);
     }
-
-    private static void Draw(nint hdc, Card card, int width)
-    {
-        var whole = new RECT { Right = width, Bottom = card.Height };
-        var brush = CreateSolidBrush(White);
-        FillRect(hdc, &whole, brush);
-        DeleteObject(brush);
-        SetBkMode(hdc, TRANSPARENT);
-
-        if (card.Item is not { } item)
-        {
-            Label(hdc, $"+{Stack.Overflow}", whole, 13, FW_SEMIBOLD, Body, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
-            return;
-        }
-
-        var (mark, color) = item.Kind switch
-        {
-            NotificationKind.Progress => ("…", Accent),
-            NotificationKind.Success => ("✓", Success),
-            _ => ("!", Failure),
-        };
-
-        // O símbolo acompanha a cor: ela nunca é a única pista.
-        var badge = new RECT { Left = Scale(16), Top = Scale(14), Right = Scale(40), Bottom = Scale(38) };
-        Round(hdc, badge, Scale(12), color);
-        Label(hdc, mark, badge, 13, FW_BOLD, White, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
-
-        var title = new RECT { Left = Scale(50), Top = Scale(14), Right = width - Scale(46), Bottom = Scale(38) };
-        Label(hdc, item.Title, title, 14, FW_BOLD, Ink, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
-        var detail = new RECT { Left = Scale(50), Top = Scale(40), Right = width - Scale(16), Bottom = Scale(84) };
-        Label(hdc, item.Detail, detail, 12, FW_NORMAL, Body, DT_WORDBREAK | DT_EDITCONTROL | DT_END_ELLIPSIS);
-
-        if (item.Kind == NotificationKind.Progress)
-        {
-            DrawProgress(hdc);
-        }
-
-        var primary = true;
-        foreach (var button in NotificationCardLayout.Buttons(item.Kind))
-        {
-            var bounds = new RECT { Left = Scale(button.Bounds.Left), Top = Scale(button.Bounds.Top), Right = Scale(button.Bounds.Right), Bottom = Scale(button.Bounds.Bottom) };
-            if (button.Action == NotificationAction.Close)
-            {
-                Label(hdc, button.Label, bounds, 18, FW_NORMAL, Body, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
-                continue;
-            }
-
-            var filled = primary && item.Kind != NotificationKind.Progress;
-            Round(hdc, bounds, Scale(ButtonRadius), filled ? Accent : Soft);
-            Label(hdc, button.Label, bounds, 13, FW_SEMIBOLD, filled ? White : Ink, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
-            primary = false;
-        }
-    }
-
-    /// <summary>O Worker de imagem não informa porcentagem: barra indeterminada, ou parada em "menos movimento".</summary>
-    private static void DrawProgress(nint hdc)
-    {
-        const int left = 16;
-        const int width = 228;
-        const int segment = 80;
-        var top = Scale(NotificationCardLayout.ProgressBarTop);
-        var track = new RECT { Left = Scale(left), Top = top, Right = Scale(left + width), Bottom = top + Scale(6) };
-        Round(hdc, track, Scale(3), Line);
-        if (Overlay.ResolveMotion() != MotionStyle.Slide)
-        {
-            return;
-        }
-
-        var x = left + (int)((width + segment) * _sweep) - segment;
-        var bar = new RECT { Left = Scale(Math.Max(left, x)), Top = top, Right = Scale(Math.Min(left + width, x + segment)), Bottom = track.Bottom };
-        if (bar.Right > bar.Left)
-        {
-            Round(hdc, bar, Scale(3), Accent);
-        }
-    }
-
     public static void Round(nint hdc, RECT rect, int radius, uint color)
     {
         var brush = CreateSolidBrush(color);
