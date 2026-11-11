@@ -18,9 +18,13 @@ internal static unsafe partial class DiscRenderer
     private const float CardRadius = 20;
 
     /// <summary>Desenha o aviso e o entrega à janela em camadas, na posição e com o esmaecer do quadro.</summary>
-    public static void ShowCard(nint hwnd, int left, int top, int width, int height, int dpi, CardFrame frame, bool dark, double fade)
+    public static void ShowCard(nint hwnd, int left, int top, int width, int height, int dpi, CardFrame frame, bool dark, double fade) =>
+        ShowLayered(hwnd, left, top, width, height, dpi, dark, fade, (g, w, h) => DrawCard(g, frame, w, h));
+
+    /// <summary>Desenha em GDI+ com transparência por pixel e entrega à janela em camadas (avisos e Arquivos).</summary>
+    private static void ShowLayered(nint hwnd, int left, int top, int width, int height, int dpi, bool dark, double fade, Action<nint, float, float> draw)
     {
-        // O menu e o painel usam o mesmo estado de desenho; o aviso o devolve como encontrou.
+        // O menu e o painel usam o mesmo estado de desenho; a janela o devolve como encontrou.
         var (scale, palette) = (_scale, _palette);
         _scale = dpi / 96.0;
         _palette = dark ? Dark : Light;
@@ -36,7 +40,7 @@ internal static unsafe partial class DiscRenderer
             GdipGraphicsClear(graphics, 0);
             GdipScaleWorldTransform(graphics, (float)_scale, (float)_scale, 0);
 
-            DrawCard(graphics, frame, (float)(width / _scale), (float)(height / _scale));
+            draw(graphics, (float)(width / _scale), (float)(height / _scale));
 
             GdipDeleteGraphics(graphics);
             GdipDisposeImage(bitmap);
@@ -58,9 +62,9 @@ internal static unsafe partial class DiscRenderer
         }
     }
 
-    private static void DrawCard(nint g, CardFrame frame, float width, float height)
+    /// <summary>Véu translúcido do tema, borda clara e brilho no alto, como o vidro do menu.</summary>
+    private static void DrawGlass(nint g, float width, float height)
     {
-        // Véu translúcido do tema, borda clara e brilho no alto, como o vidro do menu.
         var body = RoundedRect(0.5f, 0.5f, width - 1, height - 1, CardRadius);
         Fill(g, _palette == Dark ? Argb(240, 30, 34, 46) : Argb(222, 250, 251, 253), body);
         Stroke(g, _palette == Dark ? Argb(56, 255, 255, 255) : Argb(190, 255, 255, 255), 1, body);
@@ -70,6 +74,11 @@ internal static unsafe partial class DiscRenderer
         Stroke(g, Argb(150, 255, 255, 255), 1.2f, sheen);
         GdipResetClip(g);
         GdipDeletePath(sheen);
+    }
+
+    private static void DrawCard(nint g, CardFrame frame, float width, float height)
+    {
+        DrawGlass(g, width, height);
         if (frame.Kind is not { } kind)
         {
             Text(g, $"+{frame.Overflow}", _semibold, 13, StyleRegular, _palette.SliceInk, 0, 0, width, height);
