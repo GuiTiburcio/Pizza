@@ -138,7 +138,7 @@ public sealed class GestureSession
 
     public SessionAction OnDropTimeout()
     {
-        if (State is GestureState.Idle or GestureState.Choosing)
+        if (!_released || State is GestureState.Idle or GestureState.Choosing)
         {
             return SessionAction.None;
         }

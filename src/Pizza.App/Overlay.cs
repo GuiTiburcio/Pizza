@@ -28,6 +28,7 @@ internal static unsafe partial class Overlay
     private const nuint TimerChoice = 7;
     private const uint ChoiceIdleMs = 10_000; // ADR-025: 10 s sem nenhuma interação, a escolha fecha.
     private static long _choiceDeadline;
+    private static long _dropDeadline;
     private const uint LeaveGraceMs = 80;
     private const uint WatchdogMs = 250;
     private const uint AnimationMs = 10;
@@ -356,10 +357,19 @@ internal static unsafe partial class Overlay
             return;
         }
 
-        if (id == TimerAfterRelease && Session.OnDropTimeout() == SessionAction.Close)
+        if (id == TimerAfterRelease)
         {
-            Log.Write(LogEvent.MenuCancelled);
-            Hide();
+            KillTimer(Disc, TimerAfterRelease);
+            var remaining = _dropDeadline - Environment.TickCount64;
+            if (remaining > 0 && Session.State is GestureState.Menu or GestureState.WaitingForFile)
+            {
+                if (Disc != 0) SetTimer(Disc, TimerAfterRelease, (uint)remaining, 0);
+            }
+            else if (Session.OnDropTimeout() == SessionAction.Close)
+            {
+                Log.Write(LogEvent.MenuCancelled);
+                Hide();
+            }
         }
     }
 

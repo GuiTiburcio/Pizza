@@ -169,6 +169,25 @@ public sealed class OverlayDropTests
 
     private static GestureSession Session => (GestureSession)typeof(Overlay).GetField("Session", PrivateStatic)!.GetValue(null)!;
 
+    [Fact]
+    public void Timeout_antigo_apos_nova_soltura_respeita_o_novo_prazo()
+    {
+        Prepare();
+        typeof(Overlay).GetMethod("OnButtonReleased", PrivateStatic)!.Invoke(null, null);
+        Assert.True((long)typeof(Overlay).GetField("_dropDeadline", PrivateStatic)!.GetValue(null)! > 0);
+        Set("_dropDeadline", Environment.TickCount64 + 60_000);
+        var timer = Convert.ToUInt32(typeof(Overlay).GetField("TimerAfterRelease", PrivateStatic)!.GetRawConstantValue());
+        typeof(Overlay).GetMethod("OnTimer", PrivateStatic)!.Invoke(null, [(nuint)timer]);
+
+        Assert.Equal(GestureState.Menu, Session.State);
+        Assert.True(Overlay.IsVisible);
+        // O prazo realmente vencido ainda fecha o gesto sem drop confirmado.
+        Set("_dropDeadline", 0L);
+        typeof(Overlay).GetMethod("OnTimer", PrivateStatic)!.Invoke(null, [(nuint)timer]);
+        Assert.Equal(GestureState.Idle, Session.State);
+        Assert.False(Overlay.IsVisible);
+    }
+
     private static readonly BindingFlags PrivateStatic = BindingFlags.Static | BindingFlags.NonPublic;
     private static CardTransition[] Hover => (CardTransition[])typeof(Overlay).GetField("Hover", PrivateStatic)!.GetValue(null)!;
 
