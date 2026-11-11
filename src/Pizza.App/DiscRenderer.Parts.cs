@@ -165,14 +165,17 @@ internal static unsafe partial class DiscRenderer
         var swell = (float)Math.Sin(Math.PI * (frame.TabPosition - Math.Floor(frame.TabPosition)));
         var lensLeft = (float)DiscLayout.HighlightLeft(frame.TabPosition) - (3 * swell);
         var height = DiscLayout.TabBarHeight - (2 * DiscLayout.TabPadding);
-        var lens = RoundedRect(lensLeft, DiscLayout.TabPadding - (2 * swell), DiscLayout.TabWidth + (6 * swell), height + (4 * swell), 22);
+        var lens = RoundedRect(lensLeft, DiscLayout.TabPadding - (2 * swell), DiscLayout.TabWidth + (6 * swell), height + (4 * swell), (height / 2f) + (2 * swell));
         Lens(g, lens, lensLeft + (DiscLayout.TabWidth / 2f), DiscLayout.TabBarHeight / 2f, swell, 1, Math.Max(0.30, _glassAlpha));
 
+        // Barra B (ADR-026): ícone em cima e o nome curto embaixo.
         for (var tab = 0; tab < MenuTabs.Names.Count; tab++)
         {
             var (left, _) = DiscLayout.TabSpan(tab);
             var active = tab == frame.TargetTab;
-            Text(g, MenuTabs.Names[tab], active ? _semibold : _regular, 13, StyleRegular, active ? _palette.Ink : _palette.SliceInk, (float)left, DiscLayout.TabPadding, DiscLayout.TabWidth, DiscLayout.TabBarHeight - (2 * DiscLayout.TabPadding));
+            var ink = active ? _palette.Ink : _palette.SliceInk;
+            DrawTabIcon(g, tab, (float)left + ((DiscLayout.TabWidth - DiscLayout.TabIconSize) / 2f), DiscLayout.TabIconTop, ink);
+            Text(g, MenuTabs.ShortNames[tab], active ? _semibold : _regular, 11.5f, StyleRegular, ink, (float)left, DiscLayout.TabLabelTop, DiscLayout.TabWidth, DiscLayout.TabLabelHeight);
         }
     }
 
