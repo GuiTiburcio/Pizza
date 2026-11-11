@@ -24,7 +24,11 @@ internal readonly record struct DiscFrame(
     string? StripTitle = null,
     (string Label, string? Detail)[]? Levels = null,
     int Level = 0,
-    int? LevelHover = null);
+    int? LevelHover = null,
+    double SliceGlide = 0,
+    double SliceSwell = 0,
+    double LevelGlide = 0,
+    double LevelSwell = 0);
 
 /// <summary>
 /// Desenha o menu no visual do Dossiê (DES-1, WF-1, WF-2) com GDI+ e transparência por pixel (ADR-023).
@@ -53,7 +57,6 @@ internal static unsafe partial class DiscRenderer
         CenterBorder: Argb(235, 255, 255, 255),
         Sheen: Argb(204, 255, 255, 255),
         IdleArc: Argb(71, 15, 19, 32),
-        Highlight: Argb(217, 255, 255, 255),
         MinimumVeil: 0.16);
 
     private static readonly Palette Dark = new(
@@ -69,10 +72,16 @@ internal static unsafe partial class DiscRenderer
         CenterBorder: Argb(90, 255, 255, 255),
         Sheen: Argb(90, 255, 255, 255),
         IdleArc: Argb(90, 255, 255, 255),
-        Highlight: Argb(56, 255, 255, 255),
         MinimumVeil: 0.35);
 
     private static Palette _palette = Light;
+
+    // ADR-027: as franjas custam mais por quadro (cerca de 2 ms a 150%). Três quadros seguidos abaixo de 30 por
+    // segundo e a bolha fica sem franjas até o menu abrir de novo; a forma não muda.
+    private const double FrameBudgetMs = 33;
+    private const int SlowFramesToDrop = 3;
+    private static bool _fringes = true;
+    private static int _slowFrames;
 
     private static nuint _token;
     private static nint _regular;
@@ -107,6 +116,8 @@ internal static unsafe partial class DiscRenderer
         _memory = CreateCompatibleDC(0);
         _target = CreateDib(_memory, width, height, out _bits, out _originalTarget);
         _palette = DarkTheme() ? Dark : Light;
+        _fringes = true;
+        _slowFrames = 0;
         _glassAlpha = _palette.MinimumVeil;
         if (!TransparencyEnabled())
         {
@@ -168,6 +179,7 @@ internal static unsafe partial class DiscRenderer
             return;
         }
 
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         GdipCreateBitmapFromScan0(_width, _height, _width * 4, FormatPargb, _bits, out var bitmap);
         GdipGetImageGraphicsContext(bitmap, out var graphics);
         GdipSetSmoothingMode(graphics, SmoothingAntiAlias);
@@ -180,6 +192,13 @@ internal static unsafe partial class DiscRenderer
 
         GdipDeleteGraphics(graphics);
         GdipDisposeImage(bitmap);
+
+        if (_fringes)
+        {
+            var slow = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds > FrameBudgetMs;
+            _slowFrames = slow ? _slowFrames + 1 : 0;
+            _fringes = _slowFrames < SlowFramesToDrop;
+        }
 
         var screen = GetDC(0);
         var position = new POINT { X = left, Y = top };
@@ -209,6 +228,12 @@ internal static unsafe partial class DiscRenderer
         for (var slot = 0; slot < frame.Slices.Count; slot++)
         {
             DrawSlice(g, frame, slot);
+        }
+
+        DrawSliceLens(g, frame);
+        for (var slot = 0; slot < frame.Slices.Count; slot++)
+        {
+            DrawSliceLabel(g, frame, slot);
         }
 
         DrawCenter(g, frame);
@@ -275,7 +300,6 @@ internal static unsafe partial class DiscRenderer
         uint CenterBorder,
         uint Sheen,
         uint IdleArc,
-        uint Highlight,
         double MinimumVeil);
 
     private static uint Argb(byte a, byte r, byte g, byte b) => ((uint)a << 24) | ((uint)r << 16) | ((uint)g << 8) | b;

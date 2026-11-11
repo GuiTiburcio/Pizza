@@ -206,6 +206,42 @@ public sealed class OverlayDropTests
         Assert.Equal("image.png", Strip.Converter!.Id);
     }
 
+    [Fact]
+    public void Bolha_dos_niveis_nasce_no_padrao_e_desliza_ate_o_nivel_da_roda()
+    {
+        // ADR-027: a bolha marca o nível escolhido e desliza na mola de 240 ms.
+        Prepare();
+        HoverSlice(1);
+        Assert.Equal(2, LevelGlide.Position);
+
+        Wheel(-120, LevelX(1, 4), LevelY);
+        Assert.Equal(3, LevelGlide.Goal);
+        Assert.Equal(2, LevelGlide.Position);
+    }
+
+    [Fact]
+    public void Bolha_das_fatias_nasce_na_primeira_e_desliza_para_a_proxima()
+    {
+        Prepare();
+        HoverSlice(1);
+        Assert.Equal(1, SliceGlide.Position);
+
+        HoverSlice(2);
+        Assert.Equal(2, SliceGlide.Goal);
+        Assert.Equal(1, SliceGlide.Position);
+    }
+
+    [Fact]
+    public void Sem_animacao_a_bolha_vai_direto()
+    {
+        Prepare();
+        Set("_motion", MotionStyle.Instant);
+        HoverSlice(1);
+        HoverSlice(2);
+
+        Assert.Equal(2, SliceGlide.Position);
+    }
+
     [Theory]
     [InlineData(Native.WM_LBUTTONDOWN, Native.WM_LBUTTONUP, false)]
     [InlineData(Native.WM_RBUTTONDOWN, Native.WM_RBUTTONUP, true)]
@@ -277,6 +313,8 @@ public sealed class OverlayDropTests
         Set("_clickArmed", false);
         Set("_levelHover", null);
         Strip.Clear();
+        LevelGlide.Snap(0);
+        SliceGlide.Snap(0);
         typeof(Overlay).GetProperty(nameof(Overlay.IsVisible))!.SetValue(null, true);
         ((TabCarousel)typeof(Overlay).GetField("Carousel", PrivateStatic)!.GetValue(null)!).Reset();
         var session = (GestureSession)typeof(Overlay).GetField("Session", PrivateStatic)!.GetValue(null)!;
@@ -298,6 +336,8 @@ public sealed class OverlayDropTests
 
     private static TabCarousel Carousel => (TabCarousel)Get("Carousel")!;
     private static QuickOptionsState Strip => (QuickOptionsState)Get("Strip")!;
+    private static GlideSpring LevelGlide => (GlideSpring)Get("LevelGlide")!;
+    private static GlideSpring SliceGlide => (GlideSpring)Get("SliceGlide")!;
     private static nuint StripTimer => Convert.ToUInt32(typeof(Overlay).GetField("TimerStrip", PrivateStatic)!.GetRawConstantValue());
     private static int LevelY => DiscLayout.LevelTop + (DiscLayout.LevelHeight / 2);
 

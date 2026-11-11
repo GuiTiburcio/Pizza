@@ -50,7 +50,32 @@ internal static unsafe partial class DiscRenderer
 
         Stroke(g, Mix(_palette.RestBorder, Argb(242, 255, 255, 255), hover), 1 + (float)hover, path);
         GdipDeletePath(path);
+    }
 
+    /// <summary>Bolha de vidro das fatias: passa de uma fatia para a outra, entre o fundo e o texto (ADR-027).</summary>
+    private static void DrawSliceLens(nint g, DiscFrame frame)
+    {
+        var strength = frame.PulseSlot is null ? frame.Hover.DefaultIfEmpty(0).Max() : 1;
+        if (strength < 0.01 || frame.Slices.Count == 0)
+        {
+            return;
+        }
+
+        var step = RadialMenu.SlotAngle(1) - RadialMenu.SlotAngle(0);
+        var glide = frame.PulseSlot ?? frame.SliceGlide;
+        var angle = RadialMenu.SlotAngle(0) + (glide * step) + frame.Rotation;
+        var movement = frame.Motion == MotionStyle.Slide ? strength + (0.3 * frame.SliceSwell) : 0;
+        var shape = SliceGeometry.Build(angle, movement, DiscLayout.CenterX, DiscLayout.CenterY);
+        Lens(g, SlicePath(shape), DiscLayout.CenterX, DiscLayout.CenterY, frame.SliceSwell, 0.6 * strength);
+    }
+
+    private static void DrawSliceLabel(nint g, DiscFrame frame, int slot)
+    {
+        var rest = RadialMenu.SlotAngle(slot);
+        var angle = rest + frame.Rotation;
+        var pulse = frame.PulseSlot == slot;
+        var hover = pulse ? 1 : frame.Hover[slot];
+        var movement = frame.Motion == MotionStyle.Slide ? hover : 0;
         var slice = frame.Slices[slot];
         // Nome e descrição seguem o arco da fatia, sempre de pé (escolha "B · Curva completa", Ref-Texto-Fatias).
         var ink = pulse ? Argb(255, 255, 255, 255) : Mix(_palette.SliceInk, _palette.HoverInk, hover);
@@ -136,9 +161,12 @@ internal static unsafe partial class DiscRenderer
         var bar = RoundedRect(DiscLayout.TabBarLeft, 0, DiscLayout.TabBarWidth, DiscLayout.TabBarHeight, DiscLayout.TabBarHeight / 2f);
         Glass(g, bar, Math.Max(0.30, _glassAlpha), _palette.Border + 0.05);
 
-        var highlight = RoundedRect((float)DiscLayout.HighlightLeft(frame.TabPosition), DiscLayout.TabPadding, DiscLayout.TabWidth, DiscLayout.TabBarHeight - (2 * DiscLayout.TabPadding), 22);
-        Fill(g, _palette.Highlight, highlight);
-        GdipDeletePath(highlight);
+        // A bolha de vidro marca a aba e desliza com o carrossel, crescendo no meio do caminho (ADR-027).
+        var swell = (float)Math.Sin(Math.PI * (frame.TabPosition - Math.Floor(frame.TabPosition)));
+        var lensLeft = (float)DiscLayout.HighlightLeft(frame.TabPosition) - (3 * swell);
+        var height = DiscLayout.TabBarHeight - (2 * DiscLayout.TabPadding);
+        var lens = RoundedRect(lensLeft, DiscLayout.TabPadding - (2 * swell), DiscLayout.TabWidth + (6 * swell), height + (4 * swell), 22);
+        Lens(g, lens, lensLeft + (DiscLayout.TabWidth / 2f), DiscLayout.TabBarHeight / 2f, swell, 1, Math.Max(0.30, _glassAlpha));
 
         for (var tab = 0; tab < MenuTabs.Names.Count; tab++)
         {
@@ -148,7 +176,7 @@ internal static unsafe partial class DiscRenderer
         }
     }
 
-    /// <summary>Faixa de níveis da fatia em hover (ADR-027, prancha 4b-1). A bolha de vidro chega na etapa 2.</summary>
+    /// <summary>Faixa de níveis da fatia em hover (ADR-027, prancha 4b-1), com a bolha de vidro no nível escolhido.</summary>
     private static void DrawStrip(nint g, DiscFrame frame)
     {
         if (frame.StripTitle is not { } title || frame.Levels is not { } levels)
@@ -164,7 +192,6 @@ internal static unsafe partial class DiscRenderer
         for (var level = 0; level < levels.Length; level++)
         {
             var left = (float)DiscLayout.LevelSpan(level, levels.Length).Left;
-            var picked = level == frame.Level;
             if (level == frame.LevelHover)
             {
                 // O mesmo brilho colorido da fatia em hover.
@@ -178,14 +205,18 @@ internal static unsafe partial class DiscRenderer
             }
 
             Glass(g, RoundedRect(left, DiscLayout.LevelTop, DiscLayout.LevelWidth, DiscLayout.LevelHeight, 13), Math.Max(0.30, _glassAlpha), _palette.Border);
-            if (picked)
-            {
-                var mark = RoundedRect(left, DiscLayout.LevelTop, DiscLayout.LevelWidth, DiscLayout.LevelHeight, 13);
-                Fill(g, _palette.Highlight, mark);
-                Stroke(g, Argb(230, 255, 255, 255), 1, mark);
-                GdipDeletePath(mark);
-            }
+        }
 
+        // A bolha marca o nível escolhido e desliza até o próximo quando a roda troca o nível (ADR-027).
+        var swell = (float)frame.LevelSwell;
+        var lensLeft = (float)(DiscLayout.LevelSpan(0, levels.Length).Left + (frame.LevelGlide * (DiscLayout.LevelWidth + DiscLayout.LevelGap))) - (3 * swell);
+        var lens = RoundedRect(lensLeft, DiscLayout.LevelTop - (2 * swell), DiscLayout.LevelWidth + (6 * swell), DiscLayout.LevelHeight + (4 * swell), 13);
+        Lens(g, lens, lensLeft + (DiscLayout.LevelWidth / 2f), DiscLayout.LevelTop + (DiscLayout.LevelHeight / 2f), swell, 1, Math.Max(0.30, _glassAlpha));
+
+        for (var level = 0; level < levels.Length; level++)
+        {
+            var left = (float)DiscLayout.LevelSpan(level, levels.Length).Left;
+            var picked = level == frame.Level;
             var (label, detail) = levels[level];
             var labelTop = detail is null ? DiscLayout.LevelTop : DiscLayout.LevelTop + 4;
             var labelHeight = detail is null ? DiscLayout.LevelHeight : 20;

@@ -9,6 +9,9 @@ namespace Pizza.App;
 /// <summary>Alvo e movimento: fatia sob o cursor, giro na troca de aba, hover e animação (WF-2, FR-04).</summary>
 internal static unsafe partial class Overlay
 {
+    /// <summary>Bolha de vidro das fatias, em posição de fatia (1,5 fica entre as fatias 1 e 2).</summary>
+    private static readonly GlideSpring SliceGlide = new();
+
     /// <summary>Fatia sob o cursor, se houver uma disponível para o arquivo arrastado.</summary>
     private static int? TargetSlot(int x, int y)
     {
@@ -41,6 +44,17 @@ internal static unsafe partial class Overlay
 
         if (slot is { } next)
         {
+            // ADR-027: a bolha nasce na fatia quando não está na tela; senão, desliza até ela, mesmo
+            // passando pelo vão entre duas fatias.
+            if (_motion != MotionStyle.Slide || (_hoverSlot is null && Hover.All(transition => transition.Value < 0.05)))
+            {
+                SliceGlide.Snap(next);
+            }
+            else
+            {
+                SliceGlide.RetargetOnRing(next, RadialMenu.SlotCount);
+            }
+
             Move(Hover[next], 1);
             PointStripAt(next);
         }
@@ -73,7 +87,8 @@ internal static unsafe partial class Overlay
         }
     }
 
-    private static bool IsAnimating() => Carousel.IsAnimating || Hover.Any(transition => !transition.IsDone);
+    private static bool IsAnimating() =>
+        Carousel.IsAnimating || SliceGlide.IsAnimating || LevelGlide.IsAnimating || Hover.Any(transition => !transition.IsDone);
 
     private static void AnimationFrame()
     {
@@ -83,6 +98,8 @@ internal static unsafe partial class Overlay
         _lastFrame = now;
 
         Carousel.Advance(elapsedMs);
+        SliceGlide.Advance(elapsedMs);
+        LevelGlide.Advance(elapsedMs);
         foreach (var transition in Hover)
         {
             transition.Advance(elapsedMs);

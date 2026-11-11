@@ -28,6 +28,72 @@ internal static unsafe partial class DiscRenderer
         GdipDeletePath(path);
     }
 
+    /// <summary>
+    /// Bolha de vidro B (ADR-027, prancha 4b-2): sombra curta, o fundo um pouco ampliado, véu claro, brilho no alto,
+    /// borda clara e franjas coloridas por dentro da borda. <paramref name="strength"/> esmaece a bolha inteira.
+    /// </summary>
+    private static void Lens(nint g, nint path, float cx, float cy, double swell, double strength, double? veil = null)
+    {
+        var magnify = veil is not null;
+        // Sombra: só fora da bolha, um pouco abaixo.
+        GdipSetClipPath(g, path, CombineExclude);
+        foreach (var (dy, alpha) in new[] { (4f, 0.06), (2.5f, 0.09), (1f, 0.12) })
+        {
+            GdipTranslateWorldTransform(g, 0, dy, 0);
+            Stroke(g, WithAlpha(Argb(255, 15, 20, 40), alpha * strength), 2, path);
+            GdipTranslateWorldTransform(g, 0, -dy, 0);
+        }
+
+        GdipResetClip(g);
+
+        if (magnify && _backdrop != 0)
+        {
+            // Lente: a mesma cópia da tela do vidro (ADR-023), ampliada em volta do centro da bolha.
+            var scale = ScaleOf();
+            var zoom = 1.06 + (0.04 * swell);
+            var x = cx * scale;
+            var y = cy * scale;
+            GdipSetClipPath(g, path, CombineReplace);
+            GdipResetWorldTransform(g);
+            GdipDrawImageRectI(g, _backdrop, (int)Math.Round(x - (x * zoom)), (int)Math.Round(y - (y * zoom)), (int)Math.Round(_width * zoom), (int)Math.Round(_height * zoom));
+            GdipScaleWorldTransform(g, (float)scale, (float)scale, 0);
+            GdipResetClip(g);
+
+            // O mesmo véu da superfície de baixo: sem ele, um fundo vivo ficaria cru na lente e o texto sumiria.
+            Fill(g, WithAlpha(_palette.Veil, veil!.Value), path);
+        }
+
+        Fill(g, WithAlpha(Argb(255, 255, 255, 255), (_palette == Dark ? 0.14 : 0.42) * strength), path);
+
+        GdipSetClipPath(g, path, CombineReplace);
+        if (_fringes)
+        {
+            // Franjas: a borda deslocada para dentro, rosa à esquerda, ciano à direita e amarela no alto.
+            foreach (var (dx, dy, color) in new[]
+            {
+                (2f, 0f, Argb(140, 255, 90, 170)),
+                (-2f, 0f, Argb(153, 60, 200, 255)),
+                (0f, 2f, Argb(140, 255, 230, 120)),
+            })
+            {
+                GdipTranslateWorldTransform(g, dx, dy, 0);
+                Stroke(g, WithAlpha(color, ((color >> 24) / 255.0) * strength), 3, path);
+                GdipTranslateWorldTransform(g, -dx, -dy, 0);
+            }
+        }
+
+        // Brilho no alto e reflexo claro embaixo, por dentro da borda.
+        GdipTranslateWorldTransform(g, 0, 1.5f, 0);
+        Stroke(g, WithAlpha(Argb(255, 255, 255, 255), 0.95 * strength), 1.5f, path);
+        GdipTranslateWorldTransform(g, 0, -3.5f, 0);
+        Stroke(g, WithAlpha(Argb(255, 255, 255, 255), 0.35 * strength), 2, path);
+        GdipTranslateWorldTransform(g, 0, 2, 0);
+        GdipResetClip(g);
+
+        Stroke(g, WithAlpha(Argb(255, 255, 255, 255), 0.85 * strength), 1, path);
+        GdipDeletePath(path);
+    }
+
     private static nint SlicePath(SliceShape shape)
     {
         GdipCreatePath(0, out var path);

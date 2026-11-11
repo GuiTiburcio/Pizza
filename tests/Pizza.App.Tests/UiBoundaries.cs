@@ -10,7 +10,8 @@ internal readonly record struct DiscFrame(
     double Scale, string? FileName, int FileCount, IReadOnlyList<ConverterInfo> Slices,
     double[] Hover, double TabPosition, int TargetTab, double Rotation,
     MotionStyle Motion, int? PulseSlot, int Turn = 0, int TurnCount = 1, bool Choosing = false,
-    string? StripTitle = null, (string Label, string? Detail)[]? Levels = null, int Level = 0, int? LevelHover = null);
+    string? StripTitle = null, (string Label, string? Detail)[]? Levels = null, int Level = 0, int? LevelHover = null,
+    double SliceGlide = 0, double SliceSwell = 0, double LevelGlide = 0, double LevelSwell = 0);
 
 internal static class DiscRenderer
 {

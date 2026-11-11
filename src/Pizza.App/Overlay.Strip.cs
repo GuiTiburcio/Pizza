@@ -14,6 +14,9 @@ internal static unsafe partial class Overlay
     private const uint StripDwellMs = 150;
 
     private static readonly QuickOptionsState Strip = new();
+
+    /// <summary>Bolha de vidro do nível escolhido (ADR-027).</summary>
+    private static readonly GlideSpring LevelGlide = new();
     private static int? _levelHover;
 
     private static IReadOnlyList<ConverterInfo> CurrentSlices()
@@ -35,6 +38,7 @@ internal static unsafe partial class Overlay
         if (Strip.Converter is null)
         {
             Strip.PointAt(converter);
+            LevelGlide.Snap(Strip.Selected);
             return;
         }
 
@@ -47,6 +51,7 @@ internal static unsafe partial class Overlay
         if (_hoverSlot is { } slot && CurrentSlices().ElementAtOrDefault(slot) is { } converter)
         {
             Strip.PointAt(converter);
+            LevelGlide.Snap(Strip.Selected);
             Render();
         }
     }
@@ -79,7 +84,16 @@ internal static unsafe partial class Overlay
             {
                 if (Strip.Wheel(delta))
                 {
-                    Render();
+                    if (_motion == MotionStyle.Slide)
+                    {
+                        LevelGlide.Retarget(Strip.Selected);
+                    }
+                    else
+                    {
+                        LevelGlide.Snap(Strip.Selected);
+                    }
+
+                    StartAnimation();
                 }
             }
             else if (Carousel.OnWheel(delta))
