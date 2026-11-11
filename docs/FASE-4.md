@@ -7,7 +7,7 @@ Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste), 
 | Etapa | Entrega | Situação |
 | --- | --- | --- |
 | 4a — disco | Vidro, fatias, hover, animação, temas e escolha por clique | Implementado nos PRs #26 e #30; conferência visual ampla pendente |
-| 4r — reorganização | Separar `Overlay.cs` (720 linhas) e `DiscRenderer.cs` (601 linhas) por assunto, sem mudar comportamento | Pedido do mantenedor em 10/11/2026; vem antes de continuar a 4b |
+| 4r — reorganização | Separar `Overlay.cs` e `DiscRenderer.cs` por assunto, sem mudar comportamento | Implementada no PR #37 |
 | 4b — painel de opções | Temas, cantos, foco, legibilidade e vidro | Base de temas, cantos e alvos implementada; vidro e aceite visual pendentes |
 | 4c — notificações e Arquivos | Aplicar linguagem visual e temas aos componentes da Fase 3 | Aguardando 4b |
 | 4d — bandeja | Janela própria de vidro com teclado, conforme ADR-020 | Aguardando 4c |
@@ -22,6 +22,8 @@ A 4b (faixa de níveis e vidro no painel) mexe nesses dois arquivos. Separá-los
 - Nenhum comportamento muda. Prova: os testes passam antes e depois, e o verificador local desenha os mesmos quadros com resultado idêntico, pixel a pixel.
 
 ## Etapa 4b — base do painel
+
+Continuidade após a etapa 2 do Dossiê (PR #43): [ADR-027 — faixa de níveis](adr/027-faixa-de-niveis.md). A retenção do último formato foi escolhida pelo mantenedor em 11/11/2026. O estado da faixa pode ser testado separadamente; sua presença na interface, navegação e confirmação de conversão ainda dependem da integração visual.
 
 - O painel lê o tema dos aplicativos do Windows a cada abertura; se a leitura falhar, usa o tema claro.
 - Cantos: 28 px no painel e 12 px nas opções e botões, escalados com o DPI do monitor.
