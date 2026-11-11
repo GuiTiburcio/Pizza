@@ -25,11 +25,13 @@ Trocar efetivamente de formato restaura o padrão; reapontar o mesmo conserva a 
 
 Conforme SPECS §2.1: clique/drop no nível confirma a opção principal; clique/drop na fatia usa os padrões; botão direito abre as opções completas quando existirem. Demais opções ficam no padrão, inclusive remoção de metadados. A roda sobre a faixa apenas muda o nível, limitada às extremidades; fora dela mantém a navegação por abas/voltas. Mudar o nível não converte por si só. Nenhuma escolha é persistida entre sessões.
 
+Teclado escolhido pelo mantenedor em 11/11/2026: Tab entra no grupo de níveis; setas mudam a prévia; Enter confirma e Esc cancela. O grupo forma uma parada de foco, em vez de exigir Tab em cada nível. Preservar o retorno de foco e a navegação das fatias na integração.
+
 ## Integração e aceite pendentes
 
 - Desenhar a faixa com a bolha de vidro das referências, nos dois temas e com transparência desligada; alvos ≥44 px e texto com contraste ≥4,5:1.
 - Incluir a faixa no trajeto de drop e no cálculo dos limites da janela; não deixar a camada invisível presa.
-- Definir navegação por teclado da faixa junto da integração, preservando Tab/setas, Enter/Espaço e Esc, sem hook global. Confirmar que a ação é identificável antes da conversão.
+- Integrar a navegação por teclado escolhida, preservando também os atalhos existentes aplicáveis, sem hook global. Confirmar que a ação é identificável antes da conversão.
 - Testar 100% a 200%, monitores com DPI diferente, mudanças rápidas de formato e callbacks/timers atrasados.
 - Conferir a faixa final com o mantenedor antes de declarar 4b concluída.
 
