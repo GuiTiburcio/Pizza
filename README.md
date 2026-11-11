@@ -14,7 +14,7 @@
 
 Conversor de imagens para Windows com menu circular, processamento local e arquivo original preservado.
 
-[Como usar](docs/USO.md) · [Dossiê e design](docs/dossie/README.md) · [Documentação](docs/README.md) · [Próximas etapas](docs/ROADMAP.md)
+[Instalar](docs/INSTALACAO.md) · [Guia de TI](docs/TI-GPO.md) · [Como usar](docs/USO.md) · [Dossiê e design](docs/dossie/README.md) · [Documentação](docs/README.md) · [Próximas etapas](docs/ROADMAP.md)
 
 </div>
 
