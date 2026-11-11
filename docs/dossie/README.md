@@ -135,6 +135,22 @@ Telas do design aprovado, nos temas claro e escuro. No Claude Design, a Ref-Imag
 
 ![Fluxo 6 · pronto](fluxo-6.png)
 
+## Fase 4b · para aprovar
+
+Pranchas da próxima etapa do código, nos temas claro e escuro. Depois da aprovação do mantenedor, viram ADR e só então código.
+
+### Faixa de níveis acima do disco
+
+![Faixa de níveis](4b-1-faixa-niveis.png)
+
+### Bolha de vidro (liquid glass), sem e com franjas
+
+![Bolha de vidro](4b-2-bolha-vidro.png)
+
+### Painel de opções em vidro
+
+![Painel de opções em vidro](4b-3-painel-vidro.png)
+
 ## Wireframes
 
 ### WF-1 · Anatomia do menu radial
