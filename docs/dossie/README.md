@@ -109,6 +109,32 @@ Decidido em 11/11/2026: **B · ícone e nome, 44 px**, para a Fase 4d. A versão
 
 ![Decisões recentes e próximos passos](dec-1-decisoes.png)
 
+## Telas de referência
+
+Telas do design aprovado, nos temas claro e escuro. No Claude Design, a Ref-Imagem e a Ref-PDF são interativas: passar o mouse nas fatias e clicar num nível muda os dois temas juntos. Aqui, a imagem mostra o estado inicial.
+
+### Design aprovado · aba Imagem
+
+![Design aprovado da aba Imagem](ref-imagem.png)
+
+### Design aprovado · aba PDF
+
+![Design aprovado da aba PDF](ref-pdf.png)
+
+### Fluxo do gesto, passo a passo
+
+![Fluxo 1 · seleciona o arquivo](fluxo-1.png)
+
+![Fluxo 2 · Ctrl e arrasta](fluxo-2.png)
+
+![Fluxo 3 · passa o mouse no PNG](fluxo-3.png)
+
+![Fluxo 4 · abrem as opções](fluxo-4.png)
+
+![Fluxo 5 · escolhe e converte](fluxo-5.png)
+
+![Fluxo 6 · pronto](fluxo-6.png)
+
 ## Wireframes
 
 ### WF-1 · Anatomia do menu radial
