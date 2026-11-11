@@ -22,6 +22,8 @@ internal readonly record struct DiscFrame(
     int TurnCount = 1,
     bool Choosing = false);
 
+internal readonly record struct SliceLabels(RectF Title, RectF Caption, RectF CaptionInk, int CaptionLines);
+
 /// <summary>
 /// Desenha o menu no visual do Dossiê (DES-1, WF-1, WF-2) com GDI+ e transparência por pixel (ADR-023).
 /// O vidro desfoca uma cópia do trecho da tela atrás do menu, que só existe enquanto ele está aberto.
@@ -88,6 +90,11 @@ internal static unsafe class DiscRenderer
 
     public static void Start()
     {
+        if (_token != 0)
+        {
+            return;
+        }
+
         var input = new StartupInput { Version = 1 };
         GdiplusStartup(out _token, &input, 0);
         _regular = Family("Segoe UI");
@@ -261,12 +268,29 @@ internal static unsafe class DiscRenderer
         GdipDeletePath(path);
 
         var slice = frame.Slices[slot];
-        var label = SliceGeometry.LabelCenter(angle, movement, DiscLayout.CenterX, DiscLayout.CenterY);
+        var labels = LayoutLabels(g, slice, angle, movement, hover, pulse);
         var ink = pulse ? Argb(255, 255, 255, 255) : Mix(_palette.SliceInk, _palette.HoverInk, hover);
         var name = pulse ? "✓ " + slice.Label : slice.Label;
         var bold = hover >= 0.5;
-        Text(g, name, bold ? _regular : _semibold, 14 + (2 * (float)hover), bold ? StyleBold : StyleRegular, ink, (float)label.X - 55, (float)label.Y - 18, 110, 20);
-        Text(g, slice.Caption, _regular, 10.5f, StyleRegular, ink, (float)label.X - 55, (float)label.Y + 1, 110, 16);
+        Text(g, name, bold ? _regular : _semibold, 14 + (2 * (float)hover), bold ? StyleBold : StyleRegular, ink, labels.Title.X, labels.Title.Y, labels.Title.Width, labels.Title.Height, ellipsis: false);
+        Text(g, slice.Caption, _regular, 10.5f, StyleRegular, ink, labels.Caption.X, labels.Caption.Y, labels.Caption.Width, labels.Caption.Height, wrap: true, ellipsis: false);
+    }
+
+    /// <summary>Leitura horizontal; a descrição usa até duas linhas em vez de atravessar o contorno.</summary>
+    internal static SliceLabels LayoutLabels(nint g, ConverterInfo slice, double angle, double movement, double hover, bool pulse)
+    {
+        const float captionWidth = 64;
+        var bold = hover >= 0.5;
+        var name = pulse ? "✓ " + slice.Label : slice.Label;
+        var title = Measure(g, name, bold ? _regular : _semibold, 14 + (2 * (float)hover), bold ? StyleBold : StyleRegular, 110, wrap: false, out _);
+        var caption = Measure(g, slice.Caption, _regular, 10.5f, StyleRegular, captionWidth, wrap: true, out var lines);
+        var label = SliceGeometry.LabelCenter(angle, movement, DiscLayout.CenterX, DiscLayout.CenterY);
+        var top = (float)label.Y - ((title.Height + caption.Height + 2) / 2);
+        title.X = (float)label.X - (title.Width / 2);
+        title.Y = top;
+        var captionInk = new RectF { X = (float)label.X - (caption.Width / 2), Y = top + title.Height + 2, Width = caption.Width, Height = caption.Height };
+        var captionBox = new RectF { X = (float)label.X - (captionWidth / 2), Y = captionInk.Y, Width = captionWidth, Height = caption.Height };
+        return new SliceLabels(title, captionBox, captionInk, lines);
     }
 
     private static void DrawCenter(nint g, DiscFrame frame)
@@ -277,7 +301,6 @@ internal static unsafe class DiscRenderer
         Fill(g, _palette.Center, center);
         Stroke(g, _palette.CenterBorder, 1, center);
         GdipDeletePath(center);
-        Arc(g, _palette.Sheen, 1.2f, cx, cy, 66, -151, 61);
 
         // Um traço por aba, na ordem da barra (WF-1, nota 4).
         for (var tab = 0; tab < MenuTabs.Names.Count; tab++)
@@ -381,7 +404,7 @@ internal static unsafe class DiscRenderer
 
     private static double ScaleOf() => _width / (double)DiscLayout.Width;
 
-    private static nint SlicePath(SliceShape shape)
+    internal static nint SlicePath(SliceShape shape)
     {
         GdipCreatePath(0, out var path);
         Bezier(path, shape.OuterStart);
@@ -458,19 +481,33 @@ internal static unsafe class DiscRenderer
         GdipDeletePen(pen);
     }
 
-    private static void Text(nint g, string text, nint family, float size, int style, uint color, float x, float y, float width, float height)
+    private static void Text(nint g, string text, nint family, float size, int style, uint color, float x, float y, float width, float height, bool wrap = false, bool ellipsis = true)
     {
         GdipCreateFont(family, size, style, UnitPixel, out var font);
-        GdipCreateStringFormat(NoWrap, 0, out var format);
+        GdipCreateStringFormat(wrap ? 0 : NoWrap, 0, out var format);
         GdipSetStringFormatAlign(format, AlignCenter);
         GdipSetStringFormatLineAlign(format, AlignCenter);
-        GdipSetStringFormatTrimming(format, TrimmingEllipsis);
+        GdipSetStringFormatTrimming(format, ellipsis ? TrimmingEllipsis : 0);
         GdipCreateSolidFill(color, out var brush);
         var layout = new RectF { X = x, Y = y, Width = width, Height = height };
         GdipDrawString(g, text, -1, font, &layout, format, brush);
         GdipDeleteBrush(brush);
         GdipDeleteStringFormat(format);
         GdipDeleteFont(font);
+    }
+
+    private static RectF Measure(nint g, string text, nint family, float size, int style, float width, bool wrap, out int lines)
+    {
+        GdipCreateFont(family, size, style, UnitPixel, out var font);
+        GdipCreateStringFormat(wrap ? 0 : NoWrap, 0, out var format);
+        var layout = new RectF { Width = width, Height = 1000 };
+        RectF bounds;
+        int count;
+        GdipMeasureString(g, text, -1, font, &layout, format, &bounds, null, &count);
+        GdipDeleteStringFormat(format);
+        GdipDeleteFont(font);
+        lines = count;
+        return bounds;
     }
 
     private static nint Family(string name) =>

@@ -26,6 +26,8 @@ Fases e critérios completos estão nas [SPECS](SPECS.md). Artefatos experimenta
 
 ## Ideias para depois da v1.x
 
+Decisões de vídeo para a **v1.x**: Media Foundation e FFmpeg, aba Vídeo separada de Áudio e extrair áudio em Vídeo. A proposta de barra compacta com ícones e nomes curtos fica no desenho da Fase 4d; veja [ADR-026](adr/026-video-e-barra-compacta.md). Nenhum motor foi adicionado nesta etapa.
+
 Pedidos do mantenedor, anotados em 10/11/2026. Cada um passa por alinhamento e ADR antes do código.
 
 | Ideia | O que é |

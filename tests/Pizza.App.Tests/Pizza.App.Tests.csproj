@@ -11,6 +11,8 @@
     <ProjectReference Include="../../src/Pizza.Core/Pizza.Core.csproj" />
     <Compile Include="../../src/Pizza.App/Overlay.cs" Link="Production/Overlay.cs" />
     <Compile Include="../../src/Pizza.App/Interop/Native.cs" Link="Production/Native.cs" />
+    <Compile Include="../../src/Pizza.App/Interop/GdiPlus.cs" Link="Production/GdiPlus.cs" />
+    <Compile Include="../../src/Pizza.App/DiscRenderer.cs" Link="Production/DiscRenderer.cs" />
     <Compile Include="../../src/Pizza.App/Interop/DropTarget.cs" Link="Production/DropTarget.cs" />
     <Using Include="Xunit" />
   </ItemGroup>

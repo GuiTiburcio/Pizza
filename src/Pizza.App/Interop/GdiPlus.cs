@@ -181,6 +181,9 @@ internal static unsafe partial class GdiPlus
     [LibraryImport(Library, StringMarshalling = StringMarshalling.Utf16)]
     public static partial int GdipDrawString(nint graphics, string text, int length, nint font, RectF* layout, nint format, nint brush);
 
+    [LibraryImport(Library, StringMarshalling = StringMarshalling.Utf16)]
+    public static partial int GdipMeasureString(nint graphics, string text, int length, nint font, RectF* layout, nint format, RectF* bounds, int* fitted, int* lines);
+
     [LibraryImport(Library)]
     public static partial int GdipDrawImageRectI(nint graphics, nint image, int x, int y, int width, int height);
 }
