@@ -170,7 +170,11 @@ internal static unsafe partial class Overlay
         int? elapsed = _gestureStarted == 0 ? null : (int)System.Diagnostics.Stopwatch.GetElapsedTime(_gestureStarted).TotalMilliseconds;
         _gestureStarted = 0;
         Log.Write(LogEvent.MenuOpened, elapsed);
+        MenuOpened?.Invoke(_files!.Value.First);
     }
+
+    /// <summary>ADR-034: o menu abriu sobre este arquivo; quem precisar se prepara (aquecimento do motor de documentos).</summary>
+    public static Action<string>? MenuOpened { get; set; }
 
     public static MotionStyle ResolveMotion()
     {

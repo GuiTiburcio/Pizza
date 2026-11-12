@@ -28,7 +28,8 @@ public sealed record ConverterInfo(
     string Extension,
     IReadOnlyList<string> InputExtensions,
     IReadOnlyList<ConverterOption> Options,
-    string Suffix = "")
+    string Suffix = "",
+    bool DocumentEngine = false)
 {
     /// <summary>Sem opções, a conversão começa ao soltar (FR-21).</summary>
     public bool HasPanel => Options.Count > 0;
@@ -43,6 +44,13 @@ public static class ConverterCatalog
 
     public const int ImageTab = 0;
     public const int PdfTab = 1;
+    public const int DocsTab = 2;
+
+    // ADR-034: o que o motor de documentos do Pizza Jumbo abre (Writer, Calc e Impress, formatos atuais e antigos).
+    private static readonly string[] DocumentInputs = [".docx", ".doc", ".odt", ".rtf", ".xlsx", ".xls", ".ods", ".pptx", ".ppt", ".odp"];
+
+    /// <summary>ADR-034: o motor de documentos existe só no Pizza Jumbo; o residente liga isto ao abrir.</summary>
+    public static bool DocumentEngineAvailable { get; set; }
 
     // SEC-45. HEIC fica de fora: o libvips empacotado não traz o codec HEVC.
     private static readonly string[] ImageInputs = [".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".gif", ".avif"];
@@ -102,6 +110,9 @@ public static class ConverterCatalog
             [".pdf"],
             [new("rotation", "Girar páginas", "90", [new("90", "Direita"), new("180", "Ponta-cabeça"), new("270", "Esquerda")])],
             Suffix: " - girado"),
+
+        // ADR-034: pelo motor de documentos isolado, só no Pizza Jumbo.
+        new("document.pdf", DocsTab, "PDF", "Para enviar", "pdf", DocumentInputs, [], DocumentEngine: true),
     ];
 
     private static string[] ImagesExcept(params string[] own) => ImageInputs.Except(own).ToArray();

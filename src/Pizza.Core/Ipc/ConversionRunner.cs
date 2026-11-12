@@ -16,7 +16,7 @@ public sealed record ConversionResult(string? OutputName, string? ErrorCode)
 /// Conduz uma conversão de ponta a ponta. O residente abre os arquivos e entrega só os handles ao
 /// Worker (SEC-22); a saída só vira definitiva depois que o Worker encerrou (SEC-29).
 /// </summary>
-public sealed class ConversionRunner(string workerPath, string profile, TempJournal journal, TimeSpan timeout, string workerArguments = "", string? desktop = null)
+public sealed class ConversionRunner(string workerPath, string profile, TempJournal journal, TimeSpan timeout, string workerArguments = "", string? desktop = null, Func<SandboxedProcess>? start = null)
 {
     /// <summary>Não é erro do Worker nem vai ao usuário: o cartão só some.</summary>
     public const string Cancelled = "CANCELLED";
@@ -71,7 +71,8 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
 
     private string? RunWorker(SafeFileHandle source, SafeFileHandle destination, string converterId, IReadOnlyDictionary<string, string> options, CancellationToken cancellation, ConversionControl? control)
     {
-        using var worker = SandboxedProcess.Start(workerPath, profile, workerArguments, desktop);
+        // ADR-034: o motor de documentos pode chegar já aquecido; nenhum outro arquivo passou por ele.
+        using var worker = start?.Invoke() ?? SandboxedProcess.Start(workerPath, profile, workerArguments, desktop);
         var jobId = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(6));
 
         IpcFraming.WriteFrame(worker.Input, IpcCodec.Serialize(new IpcMessage(IpcType.Convert, jobId)

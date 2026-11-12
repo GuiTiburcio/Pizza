@@ -8,8 +8,9 @@ public class ConverterRegistryTests
     public void Cada_item_do_catalogo_tem_um_conversor_e_vice_versa()
     {
         // O menu lê o catálogo e o Worker lê o registro: os dois precisam ser a mesma lista.
+        // As conversões do motor de documentos (ADR-034) rodam no Pizza.Docs, não no Worker.
         Assert.Equal(
-            ConverterCatalog.All.Select(c => c.Id).Order(),
+            ConverterCatalog.All.Where(c => !c.DocumentEngine).Select(c => c.Id).Order(),
             ConverterRegistry.All.Select(c => c.Id).Order());
     }
 

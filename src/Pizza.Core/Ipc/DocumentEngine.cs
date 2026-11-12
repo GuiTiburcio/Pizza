@@ -11,7 +11,7 @@ namespace Pizza.Core.Ipc;
 /// handles (SEC-15), gravação segura (SEC-29 a SEC-37), prazo (SEC-43) e cancelamento.
 /// </summary>
 [SupportedOSPlatform("windows")]
-public sealed unsafe partial class DocumentEngine(string docsPath, string engineRoot, TempJournal journal, TimeSpan timeout, string profile = DocumentEngine.Profile)
+public sealed unsafe partial class DocumentEngine(string docsPath, string engineRoot, TempJournal journal, TimeSpan timeout, string profile = DocumentEngine.Profile) : IDisposable
 {
     public const string Profile = "Pizza.Docs";
 
@@ -21,24 +21,132 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
     private const uint NoBroadcastSystem = 0x8;
     private const uint DesktopAll = 0x10000000;
 
-    /// <summary>Converte um documento; devolve o mesmo resultado do Worker de imagens.</summary>
+    /// <summary>Quanto o motor de reserva espera por um documento antes de sair sozinho.</summary>
+    public TimeSpan SpareIdle { get; init; } = TimeSpan.FromSeconds(60);
+
+    private readonly Lock _gate = new();
+    private Spare? _spare;
+    private bool _granted;
+
+    /// <summary>
+    /// Inicia um motor de reserva, se ainda não houver um: ele carrega o LibreOffice enquanto a pessoa escolhe a
+    /// fatia. É usado por um único documento (S-02) e sai sozinho depois de <see cref="SpareIdle"/>.
+    /// </summary>
+    public void WarmUp()
+    {
+        lock (_gate)
+        {
+            if (_spare is { } spare && !spare.Process.WaitForExit(0))
+            {
+                return;
+            }
+
+            _spare?.Release(engineRoot);
+            var started = StartSpare();
+            _spare = started;
+
+            // O motor sai sozinho no fim da espera; a letra e a área oculta saem com ele, sem esperar o próximo uso.
+            started.Expiry = new Timer(_ => ReleaseIfIdle(started), null, SpareIdle + TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    /// <summary>Encerra o motor de reserva e libera a letra e a área oculta dele.</summary>
+    public void Dispose()
+    {
+        lock (_gate)
+        {
+            _spare?.Release(engineRoot);
+            _spare = null;
+        }
+    }
+
+    private void ReleaseIfIdle(Spare spare)
+    {
+        lock (_gate)
+        {
+            if (ReferenceEquals(_spare, spare))
+            {
+                _spare = null;
+                spare.Release(engineRoot);
+            }
+        }
+    }
+
+    /// <summary>Converte um documento com o motor de reserva, ou com um novo; depois deixa outro de reserva.</summary>
     public ConversionResult Run(string sourcePath, string converterId, string extension, CancellationToken cancellation = default, ConversionControl? control = null)
     {
+        Spare engine;
+        lock (_gate)
+        {
+            engine = _spare is { } spare && !spare.Process.WaitForExit(0) ? spare : StartSpare();
+            if (!ReferenceEquals(engine, _spare))
+            {
+                _spare?.Release(engineRoot);
+            }
+
+            _spare = null;
+        }
+
+        try
+        {
+            var runner = new ConversionRunner(docsPath, profile, journal, timeout, start: () => engine.Process);
+            return runner.Run(sourcePath, converterId, extension, cancellation: cancellation, control: control);
+        }
+        finally
+        {
+            engine.Release(engineRoot);
+
+            // Quem converte um documento costuma converter outro em seguida.
+            WarmUp();
+        }
+    }
+
+    private Spare StartSpare()
+    {
         var sid = SandboxedProcess.EnsureProfile(profile);
-        SandboxedProcess.GrantFolder(Path.GetDirectoryName(docsPath)!, profile);
-        SandboxedProcess.GrantFolder(engineRoot, profile);
+        if (!_granted)
+        {
+            SandboxedProcess.GrantFolder(Path.GetDirectoryName(docsPath)!, profile);
+            SandboxedProcess.GrantFolder(RealFolder(engineRoot), profile);
+            _granted = true;
+        }
 
         var desktopName = $"Pizza.Docs.{Guid.NewGuid():N}";
         var desktop = CreateHiddenDesktop(desktopName, sid);
         var drive = MapEngine(engineRoot);
         try
         {
-            var arguments = $"--engine \"{drive}\\program\" --work \"{ContainerFolder(sid)}\"";
-            var runner = new ConversionRunner(docsPath, profile, journal, timeout, arguments, @"WinSta0\" + desktopName);
-            return runner.Run(sourcePath, converterId, extension, cancellation: cancellation, control: control);
+            var arguments = $"--engine \"{drive}\\program\" --work \"{ContainerFolder(sid)}\" --idle {(int)SpareIdle.TotalSeconds}";
+            var process = SandboxedProcess.Start(docsPath, profile, arguments, @"WinSta0\" + desktopName);
+            return new Spare(process, desktop, drive);
         }
-        finally
+        catch
         {
+            Unmap(drive, engineRoot);
+            CloseDesktop(desktop);
+            throw;
+        }
+    }
+
+    /// <summary>Um motor e o que é só dele: a área oculta e a letra, liberadas juntas.</summary>
+    private sealed class Spare(SandboxedProcess process, nint desktop, string drive)
+    {
+        private bool _released;
+
+        public SandboxedProcess Process => process;
+
+        public Timer? Expiry { get; set; }
+
+        public void Release(string engineRoot)
+        {
+            if (_released)
+            {
+                return;
+            }
+
+            _released = true;
+            Expiry?.Dispose();
+            process.Dispose();
             Unmap(drive, engineRoot);
             CloseDesktop(desktop);
         }
@@ -95,7 +203,41 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
     private static void Unmap(string drive, string engineRoot) =>
         DefineDosDeviceW(RawTargetPath | RemoveDefinition | ExactMatchOnRemove | NoBroadcastSystem, drive, Target(engineRoot));
 
-    private static string Target(string engineRoot) => @"\??\" + Path.GetFullPath(engineRoot).TrimEnd('\\');
+    private static string Target(string engineRoot) => @"\??\" + RealFolder(engineRoot);
+
+    /// <summary>
+    /// A pasta real do motor, mesmo atrás de um atalho de pasta (junção ou link simbólico): a permissão dada ao
+    /// atalho não vale para o que está dentro dele, e o sandbox não leria o motor.
+    /// </summary>
+    private static string RealFolder(string folder)
+    {
+        var directory = new DirectoryInfo(Path.GetFullPath(folder));
+        return (directory.ResolveLinkTarget(returnFinalTarget: true)?.FullName ?? directory.FullName).TrimEnd('\\');
+    }
+
+    /// <summary>
+    /// Ao abrir o Pizza, nenhum motor está rodando: apaga as pastas de documentos que tenham sobrado de um motor
+    /// encerrado à força. O perfil-modelo fica.
+    /// </summary>
+    public static void CleanWorkFolder(string profile = Profile)
+    {
+        foreach (var folder in Directory.EnumerateDirectories(WorkFolder(profile)))
+        {
+            if (Path.GetFileName(folder).StartsWith("modelo-", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            try
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Tenta de novo na próxima vez que o Pizza abrir.
+            }
+        }
+    }
 
     /// <summary>Pasta de trabalho do motor: a pasta própria do AppContainer do perfil.</summary>
     public static string WorkFolder(string profile) => ContainerFolder(SandboxedProcess.EnsureProfile(profile));

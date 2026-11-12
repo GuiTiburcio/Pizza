@@ -21,6 +21,7 @@ public sealed class DocumentTests : IDisposable
 
     private readonly string _folder = Path.Combine(Path.GetTempPath(), "pizza-docs-" + Guid.NewGuid().ToString("N"));
     private readonly string _docs;
+    private readonly List<DocumentEngine> _engines = [];
 
     public DocumentTests()
     {
@@ -45,6 +46,11 @@ public sealed class DocumentTests : IDisposable
 
     public void Dispose()
     {
+        foreach (var engine in _engines)
+        {
+            engine.Dispose();
+        }
+
         SandboxedProcess.DeleteProfile(Profile);
         Directory.Delete(_folder, recursive: true);
         File.Delete(_folder + ".journal");
@@ -97,14 +103,96 @@ public sealed class DocumentTests : IDisposable
     }
 
     [JumboFact]
-    public void Letra_temporaria_some_depois_da_conversao()
+    public void Letra_temporaria_some_quando_o_motor_de_reserva_expira()
     {
-        // ADR-034: a letra do motor existe só durante a conversão.
+        // ADR-034: a letra existe só enquanto há um motor convertendo ou de reserva.
         var source = Write("letra.docx", Docx("Letra temporária."));
+        var engine = Engine(spareIdle: TimeSpan.FromSeconds(3));
+
+        engine.Run(source, "document.pdf", "pdf");
+        Assert.NotEmpty(DocumentEngine.DrivesFor(JumboFactAttribute.Engine!)); // a reserva para o próximo documento
+
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (DocumentEngine.DrivesFor(JumboFactAttribute.Engine!).Count > 0 && DateTime.UtcNow < deadline)
+        {
+            Thread.Sleep(500);
+        }
+
+        Assert.Empty(DocumentEngine.DrivesFor(JumboFactAttribute.Engine!));
+    }
+
+    [JumboFact]
+    public void Motor_aquecido_converte_em_poucos_segundos()
+    {
+        // ADR-034: o motor carrega enquanto a pessoa escolhe a fatia; o documento em si leva pouco.
+        var source = Write("rapido.docx", Docx("Motor aquecido."));
+        var engine = Engine();
+        engine.WarmUp();
+        Thread.Sleep(TimeSpan.FromSeconds(25));
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var result = engine.Run(source, "document.pdf", "pdf");
+
+        Assert.Null(result.ErrorCode);
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(5), $"levou {clock.Elapsed.TotalSeconds:F1} s");
+    }
+
+    [JumboFact]
+    public void Limpeza_ao_abrir_apaga_sobras_e_mantem_o_modelo()
+    {
+        // Um motor de reserva encerrado à força deixa a pasta dele para trás.
+        Engine().Run(Write("sobra.docx", Docx("Sobra.")), "document.pdf", "pdf");
+        _engines[^1].Dispose();
+        var work = DocumentEngine.WorkFolder(Profile);
+        Directory.CreateDirectory(Path.Combine(work, "sobra-de-teste"));
+
+        DocumentEngine.CleanWorkFolder(Profile);
+
+        Assert.All(Directory.GetDirectories(work), folder => Assert.StartsWith("modelo-", Path.GetFileName(folder)));
+        Assert.NotEmpty(Directory.GetDirectories(work, "modelo-*"));
+    }
+
+    [JumboFact]
+    public void Perfil_modelo_e_criado_para_a_versao_do_motor()
+    {
+        // O modelo nasce logo depois de o motor iniciar, antes de qualquer documento.
+        var source = Write("modelo.docx", Docx("Perfil-modelo."));
 
         Engine().Run(source, "document.pdf", "pdf");
 
-        Assert.Empty(DocumentEngine.DrivesFor(JumboFactAttribute.Engine!));
+        Assert.NotEmpty(Directory.GetDirectories(DocumentEngine.WorkFolder(Profile), "modelo-*"));
+    }
+
+    [JumboFact]
+    public void Motor_atras_de_um_atalho_de_pasta_funciona()
+    {
+        // A permissão e a letra valem para a pasta real: dadas ao atalho, o sandbox não leria o motor.
+        // Perfil novo: sem nenhuma permissão dada antes à pasta real por outro teste.
+        var profile = "Pizza.Docs.Atalho." + Guid.NewGuid().ToString("N")[..8];
+        var link = Path.Combine(_folder, "motor");
+        Directory.CreateSymbolicLink(link, JumboFactAttribute.Engine!);
+        var source = Write("atalho.docx", Docx("Motor por atalho."));
+        try
+        {
+            var engine = Engine(link, profile);
+            var result = engine.Run(source, "document.pdf", "pdf");
+            engine.Dispose();
+
+            Assert.Null(result.ErrorCode);
+        }
+        finally
+        {
+            RemoveAccess(JumboFactAttribute.Engine!, SandboxedProcess.EnsureProfile(profile));
+            SandboxedProcess.DeleteProfile(profile);
+        }
+    }
+
+    private static void RemoveAccess(string folder, string sid)
+    {
+        var directory = new DirectoryInfo(folder);
+        var acl = directory.GetAccessControl();
+        acl.PurgeAccessRules(new System.Security.Principal.SecurityIdentifier(sid));
+        directory.SetAccessControl(acl);
     }
 
     [JumboFact]
@@ -118,8 +206,15 @@ public sealed class DocumentTests : IDisposable
         Assert.False(File.Exists(Path.Combine(_folder, "lista (1).docx")));
     }
 
-    private DocumentEngine Engine() =>
-        new(_docs, JumboFactAttribute.Engine!, new TempJournal(_folder + ".journal"), TimeSpan.FromMinutes(2), Profile);
+    private DocumentEngine Engine(string? engineRoot = null, string profile = Profile, TimeSpan? spareIdle = null)
+    {
+        var engine = new DocumentEngine(_docs, engineRoot ?? JumboFactAttribute.Engine!, new TempJournal(_folder + ".journal"), TimeSpan.FromMinutes(2), profile)
+        {
+            SpareIdle = spareIdle ?? TimeSpan.FromSeconds(60),
+        };
+        _engines.Add(engine);
+        return engine;
+    }
 
     private string Write(string name, byte[] content)
     {
