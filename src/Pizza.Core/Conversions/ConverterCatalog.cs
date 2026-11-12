@@ -4,7 +4,20 @@ namespace Pizza.Core.Conversions;
 public sealed record OptionChoice(string Value, string Label);
 
 /// <summary>Uma opção do painel. O padrão é sempre uma das escolhas.</summary>
-public sealed record ConverterOption(string Key, string Label, string Default, IReadOnlyList<OptionChoice> Choices);
+/// <summary><c>Minimum</c>: a opção é uma régua de porcentagem (ADR-030), de Minimum a 100; 100 é "original".</summary>
+public sealed record ConverterOption(string Key, string Label, string Default, IReadOnlyList<OptionChoice> Choices, int? Minimum = null)
+{
+    public const string Original = "original";
+
+    /// <summary>Valor da régua: só dígitos, sem zero à esquerda, de Minimum a 99; ou "original".</summary>
+    public bool Accepts(string value) =>
+        Choices.Any(choice => choice.Value == value)
+        || (Minimum is { } minimum
+            && value.Length is > 0 and <= 2
+            && value[0] != '0'
+            && value.All(char.IsAsciiDigit)
+            && int.Parse(value, System.Globalization.CultureInfo.InvariantCulture) >= minimum);
+}
 
 /// <summary>O que o residente precisa saber de uma conversão, sem carregar nenhum decodificador.</summary>
 public sealed record ConverterInfo(
@@ -52,7 +65,7 @@ public static class ConverterCatalog
             "png",
             ImagesExcept(".png"),
             [
-                new("resolution", "Resolução", "original", [new("original", "Original"), new("75", "75%"), new("50", "50%")]),
+                new("resolution", "Resolução", "original", [new("original", "Original"), new("75", "75%"), new("50", "50%")], Minimum: 20),
                 new("compression", "Compressão", "balanced", [new("fast", "Rápida"), new("balanced", "Equilibrada"), new("maximum", "Máxima")]),
                 Metadata,
             ]),
@@ -89,7 +102,7 @@ public static class ConverterCatalog
         foreach (var option in converter.Options)
         {
             var value = given.GetValueOrDefault(option.Key, option.Default);
-            if (!option.Choices.Any(choice => choice.Value == value))
+            if (!option.Accepts(value))
             {
                 return null;
             }

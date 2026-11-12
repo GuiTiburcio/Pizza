@@ -62,17 +62,146 @@ public class OptionsPanelStateTests
     [Fact]
     public void Setas_trocam_a_escolha_sem_dar_a_volta()
     {
+        var panel = Panel("image.jpg");
+
+        panel.Press(PanelKey.Left);
+        panel.Press(PanelKey.Left);
+        panel.Press(PanelKey.Left);
+        Assert.Equal("95", panel.Options()["quality"]);
+        panel.Press(PanelKey.Right);
+        Assert.Equal("85", panel.Options()["quality"]);
+    }
+
+    [Fact]
+    public void Regua_anda_um_ou_dez_por_cento_e_vai_as_pontas()
+    {
+        // ADR-030: comeca no original (100%), sem passar das pontas.
         var panel = Panel("image.png");
 
+        Assert.Equal((PanelTargetKind.Slider, 0), panel.Focus);
         panel.Press(PanelKey.Right);
-        Assert.Equal("75", panel.Options()["resolution"]);
-        panel.Press(PanelKey.Right);
-        panel.Press(PanelKey.Right);
-        Assert.Equal("50", panel.Options()["resolution"]);
-        panel.Press(PanelKey.Left);
-        panel.Press(PanelKey.Left);
-        panel.Press(PanelKey.Left);
         Assert.Equal("original", panel.Options()["resolution"]);
+        panel.Press(PanelKey.Left);
+        Assert.Equal("99", panel.Options()["resolution"]);
+        panel.Press(PanelKey.ShiftLeft);
+        Assert.Equal("89", panel.Options()["resolution"]);
+        panel.Press(PanelKey.Home);
+        Assert.Equal("20", panel.Options()["resolution"]);
+        panel.Press(PanelKey.Left);
+        Assert.Equal("20", panel.Options()["resolution"]);
+        panel.Press(PanelKey.ShiftRight);
+        Assert.Equal(30, panel.Percent(0));
+        panel.Press(PanelKey.End);
+        Assert.Equal("original", panel.Options()["resolution"]);
+    }
+
+    [Fact]
+    public void Arrastar_na_regua_escolhe_o_valor_exato()
+    {
+        var panel = Panel("image.png");
+        var track = panel.SliderTrack(0);
+
+        panel.Slide(0, track.Left);
+        Assert.Equal("20", panel.Options()["resolution"]);
+        panel.Slide(0, track.Right + 50);
+        Assert.Equal("original", panel.Options()["resolution"]);
+        panel.Slide(0, track.Left + ((track.Right - track.Left) * 47 / 80));
+        Assert.Equal("67", panel.Options()["resolution"]);
+        Assert.Equal((PanelTargetKind.Slider, 0), panel.Focus);
+    }
+
+    [Fact]
+    public void Roda_sobre_a_regua_anda_um_por_cento()
+    {
+        var panel = Panel("image.png");
+        panel.Press(PanelKey.Tab);
+
+        panel.Nudge(0, -3);
+
+        Assert.Equal("97", panel.Options()["resolution"]);
+        Assert.Equal((PanelTargetKind.Choice, 1), panel.Focus);
+    }
+
+    [Fact]
+    public void Caixa_aceita_digitar_e_limita_ao_sair()
+    {
+        var panel = Panel("image.png");
+
+        panel.Type('6');
+        panel.Type('7');
+        Assert.Equal("67", panel.ValueText(0));
+        Assert.Equal("67", panel.Options()["resolution"]);
+
+        panel.Erase();
+        panel.Erase();
+        panel.Type('5');
+        Assert.Equal("5", panel.ValueText(0));
+        panel.Press(PanelKey.Tab);
+        Assert.Equal("20", panel.ValueText(0));
+
+        panel.Press(PanelKey.ShiftTab);
+        panel.Type('x');
+        panel.Type('1');
+        panel.Type('5');
+        panel.Type('0');
+        panel.Type('9');
+        Assert.Equal("150", panel.ValueText(0));
+        Assert.Equal("original", panel.Options()["resolution"]);
+    }
+
+    [Fact]
+    public void Clicar_na_caixa_seleciona_o_valor_e_o_digito_substitui()
+    {
+        // ADR-030: a caixa ao lado do título é editável com o mouse.
+        var panel = Panel("image.png");
+        panel.Press(PanelKey.Tab);
+        var box = panel.ValueBox(0);
+
+        Assert.Equal(0, panel.ValueBoxAt(box.Left + 1, box.Top + 1));
+        panel.EditValue(0);
+
+        Assert.Equal((PanelTargetKind.Slider, 0), panel.Focus);
+        Assert.True(panel.IsEditing(0));
+        panel.Type('6');
+        panel.Type('7');
+        Assert.Equal("67", panel.ValueText(0));
+        panel.Press(PanelKey.Tab);
+        Assert.False(panel.IsEditing(0));
+        Assert.Equal("67", panel.Options()["resolution"]);
+    }
+
+    [Fact]
+    public void Caixa_do_valor_nao_cobre_a_regua_nem_o_titulo()
+    {
+        var panel = Panel("image.png");
+        var box = panel.ValueBox(0);
+
+        Assert.All(panel.Targets, target => Assert.False(target.Bounds.Overlaps(box)));
+        Assert.Null(panel.ValueBoxAt(1, 1));
+        Assert.True(box.Right <= panel.Width - OptionsPanelState.Padding);
+    }
+
+    [Fact]
+    public void Digitar_fora_da_regua_nao_faz_nada()
+    {
+        var panel = Panel("image.png");
+        panel.Press(PanelKey.Tab);
+
+        panel.Type('5');
+
+        Assert.Equal("original", panel.Options()["resolution"]);
+    }
+
+    [Fact]
+    public void Regua_ocupa_a_altura_da_linha_de_opcoes()
+    {
+        // O painel não cresce: a régua usa a mesma altura da linha de botões que substitui.
+        var png = Panel("image.png");
+        var slider = png.Targets.Single(t => t.Kind == PanelTargetKind.Slider).Bounds;
+        var pills = png.Targets.First(t => t is { Kind: PanelTargetKind.Choice, Row: 1 }).Bounds;
+
+        Assert.Equal(pills.Bottom - pills.Top, slider.Bottom - slider.Top);
+        Assert.Equal(OptionsPanelState.RowLabelTop(0) + (pills.Top - OptionsPanelState.RowLabelTop(1)), slider.Top);
     }
 
     [Fact]
@@ -80,7 +209,7 @@ public class OptionsPanelStateTests
     {
         var panel = Panel("image.png");
 
-        Assert.Equal((PanelTargetKind.Choice, 0), panel.Focus);
+        Assert.Equal((PanelTargetKind.Slider, 0), panel.Focus);
         panel.Press(PanelKey.Tab);
         Assert.Equal((PanelTargetKind.Choice, 1), panel.Focus);
         panel.Press(PanelKey.Tab);
@@ -90,7 +219,7 @@ public class OptionsPanelStateTests
         panel.Press(PanelKey.Tab);
         Assert.Equal((PanelTargetKind.Convert, 0), panel.Focus);
         panel.Press(PanelKey.Tab);
-        Assert.Equal((PanelTargetKind.Choice, 0), panel.Focus);
+        Assert.Equal((PanelTargetKind.Slider, 0), panel.Focus);
     }
 
     [Fact]
@@ -168,6 +297,15 @@ public class OptionsPanelStateTests
             {
                 panel.Click(target);
                 Assert.NotNull(ConverterCatalog.ResolveOptions(converter, panel.Options()));
+            }
+
+            foreach (var target in panel.Targets.Where(t => t.Kind == PanelTargetKind.Slider))
+            {
+                for (var x = target.Bounds.Left - 10; x <= target.Bounds.Right + 10; x++)
+                {
+                    panel.Slide(target.Row, x);
+                    Assert.NotNull(ConverterCatalog.ResolveOptions(converter, panel.Options()));
+                }
             }
         }
     }

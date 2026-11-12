@@ -25,6 +25,7 @@ internal static unsafe class OptionsPanel
     private static MotionStyle _motion = MotionStyle.Slide;
     private static long _lastFrame;
     private static int _wheelRemainder;
+    private static int? _dragRow;
     private static string _fileName = string.Empty;
     private static int _dpi = 96;
     private static int _left;
@@ -90,6 +91,7 @@ internal static unsafe class OptionsPanel
     {
         if (_state is not null)
         {
+            EndDrag();
             _state = null;
             _viewport = null;
             KillTimer(_window, TimerBubble);
@@ -124,6 +126,17 @@ internal static unsafe class OptionsPanel
             case WM_ERASEBKGND:
                 return 1;
 
+            case WM_KEYDOWN when (int)wParam == VK_BACK && _state is { } typing:
+                typing.Erase();
+                Render();
+                return 0;
+
+            case WM_CHAR:
+                // ADR-030: dígitos digitados vão para a caixa da régua em foco; o resto é ignorado.
+                _state?.Type((char)wParam);
+                Render();
+                return 0;
+
             case WM_KEYDOWN:
                 if (ToKey((int)wParam) is { } key && _state is { } state)
                 {
@@ -141,10 +154,31 @@ internal static unsafe class OptionsPanel
                 OnClick((short)(lParam & 0xFFFF), (short)((lParam >> 16) & 0xFFFF));
                 return 0;
 
+            case WM_MOUSEMOVE when _dragRow is { } dragRow && _state is { } dragging:
+                // Arrastando o pino: o valor exato sob o cursor, mesmo fora da janela (a captura segue o mouse).
+                dragging.Slide(dragRow, (short)(lParam & 0xFFFF) * 96 / _dpi);
+                Render();
+                return 0;
+
+            case WM_LBUTTONUP when _dragRow is not null:
+                EndDrag();
+                return 0;
+
             case WM_MOUSEWHEEL:
                 _wheelRemainder += (short)(wParam >> 16);
-                Scroll(-(_wheelRemainder / 120) * 44);
+                var notches = _wheelRemainder / 120;
                 _wheelRemainder %= 120;
+                if (SliderUnder(lParam) is { } wheelRow)
+                {
+                    // ADR-030: sobre a régua, cada dente anda 1%; fora dela, a roda rola o painel.
+                    _state!.Nudge(wheelRow, notches);
+                    Render();
+                }
+                else
+                {
+                    Scroll(-notches * 44);
+                }
+
                 return 0;
 
             case WM_TIMER when wParam == TimerBubble:
@@ -168,10 +202,12 @@ internal static unsafe class OptionsPanel
     public static PanelKey? ToKey(int virtualKey) => virtualKey switch
     {
         VK_TAB => GetKeyState(VK_SHIFT) < 0 ? PanelKey.ShiftTab : PanelKey.Tab,
-        VK_LEFT => PanelKey.Left,
+        VK_LEFT => GetKeyState(VK_SHIFT) < 0 ? PanelKey.ShiftLeft : PanelKey.Left,
         VK_UP => PanelKey.Up,
-        VK_RIGHT => PanelKey.Right,
+        VK_RIGHT => GetKeyState(VK_SHIFT) < 0 ? PanelKey.ShiftRight : PanelKey.Right,
         VK_DOWN => PanelKey.Down,
+        VK_HOME => PanelKey.Home,
+        VK_END => PanelKey.End,
         VK_SPACE => PanelKey.Space,
         VK_RETURN => PanelKey.Enter,
         VK_ESCAPE => PanelKey.Escape,
@@ -201,10 +237,52 @@ internal static unsafe class OptionsPanel
             return;
         }
 
-        if (state.TargetAt(x, y + viewport.Offset) is { } target)
+        if (state.ValueBoxAt(x, y + viewport.Offset) is { } editRow)
         {
-            Apply(state.Click(target));
+            // ADR-030: a caixa do valor é editável; o número fica selecionado até o primeiro dígito.
+            state.EditValue(editRow);
+            Render();
+            return;
         }
+
+        if (state.TargetAt(x, y + viewport.Offset) is not { } target)
+        {
+            return;
+        }
+
+        if (target.Kind == PanelTargetKind.Slider)
+        {
+            // ADR-030: clicar já leva o pino ao ponto; segurar e arrastar continua ajustando.
+            state.Slide(target.Row, x);
+            _dragRow = target.Row;
+            SetCapture(_window);
+            Render();
+            return;
+        }
+
+        Apply(state.Click(target));
+    }
+
+    private static void EndDrag()
+    {
+        if (_dragRow is not null)
+        {
+            _dragRow = null;
+            ReleaseCapture();
+        }
+    }
+
+    /// <summary>Linha da régua sob o cursor da roda, que chega em coordenadas da tela.</summary>
+    private static int? SliderUnder(nint lParam)
+    {
+        if (_state is not { } state || _viewport is not { } viewport)
+        {
+            return null;
+        }
+
+        var x = ((short)(lParam & 0xFFFF) - _left) * 96 / _dpi;
+        var y = (((short)((lParam >> 16) & 0xFFFF) - _top) * 96 / _dpi) + viewport.Offset;
+        return state.TargetAt(x, y) is { Kind: PanelTargetKind.Slider } target ? target.Row : null;
     }
 
     private static void Scroll(int distance)

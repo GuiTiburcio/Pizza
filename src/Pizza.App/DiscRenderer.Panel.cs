@@ -112,6 +112,12 @@ internal static unsafe partial class DiscRenderer
 
         for (var row = 0; row < state.Rows.Count; row++)
         {
+            if (state.IsSlider(row))
+            {
+                DrawSlider(g, state, row, colors, veil);
+                continue;
+            }
+
             var (left, right, top, bottom) = state.BubbleAt(row, frame.Bubbles[row]);
             var swell = (float)frame.Swells[row];
             var lens = RoundedRect((float)left - (3 * swell), top - (2 * swell), (float)(right - left) + (6 * swell), bottom - top + (4 * swell), ButtonRadius);
@@ -139,7 +145,12 @@ internal static unsafe partial class DiscRenderer
                     DrawKeep(g, bounds.Top, enabled: true, state.KeepMetadata, colors);
                     if (state.Focus.Kind == PanelTargetKind.Keep)
                     {
-                        FocusRing(g, bounds, colors);
+                        // O foco contorna só a caixinha; o clique continua valendo na linha inteira (44 px).
+                        const float left = OptionsPanelState.Padding + 3 - 4;
+                        var boxTop = bounds.Top + ((OptionsPanelState.KeepRowHeight - KeepBoxSize) / 2) - 4;
+                        var ring = RoundedRect(left, boxTop, KeepBoxSize + 8, KeepBoxSize + 8, 7);
+                        Stroke(g, Ink(colors.Text), 2, ring);
+                        GdipDeletePath(ring);
                     }
 
                     break;
@@ -158,6 +169,62 @@ internal static unsafe partial class DiscRenderer
         {
             DrawKeep(g, state.KeepTop, enabled: false, isChecked: false, colors);
             Text(g, MetadataNotice, _regular, 12, StyleRegular, Ink(colors.SecondaryText), padding, state.KeepTop + OptionsPanelState.KeepRowHeight, inner, 20, AlignNear);
+        }
+    }
+
+    /// <summary>
+    /// Régua (ADR-030, prancha 4d-1): trilho com a parte escolhida em azul, o pino na bolha de vidro B e o valor
+    /// numa caixa ao lado do título, sem marcas embaixo. Em foco, a caixa ganha o contorno do teclado.
+    /// </summary>
+    private static void DrawSlider(nint g, OptionsPanelState state, int row, PanelPalette colors, double veil)
+    {
+        var track = state.SliderTrack(row);
+        var cy = (track.Top + track.Bottom) / 2f;
+        var thumbX = track.Left + (float)((track.Right - track.Left) * state.SliderAmount(row));
+
+        var rail = RoundedRect(track.Left, cy - 3, track.Right - track.Left, 6, 3);
+        Fill(g, WithAlpha(Ink(colors.Text), 0.14), rail);
+        GdipDeletePath(rail);
+        if (thumbX > track.Left)
+        {
+            var done = RoundedRect(track.Left, cy - 3, thumbX - track.Left, 6, 3);
+            Gradient(g, done, cy - 3, cy + 3, Argb(255, 84, 134, 255), Argb(255, 47, 106, 255));
+            GdipDeletePath(done);
+        }
+
+        Lens(g, Ellipse(thumbX, cy, 14), thumbX, cy, 0, 1, veil);
+
+        var box = state.ValueBox(row);
+        float boxLeft = box.Left, boxTop = box.Top, boxWidth = box.Right - box.Left, boxHeight = box.Bottom - box.Top;
+        Surface(g, box, 8);
+        var text = state.ValueText(row);
+        var editing = state.IsEditing(row);
+        var typing = state.IsTyping(row);
+        const float numberWidth = 30;
+        const float numberLeft = 8;
+        if (editing && !typing)
+        {
+            // Valor selecionado: o primeiro dígito o substitui.
+            var selection = RoundedRect(boxLeft + numberLeft, boxTop + 5, numberWidth, boxHeight - 10, 3);
+            Fill(g, Ink(colors.Accent), selection);
+            GdipDeletePath(selection);
+        }
+
+        Text(g, text, _semibold, 13, StyleBold, editing && !typing ? Ink(colors.OnAccent) : Ink(colors.Text), boxLeft + numberLeft, boxTop, numberWidth, boxHeight, typing ? AlignFar : AlignCenter);
+        Text(g, "%", _semibold, 13, StyleBold, Ink(colors.Text), boxLeft + numberLeft + numberWidth, boxTop, boxWidth - numberLeft - numberWidth - 4, boxHeight);
+        if (typing)
+        {
+            // Cursor logo depois do que foi digitado.
+            var caret = RoundedRect(boxLeft + numberLeft + numberWidth + 1, boxTop + 7, 1.5f, boxHeight - 14, 0.5f);
+            Fill(g, Ink(colors.Text), caret);
+            GdipDeletePath(caret);
+        }
+
+        if (state.Focus == (PanelTargetKind.Slider, row))
+        {
+            var ring = RoundedRect(boxLeft + 1, boxTop + 1, boxWidth - 2, boxHeight - 2, 8);
+            Stroke(g, Ink(colors.Accent), 2, ring);
+            GdipDeletePath(ring);
         }
     }
 

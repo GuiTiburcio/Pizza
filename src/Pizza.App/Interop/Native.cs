@@ -50,6 +50,10 @@ internal static unsafe partial class Native
     public const int VK_UP = 0x26;
     public const int VK_RIGHT = 0x27;
     public const int VK_DOWN = 0x28;
+    public const int VK_BACK = 0x08;
+    public const int VK_END = 0x23;
+    public const int VK_HOME = 0x24;
+    public const int WM_CHAR = 0x0102;
 
     // Bandeja e menu
     public const uint NIM_ADD = 0;
@@ -404,6 +408,12 @@ internal static unsafe partial class Native
 
     [LibraryImport("user32.dll")]
     public static partial short GetKeyState(int key);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint SetCapture(nint hwnd);
+
+    [LibraryImport("user32.dll")]
+    public static partial int ReleaseCapture();
 
     [LibraryImport("user32.dll")]
     public static partial nint LoadCursorW(nint instance, nint name);

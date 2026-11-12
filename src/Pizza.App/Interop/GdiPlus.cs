@@ -15,6 +15,7 @@ internal static unsafe partial class GdiPlus
     public const int StyleRegular = 0;
     public const int StyleBold = 1;
     public const int AlignNear = 0;
+    public const int AlignFar = 2;
     public const int AlignCenter = 1;
     public const int TrimmingEllipsis = 3;
     public const int NoWrap = 0x1000;
