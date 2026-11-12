@@ -24,7 +24,7 @@ Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equival
 
 Fases e critérios completos estão nas [SPECS](SPECS.md). Artefatos experimentais do CI são builds de desenvolvimento.
 
-**Fase atual: 4 — Visual Pizza, ainda aberta.** O [acompanhamento por etapas](FASE-4.md) separa implementação, verificação automática e aceite visual, para manter Claude, Codex e mantenedor no mesmo ponto do plano. A Fase 5 só começa após o aceite da Fase 4.
+**Fase 4 — Visual Pizza: concluída em 11/11/2026** ([acompanhamento](FASE-4.md)). A seguir, a prévia 0.1.0 ([ADR-031](adr/031-previa-pelo-ci.md)) e a Fase 5.
 
 ## Ideias para depois da v1.x
 
