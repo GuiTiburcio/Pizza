@@ -16,6 +16,7 @@ Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equival
 | Vídeo, em aba própria (Media Foundation e FFmpeg) | Planejado para v1.x ([ADR-026](adr/026-aba-video-e-motores.md)); [estudo da barra compacta](propostas/barra-compacta.svg) para a Fase 4d |
 | Lotes | Planejados para v1.x |
 | Configurações completas e políticas de TI | Planejadas |
+| Prévias 0.x ([ADR-031](adr/031-previa-pelo-ci.md)) | `.zip` do CI com `SHA256SUMS`, SBOM e proveniência, como pré-lançamento |
 | Instaladores assinados, atualização verificada, SBOM e proveniência de release | Pendentes antes da distribuição estável |
 | Auditoria completa e medições finais de desempenho | Pendentes para a v1.0 |
 | Artefato original do Claude Design | [Referência disponível](dossie/README.md) |
