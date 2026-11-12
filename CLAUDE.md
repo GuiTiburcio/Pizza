@@ -59,6 +59,19 @@ Para tarefas com várias etapas, escreva um plano curto:
 2. [etapa] → verificar: [teste ou checagem]
 ```
 
+**Depurar pela causa, não pelo sintoma.** Adaptado das skills `systematic-debugging` e `verification-before-completion` do [superpowers](https://github.com/obra/superpowers) (MIT).
+
+1. Reproduza o erro e escreva o que acontece e o que deveria acontecer.
+2. Ache a causa raiz: leia a mensagem inteira, siga o dado até a origem e compare com um caso que funciona. Sem causa achada, nada de correção.
+3. Uma hipótese por vez, testada com a menor mudança possível. Se três tentativas falharem, pare e reveja a hipótese ou a arquitetura com o mantenedor.
+4. Corrija na origem, com o teste que reproduzia o erro passando.
+
+**Verificar antes de dizer "pronto".**
+
+- "Pronto", "corrigido" e "passou" só depois de rodar a verificação nesta mesma rodada e ler o resultado: testes, build, CI ou a tela.
+- Diga o que foi verificado e o que não foi. O que não deu para conferir fica escrito como pendente, nunca como feito.
+- **Pizza:** tela nova só está pronta depois de vista no app (cópia local ou desenho do próprio `DiscRenderer`) e validada pelo mantenedor.
+
 ---
 
 ## 5. Invariantes de segurança do Pizza (nunca quebrar)
