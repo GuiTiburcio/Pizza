@@ -302,6 +302,44 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
         AssertNothingWritten();
     }
 
+    [Theory]
+    [InlineData("crash")]
+    [InlineData("failfast")]
+    public void Worker_que_trava_nao_gera_dump_nem_relatorio_do_WER(string act)
+    {
+        // PRIV-05 e TST-20: o dump levaria o documento em memória para o disco ou para fora do PC.
+        var started = DateTime.Now.AddSeconds(-1);
+
+        var result = Sabotage(act, TimeSpan.FromSeconds(30));
+
+        Assert.Equal("WORKER_CRASHED", result.ErrorCode);
+        AssertNothingWritten();
+
+        // O WER escreve depois que o processo já morreu: espera um pouco antes de procurar.
+        Thread.Sleep(TimeSpan.FromSeconds(8));
+        Assert.Empty(WerTraces("Pizza.Sandbox.Probe", started));
+    }
+
+    [Theory]
+    [InlineData("crash")]
+    [InlineData("failfast")]
+    public void Processo_protegido_como_o_residente_trava_sem_dump(string act)
+    {
+        // PRIV-05 e TST-20: o residente não roda em sandbox; o modo de erro dele barra o dump mesmo com o
+        // LocalDumps ligado. Aberto como um programa comum, que sem a proteção gera dump e relatório.
+        var started = DateTime.Now.AddSeconds(-1);
+        using var probe = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(fixture.ProbePath, $"--protect --stdio --forbidden x --act {act}")
+        {
+            UseShellExecute = true,
+            WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
+        })!;
+
+        Assert.True(probe.WaitForExit(30_000));
+        Assert.NotEqual(0, probe.ExitCode);
+        Thread.Sleep(TimeSpan.FromSeconds(8));
+        Assert.Empty(WerTraces("Pizza.Sandbox.Probe", started));
+    }
+
     [Fact]
     public void Worker_que_responde_outro_job_e_recusado()
     {
@@ -408,6 +446,26 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
 
     private void AssertNoTemporaries() =>
         Assert.Empty(Directory.GetFiles(_folder, ".~pizza-*", new EnumerationOptions { AttributesToSkip = 0 }));
+
+    /// <summary>Dumps (LocalDumps) e relatórios do WER, na fila ou no arquivo, criados para o executável.</summary>
+    private static List<string> WerTraces(string executable, DateTime since)
+    {
+        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var common = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+        string[] folders =
+        [
+            Path.Combine(local, "CrashDumps"),
+            Path.Combine(local, @"Microsoft\Windows\WER\ReportQueue"),
+            Path.Combine(local, @"Microsoft\Windows\WER\ReportArchive"),
+            Path.Combine(common, @"Microsoft\Windows\WER\ReportQueue"),
+            Path.Combine(common, @"Microsoft\Windows\WER\ReportArchive"),
+        ];
+        var options = new EnumerationOptions { IgnoreInaccessible = true, AttributesToSkip = 0 };
+        return folders.Where(Directory.Exists)
+            .SelectMany(folder => Directory.EnumerateFileSystemEntries(folder, $"*{executable}*", options))
+            .Where(entry => File.GetCreationTime(entry) >= since)
+            .ToList();
+    }
 
     private void AssertNothingWritten()
     {

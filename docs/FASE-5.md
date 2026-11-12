@@ -7,7 +7,7 @@ Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste) (
 | Etapa | Entrega | Situação |
 | --- | --- | --- |
 | 5a — medições | NFR-01 a NFR-04 medidos e registrados | NFR-01, 02 e 03 dentro da meta; NFR-04 acima em PNG padrão, WEBP e AVIF (só registrado); fotos reais e memória retida pendentes |
-| 5b — endurecimento | Memória retida, PRIV-05 e TST-20 (sem dump e fora do WER), V-03 (ACL), V-04 (SVG renomeado), SBOM pelas dependências, alto contraste | Memória retida corrigida (17,7 → 11,2 MB depois do uso); o resto pendente |
+| 5b — endurecimento | Memória retida, PRIV-05 e TST-20 (sem dump e fora do WER), V-03 (ACL), V-04 (SVG renomeado), SBOM pelas dependências, alto contraste | Memória retida corrigida (17,7 → 11,2 MB depois do uso); PRIV-05 e TST-20 feitos (ADR-032); o resto pendente |
 | TST-13 | Captura de tráfego por 24 h de uso | Pendente; roda no PC do mantenedor |
 | 5c — auditoria | TST-28 com a skill `security-audit` (completa, perfil standard, verificação independente) e o Strix | Pendente |
 
@@ -82,3 +82,18 @@ O evento `menu.opened` do log passou a levar o tempo do início do gesto até o 
 **Correção:** o desfoque passou a ser feito em meia resolução, igual a olho e com cerca de um quarto do trabalho; e a cópia com o desfoque passou para o início do gesto, enquanto o Windows ainda não confirmou o arraste. Se não for arquivo, o fechamento zera a cópia (ADR-023).
 
 O único gesto acima da meta foi o primeiro depois de abrir o Pizza (149 ms), quando o Windows ainda carrega fontes e o GDI+.
+
+## 5b — sem dump nem relatório do Windows (PRIV-05, TST-20), 12/11/2026
+
+O notebook do mantenedor tem a chave `LocalDumps` no HKLM. Só de ela existir, o Windows grava um dump completo de qualquer programa que trave. Num programa comum, um travamento deixou `CrashDumps\<programa>.dmp` e um relatório no WER.
+
+| O que foi medido | Resultado |
+| --- | --- |
+| Só `WerAddExcludedApplication`, como o SPECS previa | Some o envio do relatório, mas **o dump continua no disco** |
+| `SetErrorMode(SEM_NOGPFAULTERRORBOX)` no processo | Sem dump e sem relatório, em acesso inválido, exceção não tratada e `FailFast` |
+| Worker sabotado no sandbox, com o modo de erro padrão | **Gerou dump** mesmo no AppContainer. Nos testes isso não aparecia, porque ele herdava o modo do processo de teste |
+| `JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION` no job | Não mudou o modo do Worker; descartado |
+
+**Correção (ADR-032):** residente e Worker ligam o modo sem WER como primeira instrução, e o Worker o herda do residente já na criação. O residente também tira `Pizza.exe` e `Pizza.Worker.exe` do WER no HKCU, como segunda barreira.
+
+**Conferido no app:** com o Pizza aberto pelo Explorer, o modo de erro do processo é `0x8002`, contra `0x8000` de um Notepad aberto do mesmo jeito; os dois executáveis aparecem em `ExcludedApplications`. TST-20 cobre o Worker sabotado no sandbox e um processo protegido como o residente, travando por acesso inválido e por `FailFast`.

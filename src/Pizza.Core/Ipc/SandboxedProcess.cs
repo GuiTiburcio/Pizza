@@ -238,6 +238,8 @@ public sealed unsafe partial class SandboxedProcess : IDisposable
     private const uint HandleFlagInherit = 1;
     private const uint ExtendedStartupInfoPresent = 0x00080000;
     private const uint CreateSuspended = 0x00000004;
+    // PRIV-05 (ADR-032): sem CREATE_DEFAULT_ERROR_MODE. O Worker herda do residente o modo sem WER antes de rodar
+    // qualquer código; o job não consegue impor esse modo.
     private const uint CreateNoWindow = 0x08000000;
     private const uint JobLimitActiveProcess = 0x00000008;
     private const uint JobLimitProcessMemory = 0x00000100;

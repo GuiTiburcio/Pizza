@@ -205,7 +205,7 @@ O Pizza é uma **ferramenta** que roda no computador do cliente. Quem decide con
 | T-18 | Divulgação | DOCX da internet aberto no Word busca modelo remoto e vaza o hash NTLM | Arquivo de internet só no LibreOffice isolado, sem rede | SEC-65, SEC-66 |
 | T-19 | Elevação | Instalador verificado é trocado antes do UAC na instalação por máquina | MSI não se autoatualiza | SEC-57 |
 | T-20 | Adulteração / Divulgação | Worker tomado por um arquivo altera ou lê os próximos documentos | Worker de uso único para arquivos de internet; finalização só após o handle fechado | SEC-29 |
-| T-21 | Divulgação | Dump de falha (WER) leva conteúdo do documento para fora do PC | Pizza excluído do WER; sem dumps | PRIV-05 |
+| T-21 | Divulgação | Dump de falha (WER ou LocalDumps) leva conteúdo do documento para o disco ou para fora do PC | Modo de erro sem WER no residente e no Worker; Pizza excluído do WER | PRIV-05 |
 | T-22 | Divulgação | Nome do arquivo na tela bloqueada, no histórico ou no celular | Toasts adiados com a sessão bloqueada, sem espelhamento, removidos do histórico | PRIV-18 |
 | T-23 | Adulteração | PDF de saída repassa JavaScript ou anexos da origem | Reescrita completa sem conteúdo ativo | SEC-76 |
 | T-24 | Negação de serviço | Manifesto antigo e válido "congela" o app numa versão vulnerável | Manifesto com validade e canal assinados | SEC-56 |
@@ -416,7 +416,7 @@ Arquivo acima do limite DEVE gerar o erro `LIMIT_EXCEEDED`, com a explicação n
 | PRIV-02 | O app NÃO DEVE ter telemetria, analytics, relatório de falhas automático nem SDK de terceiros que fale com a rede | Captura de tráfego por 24 h de uso: só a consulta de atualização |
 | PRIV-03 | As únicas conexões de rede permitidas são a consulta de atualização (SEC-50) e o download de pacote opcional pedido pelo usuário (SEC-58), sem nenhum dado do usuário | Idem |
 | PRIV-04 | A tela de Privacidade e o README DEVEM descrever exatamente os dados da §3 | Revisão a cada release |
-| PRIV-05 | Os executáveis do Pizza DEVEM ser excluídos do Relatório de Erros do Windows (`WerAddExcludedApplication`), e o Worker NÃO DEVE gerar dump. Falha vira só o código `WORKER_CRASHED` no log local | Worker forçado a travar: nenhum `.dmp` nem relatório na fila (TST-20) |
+| PRIV-05 | Nenhum travamento do Pizza DEVE gerar dump nem relatório do Windows. Residente e Worker ligam `SetErrorMode(SEM_NOGPFAULTERRORBOX)` como primeira instrução, e o Worker herda esse modo do residente; os executáveis também são excluídos do WER (`WerAddExcludedApplication`, no HKCU). Falha vira só o código `WORKER_CRASHED` no log local (ADR-032) | Worker forçado a travar: nenhum `.dmp` nem relatório na fila (TST-20) |
 
 ### 7.2 Logs e mapa de IDs
 
@@ -599,7 +599,7 @@ Todas têm `v` (versão do protocolo), `type` e `jobId` (12 hex aleatórios). Ta
 | TST-17 | MSI não baixa nem executa atualização | Teste de integração | Cada release |
 | TST-18 | Pacote opcional adulterado é recusado | Fixture local | Cada release |
 | TST-19 | Worker que escreve após `done` não altera a saída final | Worker de teste | Cada release |
-| TST-20 | Worker forçado a travar: sem `.dmp` e sem relatório WER | Teste de integração | Cada release |
+| TST-20 | Worker e processo protegido como o residente forçados a travar: sem `.dmp` e sem relatório WER | Teste de integração | Cada release |
 | TST-21 | Toast adiado com a sessão bloqueada | Teste manual guiado | Cada release |
 | TST-22 | PDF de saída sem JS, ações e anexos | Verificador de estrutura PDF | Cada PR |
 | TST-23 | Manifesto vencido avisa; de outro canal é recusado | Manifestos de teste | Cada release |

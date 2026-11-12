@@ -6,6 +6,12 @@ using System.Text.RegularExpressions;
 using Microsoft.Win32.SafeHandles;
 
 // Argumentos: --in <handle> --out <handle> --forbidden <arquivo>; ou --stdio --forbidden <arquivo>.
+// --protect: liga a mesma proteção contra dumps do residente (PRIV-05), antes de qualquer outra coisa.
+if (args.Contains("--protect"))
+{
+    Pizza.Core.Diagnostics.CrashReporting.Suppress();
+}
+
 var stdio = args.Contains("--stdio");
 var forbidden = args[Array.IndexOf(args, "--forbidden") + 1];
 
@@ -18,11 +24,18 @@ var act = Array.IndexOf(args, "--act");
 if (act >= 0)
 {
     // Worker sabotado, para testar como o residente reage.
-    var jobId = Regex.Match(reader.ReadLine()!, "\"jobId\":\"([0-9a-f]{12})\"").Groups[1].Value;
+    var jobId = Regex.Match(reader.ReadLine() ?? "","\"jobId\":\"([0-9a-f]{12})\"").Groups[1].Value;
     switch (args[act + 1])
     {
         case "exit":
             return 1;
+        case "crash":
+            // TST-20: travamento de verdade, como um decodificador que estoura a memória.
+            Marshal.WriteInt32((nint)0x10, 1);
+            break;
+        case "failfast":
+            Environment.FailFast("TST-20");
+            break;
         case "hang-after-done":
             writer.Write(Done(jobId));
             break;
@@ -48,6 +61,7 @@ if (act >= 0)
 OpenProcessToken(GetCurrentProcess(), 8 /* TOKEN_QUERY */, out var token);
 GetTokenInformation(token, 29 /* TokenIsAppContainer */, out var isAppContainer, sizeof(int), out _);
 writer.WriteLine("is_appcontainer=" + (isAppContainer != 0));
+writer.WriteLine("error_mode=" + GetErrorMode());
 
 Attempt("read_forbidden", () => File.ReadAllText(forbidden));
 Attempt("list_forbidden_folder", () => Directory.GetFiles(Path.GetDirectoryName(forbidden)!));
@@ -100,6 +114,9 @@ static FileStream OpenHandle(string value, FileAccess access) =>
 
 [DllImport("kernel32.dll")]
 static extern nint GetCurrentProcess();
+
+[DllImport("kernel32.dll")]
+static extern uint GetErrorMode();
 
 [DllImport("advapi32.dll")]
 static extern bool OpenProcessToken(nint process, uint access, out nint token);
