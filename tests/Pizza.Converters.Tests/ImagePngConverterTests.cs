@@ -80,6 +80,19 @@ public class ImagePngConverterTests
         Assert.Equal("UNSUPPORTED", error);
     }
 
+    [Theory]
+    [InlineData("svgload_source", "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\"/>")]
+    [InlineData("matrixload_source", "1 1\n0\n")]
+    public void Decodificador_que_existe_no_build_mas_fora_da_lista_e_bloqueado(string loader, string content)
+    {
+        // V-04 e SEC-45: o decodificador está no libvips empacotado; a recusa prova o bloqueio, não a falta dele.
+        Assert.NotEqual(0, (long)NetVips.NetVips.TypeFind("VipsForeignLoad", loader));
+
+        var (error, _) = Convert(Encoding.UTF8.GetBytes(content));
+
+        Assert.Equal("UNSUPPORTED", error);
+    }
+
     [Fact]
     public void Vale_o_conteudo_dentro_da_aba_imagem()
     {

@@ -70,6 +70,35 @@ public sealed unsafe partial class SandboxedProcess : IDisposable
 
     public static void DeleteProfile(string name) => DeleteAppContainerProfile(name);
 
+    /// <summary>
+    /// V-03: o Worker em AppContainer só abre se puder ler a própria pasta. Um .zip extraído no perfil do usuário não
+    /// dá esse acesso, e toda conversão falharia. Dá leitura e execução, sem escrita, só ao SID do perfil, uma vez.
+    /// </summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public static void GrantFolder(string folder, string profile)
+    {
+        var sid = new System.Security.Principal.SecurityIdentifier(EnsureProfile(profile));
+        var directory = new DirectoryInfo(folder);
+        var acl = directory.GetAccessControl();
+        var granted = acl.GetAccessRules(includeExplicit: true, includeInherited: true, typeof(System.Security.Principal.SecurityIdentifier))
+            .Cast<System.Security.AccessControl.FileSystemAccessRule>()
+            .Any(rule => rule.IdentityReference == sid
+                && rule.AccessControlType == System.Security.AccessControl.AccessControlType.Allow
+                && rule.FileSystemRights.HasFlag(System.Security.AccessControl.FileSystemRights.ReadAndExecute));
+        if (granted)
+        {
+            return;
+        }
+
+        acl.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
+            sid,
+            System.Security.AccessControl.FileSystemRights.ReadAndExecute,
+            System.Security.AccessControl.InheritanceFlags.ContainerInherit | System.Security.AccessControl.InheritanceFlags.ObjectInherit,
+            System.Security.AccessControl.PropagationFlags.None,
+            System.Security.AccessControl.AccessControlType.Allow));
+        directory.SetAccessControl(acl);
+    }
+
     public static SandboxedProcess Start(string path, string profile, string arguments = "")
     {
         var sid = AcquireSid(profile);

@@ -341,6 +341,43 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
     }
 
     [Fact]
+    public void Pasta_extraida_do_zip_da_ao_Worker_so_leitura_e_execucao()
+    {
+        // V-03 e SEC-20: um .zip extraído no perfil do usuário não deixa o AppContainer ler o Worker.
+        var folder = Path.Combine(Path.GetTempPath(), "pizza-v03-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(folder);
+            foreach (var file in Directory.EnumerateFiles(Path.GetDirectoryName(fixture.WorkerPath)!))
+            {
+                File.Copy(file, Path.Combine(folder, Path.GetFileName(file)));
+            }
+
+            var worker = Path.Combine(folder, "Pizza.Worker.exe");
+            var sample = CopySample();
+            Assert.Equal("WORKER_CRASHED", Runner(worker).Run(sample, "image.png", "png").ErrorCode);
+
+            SandboxedProcess.GrantFolder(folder, SandboxFixture.Profile);
+            SandboxedProcess.GrantFolder(folder, SandboxFixture.Profile);
+
+            Assert.Null(Runner(worker).Run(sample, "image.png", "png").ErrorCode);
+            var sid = new System.Security.Principal.SecurityIdentifier(SandboxedProcess.EnsureProfile(SandboxFixture.Profile));
+            var rules = new DirectoryInfo(folder).GetAccessControl()
+                .GetAccessRules(includeExplicit: true, includeInherited: false, typeof(System.Security.Principal.SecurityIdentifier))
+                .Cast<System.Security.AccessControl.FileSystemAccessRule>()
+                .Where(rule => rule.IdentityReference == sid)
+                .ToList();
+            var rule = Assert.Single(rules);
+            Assert.Equal(System.Security.AccessControl.AccessControlType.Allow, rule.AccessControlType);
+            Assert.Equal(System.Security.AccessControl.FileSystemRights.ReadAndExecute | System.Security.AccessControl.FileSystemRights.Synchronize, rule.FileSystemRights);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Worker_que_responde_outro_job_e_recusado()
     {
         var result = Sabotage("wrong-job", TimeSpan.FromSeconds(30));

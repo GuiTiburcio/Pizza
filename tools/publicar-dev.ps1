@@ -9,9 +9,6 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 dotnet publish (Join-Path $raiz 'src\Pizza.Worker') -c Release -o $saida --nologo
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-# O Worker roda em AppContainer e só consegue iniciar se puder ler a própria pasta (V-03).
-# S-1-15-2-1 é "ALL APPLICATION PACKAGES"; a permissão é só de leitura e execução.
-icacls $saida /grant '*S-1-15-2-1:(OI)(CI)(RX)' /T /Q
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+# V-03: o próprio Pizza dá ao Worker leitura e execução da pasta ao abrir, como no .zip da prévia.
 
 Write-Host "Pronto: $saida\Pizza.exe"
