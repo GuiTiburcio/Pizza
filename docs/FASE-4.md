@@ -10,7 +10,7 @@ Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste), 
 | 4r — reorganização | Separar `Overlay.cs` e `DiscRenderer.cs` por assunto, sem mudar comportamento | Concluída no PR #37 |
 | 4b — faixa, bolha e painel (ADR-027) | Faixa de níveis, bolha de vidro e painel em vidro, em três partes | Base do painel implementada; parte 1 (faixa de níveis) concluída no PR #46; parte 2 (bolha de vidro em abas, níveis e fatias) concluída no PR #47; parte 3 (painel em vidro, com a bolha nas opções) concluída no PR #49 |
 | 4c — avisos e Arquivos (ADR-028) | Vidro translúcido e temas nos componentes da Fase 3 | Parte 1 (avisos em vidro, com progresso real, tempo e pausa, ADR-029) concluída no PR #51; parte 2 (Arquivos compacto em vidro, prancha 4c-3) em validação |
-| 4d — barra, régua e bandeja | Barra de abas B (ADR-026), régua de resolução (ADR-030) e menu da bandeja em vidro com teclado (ADR-020) | Barra B concluída no PR #53; régua em validação; bandeja pendente |
+| 4d — barra, régua e bandeja | Barra de abas B (ADR-026), régua de resolução (ADR-030) e menu da bandeja em vidro com teclado (ADR-020) | Barra B concluída no PR #53; régua no PR #56; menu da bandeja em vidro (prancha 4d-2) em validação |
 | 4e — aceite da fase | Comparar o conjunto com o dossiê e conferir NFR-06/NFR-08 | Pendente; libera a Fase 5 |
 
 ## Etapa 4r — reorganização

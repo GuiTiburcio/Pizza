@@ -13,8 +13,6 @@ internal static unsafe partial class Native
     public const uint WM_ERASEBKGND = 0x0014;
     public const uint WM_KEYDOWN = 0x0100;
     public const uint WM_TIMER = 0x0113;
-    public const uint WM_NULL = 0x0000;
-    public const uint WM_COMMAND = 0x0111;
     public const uint WM_APP = 0x8000;
     public const int WM_CONTEXTMENU = 0x007B;
     public const int WM_MOUSEMOVE = 0x0200;
@@ -64,10 +62,6 @@ internal static unsafe partial class Native
     public const uint NIF_TIP = 0x04;
     public const uint NIF_SHOWTIP = 0x80;
     public const uint NOTIFYICON_VERSION_4 = 4;
-    public const uint MF_STRING = 0x0000;
-    public const uint MF_GRAYED = 0x0001;
-    public const uint MF_SEPARATOR = 0x0800;
-    public const uint TPM_RIGHTBUTTON = 0x0002;
     public const uint IMAGE_ICON = 1;
     public const int SM_CXSMICON = 49;
     public const int SM_CYSMICON = 50;
@@ -351,18 +345,6 @@ internal static unsafe partial class Native
 
     [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
     public static partial uint RegisterWindowMessageW(string name);
-
-    [LibraryImport("user32.dll")]
-    public static partial nint CreatePopupMenu();
-
-    [LibraryImport("user32.dll")]
-    public static partial int DestroyMenu(nint menu);
-
-    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
-    public static partial int AppendMenuW(nint menu, uint flags, nuint id, string? text);
-
-    [LibraryImport("user32.dll")]
-    public static partial int TrackPopupMenu(nint menu, uint flags, int x, int y, int reserved, nint hwnd, RECT* rect);
 
     [LibraryImport("user32.dll")]
     public static partial int SetForegroundWindow(nint hwnd);

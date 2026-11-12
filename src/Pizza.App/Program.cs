@@ -26,6 +26,7 @@ internal static unsafe class Program
         OptionsPanel.Create();
         Notifications.Create();
         FilesPanel.Create();
+        TrayMenu.Create();
 
         // O ícone é a única saída: sem ele, o programa não fica rodando sem como fechar.
         if (!Tray.Create())
