@@ -16,6 +16,27 @@ public class LogFormatTests
     }
 
     [Fact]
+    public void Menu_aberto_pode_levar_so_o_tempo_do_gesto_em_ms()
+    {
+        // NFR-03: um número, nunca texto (PRIV-16); limitado a 5 dígitos.
+        Assert.Equal(
+            """{"ts":"2026-11-08T19:20:11.482-03:00","lvl":"info","evt":"menu.opened","ms":87}""",
+            LogFormat.Line(Moment, LogEvent.MenuOpened, 87));
+        Assert.EndsWith("""
+"ms":99999}
+""".Trim(), LogFormat.Line(Moment, LogEvent.MenuOpened, 250000));
+        Assert.EndsWith("""
+"ms":0}
+""".Trim(), LogFormat.Line(Moment, LogEvent.MenuOpened, -5));
+    }
+
+    [Fact]
+    public void Tempo_so_vale_para_o_menu_aberto()
+    {
+        Assert.Throws<ArgumentException>(() => LogFormat.Line(Moment, LogEvent.ConversionDone, 10));
+    }
+
+    [Fact]
     public void Todo_evento_tem_nome_proprio()
     {
         var names = Enum.GetValues<LogEvent>().Select(LogFormat.Name).ToList();

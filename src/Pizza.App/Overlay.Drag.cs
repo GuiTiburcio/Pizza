@@ -192,6 +192,7 @@ internal static unsafe partial class Overlay
     /// <summary>Estado 2: só a camada invisível, até o OLE confirmar que o arraste é de arquivos.</summary>
     private static void BeginGesture()
     {
+        _gestureStarted = System.Diagnostics.Stopwatch.GetTimestamp();
         _dropDeadline = 0;
         OptionsPanel.Close();
         _awaitingOptions = null;
@@ -202,6 +203,7 @@ internal static unsafe partial class Overlay
         HideWindow();
         _files = null;
         Session.Begin();
+        PrepareAtCursor();
 
         SetWindowPos(
             _catcher,

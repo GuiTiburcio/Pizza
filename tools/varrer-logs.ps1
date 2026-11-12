@@ -3,7 +3,8 @@
 param([Parameter(Mandatory)][string]$Pasta)
 
 $eventos = 'app\.started|app\.stopped|menu\.opened|menu\.cancelled|menu\.notfile|menu\.dropped|conversion\.done|conversion\.failed|conversion\.cancelled'
-$formato = '^\{"ts":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2}","lvl":"info","evt":"(' + $eventos + ')"\}$'
+$formato = '^\{"ts":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2}","lvl":"info","evt":"((' + $eventos + ')"|menu\.opened","ms":\d{1,5})\}$'
+# Único campo extra permitido: o tempo do gesto até o menu (NFR-03), só número e só em menu.opened.
 
 $arquivos = @(Get-ChildItem -LiteralPath $Pasta -Filter 'pizza-*.log' -File -ErrorAction SilentlyContinue)
 if ($arquivos.Count -eq 0) {

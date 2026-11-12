@@ -29,6 +29,8 @@ internal static unsafe partial class Overlay
     private const uint ChoiceIdleMs = 10_000; // ADR-025: 10 s sem nenhuma interação, a escolha fecha.
     private static long _choiceDeadline;
     private static long _dropDeadline;
+    private static long _gestureStarted; // NFR-03: do início do gesto até o menu na tela.
+    private static (int Width, int Height)? _prepared; // Vidro já preparado no início do gesto.
     private const uint LeaveGraceMs = 80;
     private const uint WatchdogMs = 250;
     private const uint AnimationMs = 10;
@@ -97,7 +99,8 @@ internal static unsafe partial class Overlay
         RevokeDragDrop(_catcher);
     }
 
-    private static void ShowMenu(int x, int y)
+    /// <summary>O disco nasce centrado no cursor; perto da borda, o conjunto desloca para caber inteiro (WF-1, nota 5).</summary>
+    private static (int Width, int Height, int Dpi) Place(int x, int y)
     {
         var point = new POINT { X = x, Y = y };
         var monitor = MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST);
@@ -110,13 +113,42 @@ internal static unsafe partial class Overlay
         var info = new MONITORINFO { CbSize = (uint)sizeof(MONITORINFO) };
         GetMonitorInfoW(monitor, &info);
 
-        // O disco nasce centrado no cursor; perto da borda, o conjunto desloca para caber inteiro (WF-1, nota 5).
         _scale = dpiX / 96.0;
         var width = (int)Math.Round(DiscLayout.Width * _scale);
         var height = (int)Math.Round(DiscLayout.Height * _scale);
         _left = Math.Max(info.RcWork.Left, Math.Min(x - (int)Math.Round(DiscLayout.CenterX * _scale), info.RcWork.Right - width));
         _top = Math.Max(info.RcWork.Top, Math.Min(y - (int)Math.Round(DiscLayout.CenterY * _scale), info.RcWork.Bottom - height));
+        return (width, height, (int)dpiX);
+    }
 
+    /// <summary>
+    /// NFR-03: copia e desfoca a tela já no início do gesto, enquanto o Windows ainda não confirmou o arraste de
+    /// arquivos. Se não for arquivo, o fechamento zera a cópia (ADR-023), como antes.
+    /// </summary>
+    private static void PrepareAtCursor()
+    {
+        POINT cursor;
+        if (GetCursorPos(&cursor) == 0)
+        {
+            return;
+        }
+
+        var (width, height, dpi) = Place(cursor.X, cursor.Y);
+        DiscRenderer.Prepare(_left, _top, width, height, dpi);
+        _prepared = (width, height);
+    }
+
+    private static void ShowMenu(int x, int y)
+    {
+        // A cópia feita no início do gesto vale para a primeira abertura; o menu fica onde ela foi feita.
+        var (width, height) = _prepared ?? default;
+        if (_prepared is null)
+        {
+            (width, height, var dpi) = Place(x, y);
+            DiscRenderer.Prepare(_left, _top, width, height, dpi);
+        }
+
+        _prepared = null;
         _pages = RadialMenu.Pages(_files!.Value.First);
         Carousel.Reset(_pages.Count);
         _hoverSlot = null;
@@ -131,12 +163,13 @@ internal static unsafe partial class Overlay
 
         _motion = ResolveMotion();
 
-        // O vidro copia a tela antes de o menu aparecer, para não se desfocar a si mesmo.
-        DiscRenderer.Prepare(_left, _top, width, height, (int)dpiX);
+        // O vidro copiou a tela antes de o menu aparecer, para não se desfocar a si mesmo.
         IsVisible = true;
         Render();
         SetWindowPos(Disc, HWND_TOPMOST, _left, _top, width, height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
-        Log.Write(LogEvent.MenuOpened);
+        int? elapsed = _gestureStarted == 0 ? null : (int)System.Diagnostics.Stopwatch.GetElapsedTime(_gestureStarted).TotalMilliseconds;
+        _gestureStarted = 0;
+        Log.Write(LogEvent.MenuOpened, elapsed);
     }
 
     public static MotionStyle ResolveMotion()
@@ -176,6 +209,7 @@ internal static unsafe partial class Overlay
         ShowWindow(Disc, SW_HIDE);
         IsVisible = false;
         _hoverSlot = null;
+        _prepared = null;
         DiscRenderer.Release();
     }
 

@@ -68,6 +68,45 @@ public class GlassBlurTests
     }
 
     [Fact]
+    public void Meia_resolucao_fica_igual_a_olho_ao_desfoque_completo()
+    {
+        // NFR-03: o desfoque em meia resolução custa ~4× menos e o vidro continua o mesmo (diferença média < 3 de 255).
+        const int width = 400, height = 562;
+        var random = new Random(7);
+        var screen = new byte[width * height * 4];
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var i = ((y * width) + x) * 4;
+                var block = ((x / 37) + (y / 23)) % 2 == 0 ? 230 : 40; // janelas e texto, como uma tela de verdade
+                screen[i] = (byte)Math.Clamp(block + random.Next(-25, 26), 0, 255);
+                screen[i + 1] = (byte)Math.Clamp((x * 255 / width) + random.Next(-25, 26), 0, 255);
+                screen[i + 2] = (byte)Math.Clamp((y * 255 / height) + random.Next(-25, 26), 0, 255);
+                screen[i + 3] = 255;
+            }
+        }
+
+        var full = screen.ToArray();
+        var fast = screen.ToArray();
+        GlassBlur.ApplyFullResolution(full, width, height, radius: 11, saturation: 1.8);
+        GlassBlur.Apply(fast, width, height, radius: 11, saturation: 1.8);
+
+        long total = 0;
+        var worst = 0;
+        for (var i = 0; i < full.Length; i++)
+        {
+            var difference = Math.Abs(full[i] - fast[i]);
+            total += difference;
+            worst = Math.Max(worst, difference);
+        }
+
+        Assert.True(total / (double)full.Length < 3, $"média {total / (double)full.Length:0.00}");
+        Assert.True(worst < 40, $"pior {worst}");
+        Assert.All(Enumerable.Range(0, width * height), p => Assert.Equal(255, fast[(p * 4) + 3]));
+    }
+
+    [Fact]
     public void Imagem_menor_que_o_raio_nao_quebra()
     {
         var pixels = Solid(2, 3, 10, 20, 30);

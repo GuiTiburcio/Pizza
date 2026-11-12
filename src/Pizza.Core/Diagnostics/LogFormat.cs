@@ -41,10 +41,22 @@ public static class LogFormat
         _ => throw new ArgumentOutOfRangeException(nameof(logEvent)),
     };
 
-    public static string Line(DateTimeOffset moment, LogEvent logEvent)
+    private const int MaxMilliseconds = 99999;
+
+    /// <summary>
+    /// <paramref name="milliseconds"/>: só no menu aberto, o tempo do gesto até o menu (NFR-03). É um número, então
+    /// não tem como carregar texto (PRIV-16).
+    /// </summary>
+    public static string Line(DateTimeOffset moment, LogEvent logEvent, int? milliseconds = null)
     {
+        if (milliseconds is not null && logEvent != LogEvent.MenuOpened)
+        {
+            throw new ArgumentException("Só o menu aberto leva tempo.", nameof(milliseconds));
+        }
+
         var timestamp = moment.ToString("yyyy-MM-ddTHH:mm:ss.fffzzz", CultureInfo.InvariantCulture);
-        return $$"""{"ts":"{{timestamp}}","lvl":"info","evt":"{{Name(logEvent)}}"}""";
+        var time = milliseconds is { } ms ? $",\"ms\":{Math.Clamp(ms, 0, MaxMilliseconds).ToString(CultureInfo.InvariantCulture)}" : string.Empty;
+        return $$"""{"ts":"{{timestamp}}","lvl":"info","evt":"{{Name(logEvent)}}"{{time}}}""";
     }
 
     public static string FileName(DateOnly day) =>
