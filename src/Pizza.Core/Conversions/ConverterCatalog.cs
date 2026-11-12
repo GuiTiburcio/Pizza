@@ -29,10 +29,15 @@ public sealed record ConverterInfo(
     IReadOnlyList<string> InputExtensions,
     IReadOnlyList<ConverterOption> Options,
     string Suffix = "",
+    bool Splits = false,
     bool DocumentEngine = false)
 {
     /// <summary>Sem opções, a conversão começa ao soltar (FR-21).</summary>
     public bool HasPanel => Options.Count > 0;
+
+    /// <summary>Com várias saídas (Dividir), o sufixo de cada parte; null quando há uma saída só.</summary>
+    public Func<int, int, string>? PartSuffix(IReadOnlyDictionary<string, string> options) =>
+        Splits ? (part, count) => Output.OutputNaming.PartSuffix(options.GetValueOrDefault("mode", Options[0].Default), part, count) : null;
 }
 
 /// <summary>Lista das conversões. O menu e o painel se montam daqui; a ordem é a das fatias (ADR-012).</summary>
@@ -101,6 +106,15 @@ public static class ConverterCatalog
         new("image.gif", ImageTab, "GIF", "256 cores", "gif", ImagesExcept(".gif"), []),
 
         // ADR-033 e prancha 6A-1: a extensão não muda, então o nome ganha o sufixo.
+        new(
+            "pdf.split",
+            PdfTab,
+            "Dividir",
+            "Por página",
+            "pdf",
+            [".pdf"],
+            [new("mode", "Como dividir", "pages", [new("pages", "Cada página"), new("half", "Pela metade")])],
+            Splits: true),
         new(
             "pdf.rotate",
             PdfTab,

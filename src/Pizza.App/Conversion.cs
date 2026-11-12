@@ -115,7 +115,7 @@ internal static class Conversion
                 {
                     result = converter.DocumentEngine
                         ? _documents!.Run(sourcePath, converter.Id, converter.Extension, cancellation.Token, control)
-                        : _runner.Run(sourcePath, converter.Id, converter.Extension, options, cancellation.Token, control, converter.Suffix);
+                        : _runner.Run(sourcePath, converter.Id, converter.Extension, options, cancellation.Token, control, converter.Suffix, converter.PartSuffix(options));
                 }
             }
             catch (Exception)

@@ -103,6 +103,7 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | Imagem → PDF | Gerador próprio, sem PDFsharp (AGPL desde a 6.5.0). Folha A4 acompanhando a orientação da imagem, margem de 10 mm. A biblioteca das demais operações de PDF será decidida na Fase 6 | 022 |
 | Aba Imagem e FR-04 | AVIF entra depois do WEBP. Com mais de 6 formatos, as fatias se dividem em voltas; a roda percorre as voltas da aba antes da próxima aba, e pontos no miolo mostram a volta. Aba sem conversão mostra "Em breve" com o que vem nela | 024 |
 | Áudio/Vídeo (v1.x) | Duas abas, Áudio e Vídeo; "extrair áudio" fica em Vídeo. Motores: Media Foundation do Windows e FFmpeg (este após análise de licença e patentes), só no Worker isolado (ADR-026). Áudio: MP3, WAV, FLAC, M4A/AAC e OGG/Opus. Vídeo: MP4, WebM e AV1; GIF para vídeo; extrair áudio de vídeo; MOV e MKV para MP4; opções de resolução, taxa de quadros e meta de tamanho. HEVC só depois de análise de patentes e licença. Em estudo para fotógrafos e videomakers: fotos RAW (CR2, NEF, ARW, DNG), que exigem biblioteca nova, e ProRes para MP4 | — |
+| Áudio (antecipado da v1.x) | Só com o Media Foundation do Windows, no Worker isolado. Fatias MP3, M4A (AAC ou ALAC sem perda), FLAC e WAV; entradas `.mp3`, `.m4a`, `.aac`, `.flac`, `.wav`, conferidas pelo conteúdo (sem vídeo). MP3 de 96 a 320 kbps e M4A de 64 a 320 kbps em régua de degraus; FLAC e WAV com 16 ou 24 bits; Canais e Taxa de amostragem em todos. O Worker de áudio só carrega binários assinados pela Microsoft (SEC-26). OGG/Opus seguem na v1.x com o FFmpeg | 035 |
 | Web (v1.x, aba nova) | Minificar HTML, CSS e JS; TTF e OTF para WOFF2; gerar .gz e .br de um arquivo. Ativar compressão em servidor fica de fora, por não ser conversão de arquivo; SVG a partir de imagem fica em estudo | — |
 | Desenho e vidro | GDI+ do Windows, sem Direct2D nem Vortice. Vidro desfocado pelo próprio Pizza a partir de uma cópia do trecho da tela atrás do menu, só em memória e zerada ao fechar; branco sólido 92% com a transparência do Windows desligada | 023 |
 | TST-03 | Sem SharpFuzz: ele só observa código C#, e quem interpreta os arquivos é o libvips nativo. Teste próprio corrompe arquivos válidos de cada formato de forma repetível e os passa pelo Worker real: cerca de 100 casos em cada PR e 5.000 por semana. Queda do Worker, travamento, temporário sobrando ou erro fora de `CORRUPTED`, `UNSUPPORTED` e `LIMIT_EXCEEDED` reprovam | — |
@@ -546,6 +547,7 @@ Todas têm `v` (versão do protocolo), `type` e `jobId` (12 hex aleatórios). Ta
 | `LIMIT_EXCEEDED` | O arquivo passa do limite permitido (tamanho, páginas ou pixels) |
 | `TIMEOUT` | A conversão demorou mais que o limite |
 | `UNSUPPORTED` | Este tipo de conversão não é suportado para este arquivo |
+| `MEDIA_UNAVAILABLE` | Este Windows não tem os recursos de mídia. Instale o Media Feature Pack (ADR-035) |
 | `WORKER_CRASHED` | O conversor parou inesperadamente; o original não foi alterado |
 | `OFFICE_UNAVAILABLE` | Word ou LibreOffice não encontrado |
 | `OFFICE_UNTRUSTED_SOURCE` | Este documento veio da internet e só pode ser convertido pelo LibreOffice isolado, que não está instalado |

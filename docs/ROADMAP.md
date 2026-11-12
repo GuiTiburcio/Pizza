@@ -13,7 +13,7 @@ Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equival
 | Vidro, temas e movimento reduzido | Implementados no disco; validação manual ampla ainda necessária |
 | PDF → outros formatos e operações em PDF | Planejados |
 | Documento | Em andamento: Pizza Brotinho (conversões simples) e Pizza Jumbo (motor de documentos embutido e isolado), [ADR-034](adr/034-brotinho-jumbo-motor-de-documentos.md) |
-| Áudio | Antecipado da v1.x: só com o Media Foundation do Windows (MP3, WAV, M4A/AAC, FLAC); OGG/Opus e vídeo seguem na v1.x |
+| Áudio | Antecipado da v1.x: só com o Media Foundation do Windows (MP3, WAV, M4A/AAC, FLAC); OGG/Opus e vídeo seguem na v1.x. Decidido no [ADR-035](adr/035-aba-audio-media-foundation.md) |
 | Web | Planejada para v1.x |
 | Vídeo, em aba própria (Media Foundation e FFmpeg) | Planejado para v1.x ([ADR-026](adr/026-aba-video-e-motores.md)); [estudo da barra compacta](propostas/barra-compacta.svg) para a Fase 4d |
 | Lotes | Planejados para v1.x |
