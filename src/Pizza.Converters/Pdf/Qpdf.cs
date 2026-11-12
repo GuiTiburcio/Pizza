@@ -37,6 +37,12 @@ internal static partial class Qpdf
     [LibraryImport(Library, EntryPoint = "qpdf_read_memory", StringMarshalling = StringMarshalling.Utf8)]
     public static unsafe partial int ReadMemory(nint qpdf, string description, byte* buffer, ulong size, byte* password);
 
+    [LibraryImport(Library, EntryPoint = "qpdf_empty_pdf")]
+    public static partial int EmptyPdf(nint qpdf);
+
+    [LibraryImport(Library, EntryPoint = "qpdf_add_page")]
+    public static partial int AddPage(nint qpdf, nint pageOwner, uint page, int first);
+
     [LibraryImport(Library, EntryPoint = "qpdf_is_encrypted")]
     public static partial int IsEncrypted(nint qpdf);
 

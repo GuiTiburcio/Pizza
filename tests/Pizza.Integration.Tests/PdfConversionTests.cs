@@ -47,16 +47,52 @@ public sealed class PdfConversionTests(SandboxFixture fixture) : IDisposable
         Assert.Single(Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }));
     }
 
+    [Theory]
+    [InlineData("pages", new[] { "escritura - pág 01.pdf", "escritura - pág 02.pdf", "escritura - pág 03.pdf" })]
+    [InlineData("half", new[] { "escritura - parte 1.pdf", "escritura - parte 2.pdf" })]
+    public void Dividir_grava_cada_parte_ao_lado_com_o_nome_do_residente(string mode, string[] expected)
+    {
+        var source = Path.Combine(_folder, "escritura.pdf");
+        File.WriteAllBytes(source, Pages(3));
+        var before = SHA256.HashData(File.ReadAllBytes(source));
+
+        var result = Runner().Run(source, "pdf.split", "pdf", new Dictionary<string, string> { ["mode"] = mode }, parts: (part, count) => OutputNaming.PartSuffix(mode, part, count));
+
+        Assert.Null(result.ErrorCode);
+        Assert.Equal(expected[0], result.OutputName);
+        Assert.Equal(expected.Length, result.Count);
+        Assert.All(expected, name => Assert.StartsWith("%PDF-", Encoding.Latin1.GetString(File.ReadAllBytes(Path.Combine(_folder, name)).AsSpan(0, 5))));
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
+        Assert.Equal(expected.Length + 1, Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }).Length);
+    }
+
+    [Fact]
+    public void Pacote_malformado_de_um_worker_hostil_nao_grava_nada()
+    {
+        // SEC-13/SEC-30: o residente confere o pacote; fora do formato, nenhuma parte e nenhum temporário ficam.
+        var source = Path.Combine(_folder, "escritura.pdf");
+        File.WriteAllBytes(source, Pages(2));
+
+        var result = new ConversionRunner(fixture.ProbePath, SandboxFixture.Profile, new TempJournal(_folder + ".journal"), TimeSpan.FromSeconds(60), "--act bad-bundle")
+            .Run(source, "pdf.split", "pdf", parts: (part, count) => OutputNaming.PartSuffix("pages", part, count));
+
+        Assert.Equal("WORKER_CRASHED", result.ErrorCode);
+        Assert.Single(Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }));
+    }
+
     private ConversionRunner Runner() =>
         new(fixture.WorkerPath, SandboxFixture.Profile, new TempJournal(_folder + ".journal"), TimeSpan.FromSeconds(60));
 
-    private static byte[] OnePage()
+    private static byte[] OnePage() => Pages(1);
+
+    private static byte[] Pages(int count)
     {
+        var kids = string.Join(" ", Enumerable.Range(0, count).Select(i => $"{i + 3} 0 R"));
         string[] objects =
         [
             "<< /Type /Catalog /Pages 2 0 R >>",
-            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] >>",
+            $"<< /Type /Pages /Kids [{kids}] /Count {count} >>",
+            .. Enumerable.Range(0, count).Select(_ => "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] >>"),
         ];
         var text = new StringBuilder("%PDF-1.7\n");
         var offsets = new List<int>();

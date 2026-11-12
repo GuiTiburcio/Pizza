@@ -6,9 +6,15 @@ using Pizza.Core.Output;
 
 namespace Pizza.Core.Ipc;
 
-/// <summary>Resultado de uma conversão: o nome do arquivo criado, ou o código de erro da SPECS §10.4.</summary>
-public sealed record ConversionResult(string? OutputName, string? ErrorCode)
+/// <summary>
+/// Resultado de uma conversão: o nome do arquivo criado, ou o código de erro da SPECS §10.4. Com várias saídas
+/// (Dividir), o nome é o da primeira e <paramref name="Count"/> diz quantas foram.
+/// </summary>
+public sealed record ConversionResult(string? OutputName, string? ErrorCode, int Count = 1)
 {
+    /// <summary>SEC-42: no máximo uma parte por página.</summary>
+    public const int MaxParts = 2000;
+
     public static ConversionResult Failed(string code) => new(null, code);
 }
 
@@ -28,8 +34,12 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     private const int PauseCheckMs = 50;
     private static readonly TimeSpan ExitGrace = TimeSpan.FromSeconds(5);
 
-    /// <summary><paramref name="suffix"/>: entra no nome quando a extensão não muda, como " - girado" (ADR-033).</summary>
-    public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null, CancellationToken cancellation = default, ConversionControl? control = null, string suffix = "")
+    /// <summary>
+    /// <paramref name="suffix"/>: entra no nome quando a extensão não muda, como " - girado" (ADR-033).
+    /// <paramref name="parts"/>: a saída do Worker é um <see cref="OutputBundle"/>, e cada parte ganha o sufixo
+    /// devolvido para (parte, total), contando a partir de 1.
+    /// </summary>
+    public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null, CancellationToken cancellation = default, ConversionControl? control = null, string suffix = "", Func<int, int, string>? parts = null)
     {
         if (cancellation.IsCancellationRequested)
         {
@@ -43,9 +53,19 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
             output.CopyZoneFrom(sourcePath);
 
             var error = RunWorker(source, output.Handle, converterId, options ?? new Dictionary<string, string>(), cancellation, control);
-            return error is null
+            if (error is not null)
+            {
+                return ConversionResult.Failed(error);
+            }
+
+            return parts is null
                 ? new ConversionResult(output.Commit(OutputNaming.Candidates(sourcePath, extension, suffix)), null)
-                : ConversionResult.Failed(error);
+                : CommitParts(sourcePath, source, output.Handle, extension, parts);
+        }
+        catch (InvalidDataException)
+        {
+            // O Worker entregou um pacote fora do formato: nada é gravado.
+            return ConversionResult.Failed("WORKER_CRASHED");
         }
         catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
@@ -66,6 +86,59 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         catch (Win32Exception)
         {
             return ConversionResult.Failed("WORKER_CRASHED");
+        }
+    }
+
+    /// <summary>
+    /// Copia cada parte do pacote para o seu próprio temporário e só então dá os nomes. Se um nome falhar, as
+    /// partes já nomeadas são apagadas: ou saem todas, ou nenhuma (SEC-40, "nada pela metade").
+    /// </summary>
+    private ConversionResult CommitParts(string sourcePath, SafeFileHandle source, SafeFileHandle bundle, string extension, Func<int, int, string> suffix)
+    {
+        var directory = Path.GetDirectoryName(Path.GetFullPath(sourcePath))!;
+        var list = OutputBundle.Read(bundle, ConversionResult.MaxParts);
+        var pending = new List<PendingOutput>(list.Count);
+        var committed = new List<string>(list.Count);
+        try
+        {
+            var buffer = new byte[1024 * 1024];
+            foreach (var part in list)
+            {
+                var output = PendingOutput.Create(source, directory, journal);
+                pending.Add(output);
+                output.CopyZoneFrom(sourcePath);
+                for (long copied = 0; copied < part.Length;)
+                {
+                    var read = RandomAccess.Read(bundle, buffer.AsSpan(0, (int)Math.Min(buffer.Length, part.Length - copied)), part.Offset + copied);
+                    if (read <= 0)
+                    {
+                        throw new InvalidDataException("Pacote de saída cortado.");
+                    }
+
+                    RandomAccess.Write(output.Handle, buffer.AsSpan(0, read), copied);
+                    copied += read;
+                }
+            }
+
+            for (var index = 0; index < pending.Count; index++)
+            {
+                committed.Add(pending[index].Commit(OutputNaming.Candidates(sourcePath, extension, suffix(index + 1, pending.Count))));
+            }
+
+            return new ConversionResult(committed[0], null, committed.Count);
+        }
+        catch
+        {
+            foreach (var name in committed)
+            {
+                File.Delete(Path.Combine(directory, name));
+            }
+
+            throw;
+        }
+        finally
+        {
+            pending.ForEach(output => output.Dispose());
         }
     }
 

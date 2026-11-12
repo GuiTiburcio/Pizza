@@ -23,9 +23,10 @@ public class MenuPagesTests
     }
 
     [Fact]
-    public void Pdf_tem_girar_na_aba_pdf()
+    public void Pdf_tem_dividir_e_girar_na_aba_pdf()
     {
-        Assert.Equal("Girar", Assert.Single(RadialMenu.Slices(1, "escritura.pdf")).Label);
+        // Ordem da prancha 6A-1 (Comprimir, Juntar, Dividir, Imagens, Word, Girar), só com as que já existem.
+        Assert.Equal(["Dividir", "Girar"], RadialMenu.Slices(1, "escritura.pdf").Select(slice => slice.Label));
         Assert.Empty(RadialMenu.Slices(0, "escritura.pdf"));
     }
 

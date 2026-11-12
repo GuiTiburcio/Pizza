@@ -47,6 +47,8 @@ public sealed class QuickOptionsState
         var value = (Primary.Key, choice.Value) switch
         {
             ("quality", var quality) => $"{quality}%",
+            ("mode", "pages") => "1 arquivo por pág.",
+            ("mode", "half") => "2 arquivos",
             ("size", var size) => $"{size} px",
             ("rotation", "270") => "90°",
             ("rotation", var degrees) => $"{degrees}°",

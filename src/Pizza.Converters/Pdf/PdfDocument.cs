@@ -158,29 +158,77 @@ internal sealed unsafe class PdfDocument : IDisposable
     }
 
     /// <summary>Regrava o documento inteiro (nunca incremental) e copia para o destino.</summary>
-    public string? Save(Stream destination)
+    public string? Save(Stream destination) => WriteAll(_qpdf, destination.Write);
+
+    /// <summary>
+    /// Dividir: cada intervalo de páginas vira um PDF novo, regravado por inteiro, dentro do pacote de saídas
+    /// (<see cref="Core.Output.OutputBundle"/>). Chame <see cref="RemoveActiveContent"/> antes: as páginas copiadas
+    /// levam junto o que apontam.
+    /// </summary>
+    public string? SaveParts(Stream destination, IReadOnlyList<Range> parts, IProgress<int>? progress)
     {
-        if ((Qpdf.InitWriteMemory(_qpdf) & Qpdf.Errors) != 0)
+        // Rotação, recursos e tamanho herdados da árvore de páginas iriam se perder na cópia.
+        Qpdf.PushInheritedAttributesToPage(_qpdf);
+        var bundle = new Core.Output.OutputBundle.Writer(destination, parts.Count);
+        for (var index = 0; index < parts.Count; index++)
+        {
+            var part = Qpdf.Init();
+            try
+            {
+                Qpdf.SilenceErrors(part);
+                Qpdf.SuppressWarnings(part, 1);
+                if ((Qpdf.EmptyPdf(part) & Qpdf.Errors) != 0)
+                {
+                    return "CORRUPTED";
+                }
+
+                var (offset, count) = parts[index].GetOffsetAndLength(PageCount);
+                for (var page = offset; page < offset + count; page++)
+                {
+                    if ((Qpdf.AddPage(part, _qpdf, Qpdf.Page(_qpdf, (nuint)page), 0) & Qpdf.Errors) != 0)
+                    {
+                        return "CORRUPTED";
+                    }
+                }
+
+                if (WriteAll(part, bundle.Add) is { } error)
+                {
+                    return error;
+                }
+            }
+            finally
+            {
+                Qpdf.Cleanup(ref part);
+                Qpdf.ReleaseAll(_qpdf);
+            }
+
+            progress?.Report(30 + (69 * (index + 1) / parts.Count));
+        }
+
+        bundle.Finish();
+        return null;
+    }
+
+    private delegate void Sink(ReadOnlySpan<byte> data);
+
+    private static string? WriteAll(nint qpdf, Sink destination)
+    {
+        if ((Qpdf.InitWriteMemory(qpdf) & Qpdf.Errors) != 0)
         {
             return "CORRUPTED";
         }
 
-        Qpdf.PreserveEncryption(_qpdf, 0);
-        Qpdf.SuppressOriginalObjectIds(_qpdf, 1);
-        Qpdf.DeterministicId(_qpdf, 1);
-        Qpdf.SetObjectStreamMode(_qpdf, Qpdf.ObjectStreamsGenerate);
-        if ((Qpdf.Write(_qpdf) & Qpdf.Errors) != 0)
+        Qpdf.PreserveEncryption(qpdf, 0);
+        Qpdf.SuppressOriginalObjectIds(qpdf, 1);
+        Qpdf.DeterministicId(qpdf, 1);
+        Qpdf.SetObjectStreamMode(qpdf, Qpdf.ObjectStreamsGenerate);
+        if ((Qpdf.Write(qpdf) & Qpdf.Errors) != 0)
         {
             return "CORRUPTED";
         }
 
-        var length = Qpdf.BufferLength(_qpdf);
-        var data = Qpdf.Buffer(_qpdf);
-        for (nuint offset = 0; offset < length; offset += int.MaxValue)
-        {
-            destination.Write(new ReadOnlySpan<byte>(data + offset, (int)Math.Min(int.MaxValue, length - offset)));
-        }
-
+        // Uma parte cabe no limite de memória (MaxSourceBytes), bem abaixo de 2 GB.
+        destination(new ReadOnlySpan<byte>(Qpdf.Buffer(qpdf), checked((int)Qpdf.BufferLength(qpdf))));
         return null;
     }
 
