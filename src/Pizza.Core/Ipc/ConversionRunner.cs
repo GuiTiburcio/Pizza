@@ -161,6 +161,8 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     /// <summary>Lê até o resultado. Tudo que vem do Worker é não confiável (SEC-13, SEC-24).</summary>
     private static string? ReadOutcome(Stream output, string jobId, Action<int>? progress)
     {
+        // Só a porcentagem que avança chega à interface: um Worker comprometido não enche a fila de mensagens.
+        var last = -1;
         try
         {
             while (IpcFraming.ReadFrame(output) is { } frame)
@@ -178,7 +180,12 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
                     case IpcType.Error:
                         return message.Code;
                     case IpcType.Progress:
-                        progress?.Invoke(message.Percent!.Value);
+                        if (message.Percent!.Value > last)
+                        {
+                            last = message.Percent.Value;
+                            progress?.Invoke(last);
+                        }
+
                         continue;
                     default:
                         return "WORKER_CRASHED";

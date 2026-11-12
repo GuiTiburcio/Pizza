@@ -36,6 +36,18 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
     }
 
     [Fact]
+    public void Avisos_repetidos_ou_voltando_de_um_worker_hostil_nao_chegam_a_interface()
+    {
+        // SEC-13 e SEC-24: o residente só repassa a porcentagem que avança, mesmo que o Worker mande milhares.
+        var reported = new List<int>();
+        var control = new ConversionControl { Progress = reported.Add };
+
+        Runner(fixture.ProbePath, "--act flood-progress", TimeSpan.FromSeconds(60)).Run(CopySample(), "image.png", "png", control: control);
+
+        Assert.Equal([50, 100], reported);
+    }
+
+    [Fact]
     public void Tempo_pausado_nao_conta_no_prazo()
     {
         // ADR-029 / SEC-43: com prazo de 1 s, 2,5 s pausado não viram TIMEOUT; parar continua funcionando.

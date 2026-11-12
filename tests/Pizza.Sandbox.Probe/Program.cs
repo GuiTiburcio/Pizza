@@ -29,6 +29,17 @@ if (act >= 0)
         case "wrong-job":
             writer.Write(Done("ffffffffffff"));
             return 0;
+        case "flood-progress":
+            // Worker comprometido: avisos repetidos e voltando, para encher a fila da interface.
+            for (var i = 0; i < 20000; i++)
+            {
+                writer.Write(Progress(jobId, 50));
+            }
+
+            writer.Write(Progress(jobId, 30));
+            writer.Write(Progress(jobId, 100));
+            writer.Write(Done(jobId));
+            return 0;
     }
 
     Thread.Sleep(Timeout.Infinite);
@@ -79,6 +90,8 @@ void Attempt(string name, Action action)
         writer.WriteLine(name + "=denied");
     }
 }
+
+static string Progress(string jobId, int percent) => "{\"v\":1,\"type\":\"progress\",\"jobId\":\"" + jobId + "\",\"percent\":" + percent + "}\n";
 
 static string Done(string jobId) => "{\"v\":1,\"type\":\"done\",\"jobId\":\"" + jobId + "\",\"elapsedMs\":1}\n";
 
