@@ -52,5 +52,6 @@ Pedidos do mantenedor, anotados em 10/11/2026. Cada um passa por alinhamento e A
 | Site no GitHub Pages | Layout "cartoonizado", com uma animação simples mostrando como o Pizza funciona. Segue o "efeito halo": primeira impressão premium em poucos segundos, mais visual que texto, poucos cards, caminho claro de por onde começar. Consentimento de cookies (LGPD) só se o site usar cookie ou rastreio não essencial; se a pessoa negar, nada é gravado. Pedido em 11/11/2026 |
 | Melhorar imagens | Uma opção que melhora uma imagem borrada ou de baixa qualidade: nitidez, menos ruído e mais resolução. Tudo no próprio PC, dentro do Worker isolado e sem rede (SEC-20, SEC-50); exige estudo de motor e de licença antes. Pedido em 11/11/2026 |
 | Bolha com borda distorcida | Nas extremidades, a bolha de vidro (ADR-027) distorce levemente o que está atrás, como uma lente de verdade. Pedido em 11/11/2026 |
+| Paletas e cores do sistema | Opção "Usar cores do sistema" (segue as paletas personalizadas do Windows) e paletas claras Papel Sépia, Pêssego e Bordô, Chá Verde e Oliva, Areia Solar; prancha 5B-3; código com as Configurações (Fase 8). Pedido em 12/11/2026 |
 
 Decisões com fase marcada (faixa de níveis na 4b, barra de abas mais fina na 4d, temas do vidro e frase no Sobre na Fase 8) estão na SPECS §2.1.
