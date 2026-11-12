@@ -2,6 +2,12 @@
 
 Segure **Ctrl**, arraste um arquivo e solte numa fatia. Nada sai do seu computador.
 
+### Novidades da 0.1.1
+
+- **Correção:** extraído numa pasta do seu usuário (Downloads, Documentos, Área de Trabalho), o Pizza da 0.1.0 não conseguia converter. Agora converte.
+- Se o Pizza travar, o Windows não grava nem envia um relatório com o que estava na memória.
+- Usa menos memória depois do uso (cerca de 11 MB parado).
+
 ### O que já funciona
 
 - Imagens: PNG, JPG, WEBP, AVIF, TIFF, GIF, ICO e imagem para PDF, com qualidade, régua de resolução e remoção de metadados.

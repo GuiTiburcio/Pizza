@@ -16,7 +16,7 @@
     <Product>Pizza</Product>
     <Company>Guilherme Tiburcio</Company>
     <Copyright>© 2026 Guilherme Tiburcio. Licenciado sob a GPL-3.0.</Copyright>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <NeutralLanguage>pt-BR</NeutralLanguage>
   </PropertyGroup>
 </Project>
