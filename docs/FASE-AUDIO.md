@@ -4,7 +4,7 @@ Estado conferido em 12/11/2026: ADR-035 aceito; não há conversores de áudio n
 
 ## Pedidos a preservar no desenho
 
-[Abrir complemento proposto dos quatro painéis](propostas/audio-paineis-complemento.svg). É um estudo estático para discussão, com valores exemplificativos; não é captura do app e não substitui AU-1/AU-2. A apresentação recolhida de Volume e dinâmica é a proposta recomendada, ainda sujeita à preferência do mantenedor.
+[Abrir complemento proposto dos quatro painéis](propostas/audio-paineis-complemento.svg). É um estudo estático para discussão, com valores exemplificativos; não é captura do app e não substitui AU-1/AU-2. O mantenedor escolheu em 12/11/2026 a seção Volume e dinâmica recolhida por padrão: abrir mostra os quatro controles; os efeitos só atuam quando ativados.
 
 - Preservar a AU-1 anterior e complementá-la, sem apagar a referência anterior.
 - Mostrar menu radial e faixa, com a fatia do próprio formato ausente.
@@ -58,6 +58,6 @@ A disponibilidade real dos codecs e o downmix 5.1 precisam ser comprovados nas v
 
 Usar áudio sintético gerado nos testes: tom, silêncio, transiente, canais com níveis distintos e entrada inválida. Conferir hash do original antes/depois em sucesso, erro e cancelamento. Registrar SHA e build CI de cada rodada.
 
-Próxima ação: concluir o complemento das pranchas e o contrato numérico de A1; em paralelo, especificar as fixtures de A2. A disposição dos controles de volume está sendo escolhida pelo mantenedor no chat. Nenhuma alteração no artefato publicado do Claude foi feita nesta retomada.
+Próxima ação: concluir o complemento das pranchas e o contrato numérico de A1; em paralelo, especificar as fixtures de A2. A disposição dos controles de volume foi escolhida pelo mantenedor no chat. Nenhuma alteração no artefato publicado do Claude foi feita nesta retomada.
 
 Referências técnicas: [Volume & Compression — Audacity](https://www.audacityteam.org/manual/effects/volume-and-compression/), [Amplify and Normalize](https://manual.audacityteam.org/man/amplify_and_normalize.html), [Media Samples — Microsoft](https://learn.microsoft.com/en-us/windows/win32/medfound/media-samples). São referências de comportamento; não foi copiado código dessas implementações.
