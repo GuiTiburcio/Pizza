@@ -61,6 +61,30 @@ public sealed class PdfSplitConverterTests : IDisposable
     }
 
     [Fact]
+    public void Campo_de_formulario_continua_visivel_na_parte()
+    {
+        // ADR-033: a parte leva o campo (widget) com a aparência dele; o /AcroForm do documento não vai junto,
+        // então o campo pode deixar de ser editável. Editar formulário depois de dividir fica para uma etapa própria.
+        var pdf = TestPdf.Build(
+            "<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [7 0 R] >> >>",
+            "<< /Type /Pages /Kids [4 0 R 5 0 R] /Count 2 >>",
+            "<< /Length 0 >>\nstream\n\nendstream",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] /Contents 3 0 R /Annots [7 0 R] >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] /Contents 3 0 R >>",
+            "<< /Type /XObject /Subtype /Form /BBox [0 0 80 20] /Length 22 >>\nstream\nBT (Fulano) Tj ET\n    \nendstream",
+            "<< /Type /Annot /Subtype /Widget /FT /Tx /T (nome) /V (Fulano) /Rect [10 10 90 30] /P 4 0 R /AP << /N 6 0 R >> >>");
+
+        var (error, parts) = Split(pdf, "pages");
+
+        Assert.Null(error);
+        var first = PdfInspection.Of(parts[0]);
+        Assert.True(first.Valid);
+        Assert.Contains("/Widget", first.Everything);
+        Assert.Matches(@"/AP << /N \d+ 0 R >>", first.Everything);
+        Assert.DoesNotContain("/Widget", PdfInspection.Of(parts[1]).Everything);
+    }
+
+    [Fact]
     public void Pdf_de_uma_pagina_nao_tem_o_que_dividir()
     {
         Assert.Equal("UNSUPPORTED", Split(TestPdf.Pages(1), "pages").Error);
