@@ -3,6 +3,7 @@
     <Project Path="src/Pizza.App/Pizza.App.csproj" />
     <Project Path="src/Pizza.Converters/Pizza.Converters.csproj" />
     <Project Path="src/Pizza.Core/Pizza.Core.csproj" />
+    <Project Path="src/Pizza.Docs/Pizza.Docs.csproj" />
     <Project Path="src/Pizza.Worker/Pizza.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">
