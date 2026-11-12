@@ -33,6 +33,16 @@ internal static class Conversion
             // A limpeza é tentada de novo no próximo início.
         }
 
+        try
+        {
+            // V-03: o .zip extraído no perfil do usuário não deixa o Worker ler a própria pasta.
+            SandboxedProcess.GrantFolder(AppContext.BaseDirectory, Profile);
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or System.ComponentModel.Win32Exception)
+        {
+            // Pasta protegida (instalada pelo administrador): o instalador já deu o acesso.
+        }
+
         _runner = new ConversionRunner(Path.Combine(AppContext.BaseDirectory, "Pizza.Worker.exe"), Profile, journal, Timeout);
     }
 

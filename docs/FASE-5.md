@@ -7,7 +7,7 @@ Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste) (
 | Etapa | Entrega | Situação |
 | --- | --- | --- |
 | 5a — medições | NFR-01 a NFR-04 medidos e registrados | NFR-01, 02 e 03 dentro da meta; NFR-04 acima em PNG padrão, WEBP e AVIF (só registrado); fotos reais e memória retida pendentes |
-| 5b — endurecimento | Memória retida, PRIV-05 e TST-20 (sem dump e fora do WER), V-03 (ACL), V-04 (SVG renomeado), SBOM pelas dependências, alto contraste | Memória retida corrigida (17,7 → 11,2 MB depois do uso); PRIV-05 e TST-20 feitos (ADR-032); o resto pendente |
+| 5b — endurecimento | Memória retida, PRIV-05 e TST-20 (sem dump e fora do WER), V-03 (ACL), V-04 (SVG renomeado), SBOM pelas dependências, alto contraste | Memória retida corrigida (17,7 → 11,2 MB depois do uso); PRIV-05 e TST-20 feitos (ADR-032); V-03 corrigido e V-04 confirmado; SBOM, alto contraste e primeiro gesto pendentes |
 | TST-13 | Captura de tráfego por 24 h de uso | Pendente; roda no PC do mantenedor |
 | 5c — auditoria | TST-28 com a skill `security-audit` (completa, perfil standard, verificação independente) e o Strix | Pendente |
 
@@ -97,3 +97,11 @@ O notebook do mantenedor tem a chave `LocalDumps` no HKLM. Só de ela existir, o
 **Correção (ADR-032):** residente e Worker ligam o modo sem WER como primeira instrução, e o Worker o herda do residente já na criação. O residente também tira `Pizza.exe` e `Pizza.Worker.exe` do WER no HKCU, como segunda barreira.
 
 **Conferido no app:** com o Pizza aberto pelo Explorer, o modo de erro do processo é `0x8002`, contra `0x8000` de um Notepad aberto do mesmo jeito; os dois executáveis aparecem em `ExcludedApplications`. TST-20 cobre o Worker sabotado no sandbox e um processo protegido como o residente, travando por acesso inválido e por `FailFast`.
+
+## 5b — V-03 e V-04, 12/11/2026
+
+**V-03, permissão da pasta: defeito na prévia 0.1.0.** O `.zip` extraído numa pasta do perfil do usuário herda só as permissões do usuário, do SISTEMA e dos administradores. O Worker, no AppContainer, não consegue ler o próprio executável, e toda conversão termina em `WORKER_CRASHED`. Reproduzido com a cópia local numa pasta nova, sem a permissão: falha; com leitura e execução para o AppContainer, funciona. Na cópia local o defeito não aparecia porque o `publicar-dev.ps1` dava a permissão à mão, para `ALL APPLICATION PACKAGES`.
+
+**Correção:** ao abrir, o residente dá leitura e execução da pasta dele, sem escrita e com herança, só ao SID do perfil `Pizza.Worker`, e só se ainda não houver. Em pasta protegida, instalada pelo administrador, a falha é ignorada: quem dá o acesso é o instalador. O `publicar-dev.ps1` deixou de dar a permissão, para a cópia local se comportar como o `.zip`. Conferido abrindo o Pizza numa pasta nova: a regra aparece só para o SID do perfil (`ReadAndExecute, Synchronize`), e a conversão com o perfil real termina certa.
+
+**V-04, SVG renomeado: confirmado.** O libvips empacotado traz o decodificador de SVG (`svgload_source`) e o `matrixload` embutido; com o bloqueio do SEC-45, os dois são recusados como `UNSUPPORTED`. O teste confere primeiro que o decodificador existe no build, para a recusa provar o bloqueio e não a falta dele.
