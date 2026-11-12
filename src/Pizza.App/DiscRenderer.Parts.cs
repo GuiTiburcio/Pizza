@@ -79,9 +79,18 @@ internal static unsafe partial class DiscRenderer
         var slice = frame.Slices[slot];
         // Nome e descrição seguem o arco da fatia, sempre de pé (escolha "B · Curva completa", Ref-Texto-Fatias).
         var ink = pulse ? Argb(255, 255, 255, 255) : Mix(_palette.SliceInk, _palette.HoverInk, hover);
+
+        // FR-30 com a emenda da ADR-033 (prancha 6A-1): a fatia que não vale fica esmaecida e diz o porquê.
+        var unavailable = frame.Unavailable is { } dimmed && dimmed[slot];
+        var caption = unavailable ? slice.UnavailableCaption : slice.Caption;
+        if (unavailable)
+        {
+            ink = WithAlpha(ink, 0.38);
+        }
+
         var bold = hover >= 0.5;
         CurvedLabel(g, slice.Label, bold ? _regular : _semibold, 14 + (2 * (float)hover), bold ? StyleBold : StyleRegular, ink, angle, rest, CurvedText.NameRadius(angle, movement, rest));
-        CurvedLabel(g, slice.Caption, _regular, 10.5f, StyleRegular, ink, angle, rest, CurvedText.CaptionRadius(angle, movement, rest));
+        CurvedLabel(g, caption, _regular, 10.5f, StyleRegular, ink, angle, rest, CurvedText.CaptionRadius(angle, movement, rest));
     }
 
     private static void DrawCenter(nint g, DiscFrame frame)
@@ -105,8 +114,9 @@ internal static unsafe partial class DiscRenderer
         DrawFileIcon(g, cx - 18, cy - 40, frame.FileName);
         if (frame.FileCount > 1)
         {
+            // Vários PDFs: o Juntar vale (prancha 6A-1). Outros tipos: ainda um arquivo por vez (FR-30).
             Text(g, $"{frame.FileCount} arquivos", _semibold, 12, StyleRegular, _palette.Ink, cx - 60, cy + 10, 120, 18);
-            Text(g, "um arquivo por vez", _regular, 10.5f, StyleRegular, _palette.Ink, cx - 60, cy + 28, 120, 16);
+            Text(g, frame.Merging ? $"{frame.FileCount} PDFs · Juntar" : "um arquivo por vez", _regular, 10.5f, StyleRegular, _palette.Ink, cx - 60, cy + 28, 120, 16);
         }
         else if (frame.FileName is { } fileName)
         {
@@ -182,7 +192,7 @@ internal static unsafe partial class DiscRenderer
     /// <summary>Faixa de níveis da fatia em hover (ADR-027, prancha 4b-1), com a bolha de vidro no nível escolhido.</summary>
     private static void DrawStrip(nint g, DiscFrame frame)
     {
-        if (frame.StripTitle is not { } title || frame.Levels is not { } levels)
+        if (frame.StripTitle is not { } title || (frame.Levels is null && frame.Order is null))
         {
             return;
         }
@@ -191,6 +201,13 @@ internal static unsafe partial class DiscRenderer
         var chip = RoundedRect(titleLeft, DiscLayout.StripTop, DiscLayout.StripTitleWidth, DiscLayout.StripTitleHeight, DiscLayout.StripTitleHeight / 2f);
         Glass(g, chip, Math.Max(0.40, _glassAlpha), _palette.Border + 0.05);
         Text(g, title, _semibold, 11.5f, StyleRegular, _palette.Ink, titleLeft, DiscLayout.StripTop, DiscLayout.StripTitleWidth, DiscLayout.StripTitleHeight);
+        if (frame.Order is { } order)
+        {
+            DrawOrder(g, order);
+            return;
+        }
+
+        var levels = frame.Levels!;
 
         for (var level = 0; level < levels.Length; level++)
         {
@@ -227,6 +244,32 @@ internal static unsafe partial class DiscRenderer
             if (detail is not null)
             {
                 Text(g, detail, _regular, 10, StyleRegular, _palette.SliceInk, left, DiscLayout.LevelTop + 22, DiscLayout.LevelWidth, 16);
+            }
+        }
+    }
+
+    /// <summary>Juntar (prancha 6A-1): os arquivos numerados, na ordem em que vão ficar, ligados por setas.</summary>
+    private static void DrawOrder(nint g, IReadOnlyList<(string Number, string Name)> order)
+    {
+        const float chipWidth = 112;
+        const float arrow = 14;
+        const float height = 30;
+        var top = DiscLayout.LevelTop + ((DiscLayout.LevelHeight - height) / 2f);
+        var left = (DiscLayout.Width - ((order.Count * chipWidth) + ((order.Count - 1) * arrow))) / 2f;
+        for (var index = 0; index < order.Count; index++)
+        {
+            var (number, name) = order[index];
+            Glass(g, RoundedRect(left, top, chipWidth, height, height / 2f), Math.Max(0.40, _glassAlpha), _palette.Border);
+            var badge = Ellipse(left + 15, top + (height / 2f), 10);
+            Fill(g, Tint, badge);
+            GdipDeletePath(badge);
+            Text(g, number, _semibold, number.Length > 1 ? 9 : 11, StyleRegular, Argb(255, 255, 255, 255), left + 5, top, 20, height);
+            Text(g, name, _regular, 11, StyleRegular, _palette.Ink, left + 28, top, chipWidth - 32, height, AlignNear);
+            left += chipWidth;
+            if (index < order.Count - 1)
+            {
+                Text(g, "→", _regular, 12, StyleRegular, _palette.Ink, left, top, arrow, height);
+                left += arrow;
             }
         }
     }

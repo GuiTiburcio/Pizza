@@ -22,8 +22,17 @@ internal partial interface IDropTarget
     int Drop(nint dataObject, int keyState, POINT pt, ref int effect);
 }
 
-/// <summary>Arquivos lidos de um arraste: o primeiro caminho e quantos são no total.</summary>
-internal readonly record struct DraggedFiles(string First, int Count);
+/// <summary>Arquivos lidos de um arraste, na ordem em que o Explorer entrega (a ordem do Juntar).</summary>
+internal readonly record struct DraggedFiles(IReadOnlyList<string> Paths)
+{
+    public string First => Paths[0];
+
+    public int Count => Paths.Count;
+
+    /// <summary>O mesmo arraste: os mesmos caminhos, na mesma ordem.</summary>
+    public bool SameAs(DraggedFiles other) =>
+        Paths.Count == other.Paths.Count && Paths.Zip(other.Paths).All(pair => string.Equals(pair.First, pair.Second, StringComparison.OrdinalIgnoreCase));
+}
 
 /// <summary>Recebe os eventos de arraste de uma janela do overlay e repassa para o <see cref="Overlay"/>.</summary>
 /// <param name="acceptsDrop">
@@ -131,14 +140,21 @@ internal sealed partial class DropTarget(bool acceptsDrop) : IDropTarget
                 return null;
             }
 
-            var length = DragQueryFileW(medium.HGlobal, 0, null, 0);
-            var buffer = new char[length + 1];
-            fixed (char* p = buffer)
+            // SEC-46: lê no máximo um a mais que o limite, só para saber que passou dele.
+            var paths = new List<string>();
+            for (uint index = 0; index < Math.Min(count, (uint)Pizza.Core.Conversions.ConverterInfo.MaxFiles + 1); index++)
             {
-                DragQueryFileW(medium.HGlobal, 0, p, length + 1);
+                var length = DragQueryFileW(medium.HGlobal, index, null, 0);
+                var buffer = new char[length + 1];
+                fixed (char* p = buffer)
+                {
+                    DragQueryFileW(medium.HGlobal, index, p, length + 1);
+                }
+
+                paths.Add(new string(buffer, 0, (int)length));
             }
 
-            return new DraggedFiles(new string(buffer, 0, (int)length), (int)count);
+            return new DraggedFiles(paths);
         }
         finally
         {

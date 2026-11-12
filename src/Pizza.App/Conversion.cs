@@ -46,7 +46,8 @@ internal static class Conversion
         _runner = new ConversionRunner(Path.Combine(AppContext.BaseDirectory, "Pizza.Worker.exe"), Profile, journal, Timeout);
     }
 
-    public static void Start(long id, string sourcePath, ConverterInfo converter, IReadOnlyDictionary<string, string> options, nint notifyWindow, uint notifyMessage, uint progressMessage)
+    /// <param name="moreSources">Juntar (ADR-033): os outros arquivos, na ordem do arraste; vazio nas demais.</param>
+    public static void Start(long id, string sourcePath, IReadOnlyList<string> moreSources, ConverterInfo converter, IReadOnlyDictionary<string, string> options, nint notifyWindow, uint notifyMessage, uint progressMessage)
     {
         var cancellation = new CancellationTokenSource();
         Running[id] = cancellation;
@@ -68,7 +69,7 @@ internal static class Conversion
             {
                 lock (Gate)
                 {
-                    result = _runner.Run(sourcePath, converter.Id, converter.Extension, options, cancellation.Token, control, converter.Suffix, converter.PartSuffix(options));
+                    result = _runner.Run(sourcePath, converter.Id, converter.Extension, options, cancellation.Token, control, converter.Suffix, converter.PartSuffix(options), moreSources.Count == 0 ? null : moreSources);
                 }
             }
             catch (Exception)

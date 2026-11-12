@@ -69,7 +69,28 @@ internal static class Program
         using (var source = OpenHandle(request.SrcHandle!.Value, FileAccess.Read))
         using (var destination = OpenHandle(request.DstHandle!.Value, FileAccess.Write, DestinationBufferBytes))
         {
-            error = converter.Convert(source, destination, options, progress);
+            if (request.MoreSrcHandles is not { } more)
+            {
+                error = converter.Convert(source, destination, options, progress);
+            }
+            else if (converter is IMergeConverter merger)
+            {
+                // Juntar (ADR-033): as outras entradas também chegam só como handles, na ordem do arraste.
+                var sources = new List<Stream> { source };
+                try
+                {
+                    sources.AddRange(more.Select(handle => (Stream)OpenHandle(handle, FileAccess.Read)));
+                    error = merger.Convert(sources, destination, options, progress);
+                }
+                finally
+                {
+                    sources.Skip(1).ToList().ForEach(stream => stream.Dispose());
+                }
+            }
+            else
+            {
+                error = "UNSUPPORTED";
+            }
         }
 
         return error is null

@@ -12,11 +12,16 @@ internal static unsafe partial class Overlay
     /// <summary>Bolha de vidro das fatias, em posição de fatia (1,5 fica entre as fatias 1 e 2).</summary>
     private static readonly GlideSpring SliceGlide = new();
 
-    /// <summary>Fatia sob o cursor, se houver uma disponível para o arquivo arrastado.</summary>
+    /// <summary>
+    /// FR-30 com a emenda da ADR-033: um arquivo, ou vários que alguma fatia aceite (hoje, só PDFs no Juntar).
+    /// </summary>
+    private static bool Usable(Interop.DraggedFiles files) =>
+        files.Count == 1 || Pizza.Core.Conversions.ConverterCatalog.All.Any(converter => converter.Accepts(files.Paths));
+
+    /// <summary>Fatia sob o cursor, se houver uma disponível para os arquivos arrastados.</summary>
     private static int? TargetSlot(int x, int y)
     {
-        // FR-30: por enquanto, um arquivo por vez.
-        if (_files is not { Count: 1 } file || !IsVisible || _pulseSlot is not null)
+        if (_files is not { } file || !Usable(file) || !IsVisible || _pulseSlot is not null)
         {
             return null;
         }
@@ -26,7 +31,9 @@ internal static unsafe partial class Overlay
         var growth = Hover.Select(transition => _motion == MotionStyle.Slide ? transition.Value : 0).ToArray();
         var slot = RadialMenu.SlotAt((x - centerX) / _scale, (y - centerY) / _scale, Rotation(), growth);
         var page = _pages[Carousel.Target];
-        return slot < RadialMenu.Slices(page.Tab, file.First, page.Turn).Count ? slot : null;
+
+        // A fatia esmaecida (Juntar com um arquivo, as outras com vários) não acende nem recebe o drop.
+        return RadialMenu.Slices(page.Tab, file.First, page.Turn).ElementAtOrDefault(slot ?? -1) is { } converter && converter.Accepts(file.Paths) ? slot : null;
     }
 
     private static double Rotation() =>

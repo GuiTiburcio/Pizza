@@ -11,7 +11,8 @@ internal readonly record struct DiscFrame(
     double[] Hover, double TabPosition, int TargetTab, double Rotation,
     MotionStyle Motion, int? PulseSlot, int Turn = 0, int TurnCount = 1, bool Choosing = false,
     string? StripTitle = null, (string Label, string? Detail)[]? Levels = null, int Level = 0, int? LevelHover = null,
-    double SliceGlide = 0, double SliceSwell = 0, double LevelGlide = 0, double LevelSwell = 0);
+    double SliceGlide = 0, double SliceSwell = 0, double LevelGlide = 0, double LevelSwell = 0,
+    bool[]? Unavailable = null, IReadOnlyList<(string Number, string Name)>? Order = null, bool Merging = false);
 
 internal static class DiscRenderer
 {
@@ -35,6 +36,6 @@ internal static class OptionsPanel
 
 internal static class Notifications
 {
-    public static void Convert(string path, ConverterInfo converter, IReadOnlyDictionary<string, string> options) =>
+    public static void Convert(IReadOnlyList<string> paths, ConverterInfo converter, IReadOnlyDictionary<string, string> options) =>
         throw new InvalidOperationException("O teste não deve iniciar uma conversão.");
 }

@@ -23,6 +23,9 @@ public sealed record IpcMessage(IpcType Type, string JobId)
 
     public long? SrcHandle { get; init; }
 
+    /// <summary>Juntar (ADR-033): os outros arquivos, na ordem do arraste. Também só handles (SEC-15).</summary>
+    public IReadOnlyList<long>? MoreSrcHandles { get; init; }
+
     public long? DstHandle { get; init; }
 
     public IReadOnlyDictionary<string, string>? Options { get; init; }
@@ -40,6 +43,9 @@ public sealed class IpcProtocolException(string message) : Exception(message);
 public static partial class IpcCodec
 {
     public const int MaxMessageBytes = 64 * 1024;
+
+    /// <summary>SEC-46: até 500 arquivos por arraste, então até 499 além do primeiro.</summary>
+    public const int MaxMoreSources = 499;
 
     private const int Version = 1;
 
@@ -59,6 +65,12 @@ public static partial class IpcCodec
         [IpcType.Progress] = ["percent"],
         [IpcType.Done] = ["elapsedMs"],
         [IpcType.Error] = ["code"],
+    };
+
+    // Só o Juntar manda; nas outras conversões o campo não aparece.
+    private static readonly Dictionary<IpcType, string[]> OptionalFields = new()
+    {
+        [IpcType.Convert] = ["moreSrcHandles"],
     };
 
     public static IpcMessage Parse(ReadOnlySpan<byte> payload)
@@ -91,7 +103,8 @@ public static partial class IpcCodec
         }
 
         var type = ParseType(TakeString(values, "type"));
-        if (values.Keys.Except(Fields[type]).Any() || Fields[type].Except(values.Keys).Any())
+        var allowed = Fields[type].Concat(OptionalFields.GetValueOrDefault(type, []));
+        if (values.Keys.Except(allowed).Any() || Fields[type].Except(values.Keys).Any())
         {
             throw new IpcProtocolException("Campos não correspondem ao tipo.");
         }
@@ -171,6 +184,21 @@ public static partial class IpcCodec
 
                 return options;
 
+            case JsonTokenType.StartArray:
+                // Só a lista de handles do Juntar: números inteiros, sem nada aninhado e com limite.
+                var numbers = new List<long>();
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+                {
+                    if (reader.TokenType != JsonTokenType.Number || !reader.TryGetInt64(out var item) || numbers.Count == MaxMoreSources)
+                    {
+                        throw new IpcProtocolException("Lista inválida.");
+                    }
+
+                    numbers.Add(item);
+                }
+
+                return numbers;
+
             default:
                 throw new IpcProtocolException("Tipo de valor não aceito.");
         }
@@ -183,6 +211,7 @@ public static partial class IpcCodec
         {
             ConverterId = ConverterId(values),
             SrcHandle = Handle(values, "srcHandle"),
+            MoreSrcHandles = values.ContainsKey("moreSrcHandles") ? Handles(values, "moreSrcHandles") : null,
             DstHandle = Handle(values, "dstHandle"),
             Options = values["options"] as Dictionary<string, string> ?? throw new IpcProtocolException("options inválido."),
         },
@@ -199,6 +228,11 @@ public static partial class IpcCodec
     }
 
     private static long Handle(Dictionary<string, object> values, string name) => Number(values, name, 1, uint.MaxValue);
+
+    private static List<long> Handles(Dictionary<string, object> values, string name) =>
+        values[name] is List<long> { Count: > 0 } handles && handles.All(handle => handle is >= 1 and <= uint.MaxValue)
+            ? handles
+            : throw new IpcProtocolException($"{name} inválido.");
 
     private static long Number(Dictionary<string, object> values, string name, long minimum, long maximum)
     {
@@ -250,6 +284,17 @@ public static partial class IpcCodec
             case IpcType.Convert:
                 writer.WriteString("converterId", message.ConverterId);
                 writer.WriteNumber("srcHandle", message.SrcHandle!.Value);
+                if (message.MoreSrcHandles is { Count: > 0 } more)
+                {
+                    writer.WriteStartArray("moreSrcHandles");
+                    foreach (var handle in more)
+                    {
+                        writer.WriteNumberValue(handle);
+                    }
+
+                    writer.WriteEndArray();
+                }
+
                 writer.WriteNumber("dstHandle", message.DstHandle!.Value);
                 writer.WriteStartObject("options");
                 foreach (var option in message.Options!)

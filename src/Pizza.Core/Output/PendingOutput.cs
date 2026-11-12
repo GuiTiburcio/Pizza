@@ -56,8 +56,8 @@ public sealed unsafe class PendingOutput : IDisposable
         }
     }
 
-    /// <summary>Passa a marca de internet do original para a saída, se houver (SEC-35).</summary>
-    public void CopyZoneFrom(string sourcePath)
+    /// <summary>Passa a marca de internet do original para a saída, se houver (SEC-35). Diz se havia marca.</summary>
+    public bool CopyZoneFrom(string sourcePath)
     {
         string content;
         try
@@ -66,15 +66,18 @@ public sealed unsafe class PendingOutput : IDisposable
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return;
+            return false;
         }
 
-        if (ZoneIdentifier.ParseZone(content) is { } zone)
+        if (ZoneIdentifier.ParseZone(content) is not { } zone)
         {
-            // FileShare.Delete é exigido porque o temporário segue aberto com acesso de renomear.
-            using var stream = new FileStream(_temporaryPath + ZoneStream, FileMode.CreateNew, FileAccess.Write, FileShare.Read | FileShare.Delete);
-            stream.Write(System.Text.Encoding.ASCII.GetBytes(ZoneIdentifier.Format(zone)));
+            return false;
         }
+
+        // FileShare.Delete é exigido porque o temporário segue aberto com acesso de renomear.
+        using var stream = new FileStream(_temporaryPath + ZoneStream, FileMode.CreateNew, FileAccess.Write, FileShare.Read | FileShare.Delete);
+        stream.Write(System.Text.Encoding.ASCII.GetBytes(ZoneIdentifier.Format(zone)));
+        return true;
     }
 
     /// <summary>

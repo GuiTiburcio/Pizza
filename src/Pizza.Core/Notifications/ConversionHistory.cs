@@ -10,11 +10,14 @@ public enum HistoryState
 }
 
 /// <summary>Uma conversão desta sessão, com o necessário para abrir ou repetir.</summary>
-public sealed class HistoryEntry(long id, string sourcePath, ConverterInfo converter, IReadOnlyDictionary<string, string> options)
+public sealed class HistoryEntry(long id, string sourcePath, ConverterInfo converter, IReadOnlyDictionary<string, string> options, IReadOnlyList<string>? moreSources = null)
 {
     public long Id { get; } = id;
 
     public string SourcePath { get; } = sourcePath;
+
+    /// <summary>Juntar: os outros arquivos, na ordem do arraste, para repetir igual. Só em memória.</summary>
+    public IReadOnlyList<string> MoreSources { get; } = moreSources ?? [];
 
     public ConverterInfo Converter { get; } = converter;
 
@@ -45,9 +48,9 @@ public sealed class ConversionHistory
     /// <summary>As mais novas primeiro.</summary>
     public IReadOnlyList<HistoryEntry> Items => _entries;
 
-    public void Add(long id, string sourcePath, ConverterInfo converter, IReadOnlyDictionary<string, string> options)
+    public void Add(long id, string sourcePath, ConverterInfo converter, IReadOnlyDictionary<string, string> options, IReadOnlyList<string>? moreSources = null)
     {
-        _entries.Insert(0, new HistoryEntry(id, sourcePath, converter, options));
+        _entries.Insert(0, new HistoryEntry(id, sourcePath, converter, options, moreSources));
         Trim();
     }
 

@@ -38,21 +38,27 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     /// <paramref name="suffix"/>: entra no nome quando a extensão não muda, como " - girado" (ADR-033).
     /// <paramref name="parts"/>: a saída do Worker é um <see cref="OutputBundle"/>, e cada parte ganha o sufixo
     /// devolvido para (parte, total), contando a partir de 1.
+    /// <paramref name="moreSources"/>: Juntar (ADR-033), os outros arquivos na ordem do arraste. Também abertos só
+    /// para leitura pelo residente e entregues como handles (SEC-15, SEC-31); a saída fica ao lado do primeiro.
     /// </summary>
-    public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null, CancellationToken cancellation = default, ConversionControl? control = null, string suffix = "", Func<int, int, string>? parts = null)
+    public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null, CancellationToken cancellation = default, ConversionControl? control = null, string suffix = "", Func<int, int, string>? parts = null, IReadOnlyList<string>? moreSources = null)
     {
         if (cancellation.IsCancellationRequested)
         {
             return ConversionResult.Failed(Cancelled);
         }
 
+        var others = new List<SafeFileHandle>();
         try
         {
             using var source = PendingOutput.OpenSource(sourcePath);
+            others.AddRange((moreSources ?? []).Select(PendingOutput.OpenSource));
             using var output = PendingOutput.Create(source, Path.GetDirectoryName(Path.GetFullPath(sourcePath))!, journal);
-            output.CopyZoneFrom(sourcePath);
 
-            var error = RunWorker(source, output.Handle, converterId, options ?? new Dictionary<string, string>(), cancellation, control);
+            // SEC-35: se algum dos arquivos veio da internet, o resultado também fica marcado.
+            _ = new[] { sourcePath }.Concat(moreSources ?? []).Any(output.CopyZoneFrom);
+
+            var error = RunWorker(source, others, output.Handle, converterId, options ?? new Dictionary<string, string>(), cancellation, control);
             if (error is not null)
             {
                 return ConversionResult.Failed(error);
@@ -86,6 +92,10 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         catch (Win32Exception)
         {
             return ConversionResult.Failed("WORKER_CRASHED");
+        }
+        finally
+        {
+            others.ForEach(handle => handle.Dispose());
         }
     }
 
@@ -142,7 +152,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         }
     }
 
-    private string? RunWorker(SafeFileHandle source, SafeFileHandle destination, string converterId, IReadOnlyDictionary<string, string> options, CancellationToken cancellation, ConversionControl? control)
+    private string? RunWorker(SafeFileHandle source, IReadOnlyList<SafeFileHandle> others, SafeFileHandle destination, string converterId, IReadOnlyDictionary<string, string> options, CancellationToken cancellation, ConversionControl? control)
     {
         using var worker = SandboxedProcess.Start(workerPath, profile, workerArguments, desktop);
         var jobId = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(6));
@@ -151,6 +161,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         {
             ConverterId = converterId,
             SrcHandle = worker.DuplicateIntoProcess(source, SandboxedProcess.GenericRead),
+            MoreSrcHandles = others.Count == 0 ? null : others.Select(other => worker.DuplicateIntoProcess(other, SandboxedProcess.GenericRead)).ToList(),
             DstHandle = worker.DuplicateIntoProcess(destination, GenericWrite),
             Options = options,
         }));

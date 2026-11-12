@@ -67,6 +67,40 @@ public sealed class PdfConversionTests(SandboxFixture fixture) : IDisposable
     }
 
     [Fact]
+    public void Juntar_grava_um_pdf_ao_lado_do_primeiro_sem_tocar_nos_originais()
+    {
+        // ADR-033: as outras entradas chegam ao Worker em AppContainer só como handles.
+        var first = Path.Combine(_folder, "escritura.pdf");
+        var second = Path.Combine(_folder, "anexo.pdf");
+        File.WriteAllBytes(first, Pages(2));
+        File.WriteAllBytes(second, Pages(3));
+        var before = SHA256.HashData([.. File.ReadAllBytes(first), .. File.ReadAllBytes(second)]);
+
+        var result = Runner().Run(first, "pdf.merge", "pdf", suffix: " - juntado", moreSources: [second]);
+
+        Assert.Null(result.ErrorCode);
+        Assert.Equal("escritura - juntado.pdf", result.OutputName);
+        var merged = File.ReadAllBytes(Path.Combine(_folder, result.OutputName!));
+        Assert.StartsWith("%PDF-", Encoding.Latin1.GetString(merged.AsSpan(0, 5)));
+        Assert.Equal(before, SHA256.HashData([.. File.ReadAllBytes(first), .. File.ReadAllBytes(second)]));
+        Assert.Equal(3, Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }).Length);
+    }
+
+    [Fact]
+    public void Juntar_com_um_arquivo_corrompido_nao_grava_nada()
+    {
+        var first = Path.Combine(_folder, "escritura.pdf");
+        var second = Path.Combine(_folder, "falso.pdf");
+        File.WriteAllBytes(first, Pages(1));
+        File.WriteAllText(second, "isto não é um PDF");
+
+        var result = Runner().Run(first, "pdf.merge", "pdf", suffix: " - juntado", moreSources: [second]);
+
+        Assert.Equal("CORRUPTED", result.ErrorCode);
+        Assert.Equal(2, Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }).Length);
+    }
+
+    [Fact]
     public void Pacote_malformado_de_um_worker_hostil_nao_grava_nada()
     {
         // SEC-13/SEC-30: o residente confere o pacote; fora do formato, nenhuma parte e nenhum temporário ficam.
