@@ -34,10 +34,10 @@ Reproduzida fora do app, com o mesmo desenho e o mesmo desfoque compilados em Na
 | Parte | Quanto | O que é | Situação |
 | --- | --- | --- | --- |
 | Rascunhos do desfoque | 4 a 5 MB | A meia resolução era alocada no heap grande do .NET a cada gesto, com pixels da tela, e só sumia quando o coletor passava. Contrariava a cópia da tela "zerada ao fechar" (ADR-023) | **Corrigido:** rascunhos fora do heap gerenciado, zerados e soltos ao fim de cada desfoque |
-| Geração 0 do coletor | cerca de 4 MB | O .NET mantém reservado o espaço da geração 0, enchido pelo lixo pequeno dos quadros | Comportamento do runtime; o ajuste do tamanho não é aceito embutido no NativeAOT. Só uma coleta agressiva devolve |
+| Geração 0 do coletor | cerca de 4 MB | O .NET mantém reservado o espaço da geração 0, enchido pelo lixo pequeno dos quadros | **Corrigido:** o ajuste do tamanho não é aceito embutido no NativeAOT; então, 10 s sem mensagens nas janelas do Pizza (o hook do mouse não conta), o residente faz uma coleta agressiva, uma vez, que devolve esse espaço |
 | GDI+ | cerca de 4 MB | Fontes e caches criados no primeiro desenho | Fixo, não cresce |
 
-Depois da correção, o medidor fica em 16,0 a 16,6 MB depois dos gestos (antes, 18 a 21,5 MB). A confirmação no app, com gestos de verdade, está pendente.
+Depois das duas correções, o medidor fica em 16,0 a 16,6 MB logo depois dos gestos e em 12,0 a 12,6 MB depois da coleta (antes, 18 a 21,5 MB). A confirmação no app, com gestos de verdade, está pendente.
 
 ### NFR-04 — imagem de 12 MP
 
