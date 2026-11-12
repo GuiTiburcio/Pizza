@@ -3,15 +3,12 @@ using static Pizza.App.Interop.Native;
 
 namespace Pizza.App;
 
-/// <summary>Ícone do Pizza na área de notificação (ícones ocultos) e seu menu do clique direito.</summary>
+/// <summary>Ícone do Pizza na área de notificação (ícones ocultos); o clique direito abre o <see cref="TrayMenu"/>.</summary>
 internal static unsafe class Tray
 {
     private const string ClassName = "PizzaTray";
     private const uint WmTrayCallback = WM_APP + 1;
     private const uint IconId = 1;
-    private const nuint CommandOpenLogs = 1;
-    private const nuint CommandQuit = 2;
-    private const nuint CommandFiles = 3;
 
     // Identificador que o SDK do .NET dá ao ícone definido em ApplicationIcon.
     private const nint IconResourceId = 32512;
@@ -72,23 +69,6 @@ internal static unsafe class Tray
         return true;
     }
 
-    private static void ShowMenu(int x, int y)
-    {
-        var menu = CreatePopupMenu();
-        AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, "Pizza — ativo");
-        AppendMenuW(menu, MF_SEPARATOR, 0, null);
-        AppendMenuW(menu, MF_STRING, CommandFiles, "Arquivos...");
-        AppendMenuW(menu, MF_STRING, CommandOpenLogs, "Abrir pasta de logs");
-        AppendMenuW(menu, MF_SEPARATOR, 0, null);
-        AppendMenuW(menu, MF_STRING, CommandQuit, "Sair");
-
-        // Sem isto, o menu não fecha ao clicar fora dele.
-        SetForegroundWindow(_window);
-        TrackPopupMenu(menu, TPM_RIGHTBUTTON, x, y, 0, _window, null);
-        PostMessageW(_window, WM_NULL, 0, 0);
-        DestroyMenu(menu);
-    }
-
     public static void OpenLogs()
     {
         try
@@ -117,23 +97,8 @@ internal static unsafe class Tray
             case WmTrayCallback:
                 if ((lParam & 0xFFFF) == WM_CONTEXTMENU)
                 {
-                    ShowMenu((short)(wParam & 0xFFFF), (short)((wParam >> 16) & 0xFFFF));
-                }
-
-                return 0;
-
-            case WM_COMMAND:
-                if ((wParam & 0xFFFF) == CommandFiles)
-                {
-                    FilesPanel.Show();
-                }
-                else if ((wParam & 0xFFFF) == CommandOpenLogs)
-                {
-                    OpenLogs();
-                }
-                else if ((wParam & 0xFFFF) == CommandQuit)
-                {
-                    PostQuitMessage(0);
+                    // ADR-020, prancha 4d-2: menu próprio em vidro, no lugar do menu do Windows.
+                    TrayMenu.Show((short)(wParam & 0xFFFF), (short)((wParam >> 16) & 0xFFFF));
                 }
 
                 return 0;
