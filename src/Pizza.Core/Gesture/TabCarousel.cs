@@ -32,7 +32,8 @@ public sealed class TabCarousel(int count)
 
     public bool IsAnimating => Position != _goal;
 
-    public void Reset(int? pageCount = null)
+    /// <summary><paramref name="start"/>: a aba em que o menu abre, sem animar até ela (FR-03).</summary>
+    public void Reset(int? pageCount = null, int start = 0)
     {
         if (pageCount is { } pages)
         {
@@ -40,9 +41,9 @@ public sealed class TabCarousel(int count)
         }
 
         _accumulatedDelta = 0;
-        _goal = 0;
+        _goal = start;
         _velocity = 0;
-        Position = 0;
+        Position = start;
     }
 
     /// <summary>

@@ -65,6 +65,9 @@ public class QuickOptionsStateTests
     [InlineData("image.png", "Resolução do PNG", 0, "padrão")]
     [InlineData("image.pdf", "Resolução do PDF", 1, "150 dpi")]
     [InlineData("image.ico", "Tamanho do ICO", 2, "48 px")]
+    [InlineData("pdf.rotate", "Girar páginas", 0, "90° · padrão")]
+    [InlineData("pdf.rotate", "Girar páginas", 1, "180°")]
+    [InlineData("pdf.rotate", "Girar páginas", 2, "90°")]
     public void Faixa_mostra_titulo_e_detalhe_de_cada_nivel(string id, string title, int level, string detail)
     {
         // Prancha 4b-1: "Qualidade do WEBP", com o valor embaixo do nome e o padrão marcado.

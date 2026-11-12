@@ -27,7 +27,8 @@ public sealed record ConverterInfo(
     string Caption,
     string Extension,
     IReadOnlyList<string> InputExtensions,
-    IReadOnlyList<ConverterOption> Options)
+    IReadOnlyList<ConverterOption> Options,
+    string Suffix = "")
 {
     /// <summary>Sem opções, a conversão começa ao soltar (FR-21).</summary>
     public bool HasPanel => Options.Count > 0;
@@ -40,7 +41,8 @@ public static class ConverterCatalog
     public const string MetadataStrip = "strip";
     public const string MetadataKeep = "keep";
 
-    private const int ImageTab = 0;
+    public const int ImageTab = 0;
+    public const int PdfTab = 1;
 
     // SEC-45. HEIC fica de fora: o libvips empacotado não traz o codec HEVC.
     private static readonly string[] ImageInputs = [".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".gif", ".avif"];
@@ -89,6 +91,17 @@ public static class ConverterCatalog
             ImageInputs,
             [new("size", "Tamanho", "256", [new("256", "Grande"), new("128", "Médio"), new("48", "Pequeno")])]),
         new("image.gif", ImageTab, "GIF", "256 cores", "gif", ImagesExcept(".gif"), []),
+
+        // ADR-033 e prancha 6A-1: a extensão não muda, então o nome ganha o sufixo.
+        new(
+            "pdf.rotate",
+            PdfTab,
+            "Girar",
+            "Todas as páginas",
+            "pdf",
+            [".pdf"],
+            [new("rotation", "Girar páginas", "90", [new("90", "Direita"), new("180", "Ponta-cabeça"), new("270", "Esquerda")])],
+            Suffix: " - girado"),
     ];
 
     private static string[] ImagesExcept(params string[] own) => ImageInputs.Except(own).ToArray();

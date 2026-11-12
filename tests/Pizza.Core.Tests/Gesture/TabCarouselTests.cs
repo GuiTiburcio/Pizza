@@ -150,4 +150,15 @@ public class TabCarouselTests
         Assert.Equal(0, _carousel.Target);
         Assert.False(_carousel.IsAnimating);
     }
+
+    [Fact]
+    public void Reset_pode_abrir_direto_em_outra_aba_sem_animar()
+    {
+        // FR-03: um PDF abre o menu já na aba PDF.
+        _carousel.Reset(4, start: 1);
+
+        Assert.Equal(1, _carousel.Target);
+        Assert.Equal(1, _carousel.Position);
+        Assert.False(_carousel.IsAnimating);
+    }
 }

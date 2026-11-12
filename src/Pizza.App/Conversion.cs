@@ -68,7 +68,7 @@ internal static class Conversion
             {
                 lock (Gate)
                 {
-                    result = _runner.Run(sourcePath, converter.Id, converter.Extension, options, cancellation.Token, control);
+                    result = _runner.Run(sourcePath, converter.Id, converter.Extension, options, cancellation.Token, control, converter.Suffix);
                 }
             }
             catch (Exception)

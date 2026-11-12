@@ -150,7 +150,7 @@ internal static unsafe partial class Overlay
 
         _prepared = null;
         _pages = RadialMenu.Pages(_files!.Value.First);
-        Carousel.Reset(_pages.Count);
+        Carousel.Reset(_pages.Count, RadialMenu.FirstPage(_files!.Value.First));
         _hoverSlot = null;
         _levelHover = null;
         Strip.Clear();
