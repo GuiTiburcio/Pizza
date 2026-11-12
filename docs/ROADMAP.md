@@ -12,7 +12,9 @@ Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equival
 | Worker isolado e proteção do original | Implementados; testes de integração |
 | Vidro, temas e movimento reduzido | Implementados no disco; validação manual ampla ainda necessária |
 | PDF → outros formatos e operações em PDF | Planejados |
-| Documento, áudio e web | Planejados |
+| Documento | Em andamento: Pizza Brotinho (conversões simples) e Pizza Jumbo (motor de documentos embutido e isolado), [ADR-034](adr/034-brotinho-jumbo-motor-de-documentos.md) |
+| Áudio | Antecipado da v1.x: só com o Media Foundation do Windows (MP3, WAV, M4A/AAC, FLAC); OGG/Opus e vídeo seguem na v1.x |
+| Web | Planejada para v1.x |
 | Vídeo, em aba própria (Media Foundation e FFmpeg) | Planejado para v1.x ([ADR-026](adr/026-aba-video-e-motores.md)); [estudo da barra compacta](propostas/barra-compacta.svg) para a Fase 4d |
 | Lotes | Planejados para v1.x |
 | Configurações completas e políticas de TI | Planejadas |
@@ -24,7 +26,19 @@ Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equival
 
 Fases e critérios completos estão nas [SPECS](SPECS.md). Artefatos experimentais do CI são builds de desenvolvimento.
 
-**Fase 4 — Visual Pizza: concluída em 11/11/2026** ([acompanhamento](FASE-4.md)). Prévia 0.1.0 publicada ([ADR-031](adr/031-previa-pelo-ci.md)). **Fase atual: 5 — medir e endurecer** ([acompanhamento](FASE-5.md)).
+**Fase 4 — Visual Pizza: concluída em 11/11/2026** ([acompanhamento](FASE-4.md)). Prévias 0.1.0 e 0.1.1 publicadas ([ADR-031](adr/031-previa-pelo-ci.md)). **Fase 5 — medir e endurecer** ([acompanhamento](FASE-5.md)): 5a e boa parte da 5b feitas.
+
+**Rota decidida em 12/11/2026:** primeiro as quatro abas convertendo, na ordem Docs → PDF → Áudio; depois a auditoria completa (5c, cobrindo as abas novas) e, por fim, a parte estética (alto contraste e temas).
+
+## Proteção intelectual
+
+Pedido do mantenedor em 12/11/2026. Orientação geral, a confirmar com um agente da propriedade industrial:
+
+| Item | O que é | Prazo |
+| --- | --- | --- |
+| Marca | Registro no INPI de "Pizza", "Pizza Brotinho" e "Pizza Jumbo" | Quanto antes |
+| Registro de programa de computador | Registro no INPI, que comprova autoria e data | Quanto antes |
+| Patente | No Brasil, programa de computador em si não é patenteável (Lei 9.279/96, art. 10, V); só invenção com efeito técnico. O código é público desde 09/11/2026, e o período de graça no Brasil e nos EUA é de 12 meses. A GPL-3.0 (§11) já concede licença de patente a quem recebe o Pizza | Avaliar antes de 09/11/2027 |
 
 ## Ideias para depois da v1.x
 

@@ -115,9 +115,9 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | FR-44 (novo, Fase 3) | Painel "Arquivos...", no clique direito do ícone da bandeja: só em memória, desde que o Pizza abriu, com "Abrir" e "Mostrar na pasta". Na v1.x, também cancelar o lote ou um arquivo e pausar/continuar | 018 |
 | PRIV-18 | Com a sessão bloqueada, a notificação espera o desbloqueio. Como a janela é própria, não há histórico nem espelhamento do Windows | 018 |
 | FR-50, FR-51 | Menu do ícone: Pizza — ativo, Arquivos... (Fase 3), Configuração (Fase 8), Play/Pause/Stop da fila de conversões (v1.x), Abrir pasta de logs e Sair. Cada item só aparece quando funcionar. Vira janela própria de vidro na Fase 4, com uso completo por teclado. Exportar diagnóstico, Limpar dados e Sobre ficam em Configuração. Sai "Pausar por 1 hora" | 019, 020 |
-| SEC-61, SEC-65, SEC-66, POL-08, `OFFICE_UNTRUSTED_SOURCE` | Removidos: no v1, Office só pelo LibreOffice isolado | 019 |
+| SEC-61, SEC-65, SEC-66, POL-08, `OFFICE_UNTRUSTED_SOURCE` | Removidos: no v1, documentos só pelo motor LibreOffice isolado (ADR-034); Word e WPS não entram | 019, 034 |
 | SEC-25, SEC-29 | Um Worker por arquivo, sempre. A saída só é finalizada depois que ele termina | 019 |
-| SEC-58, PRIV-03 | Nenhum download além da atualização. O Pizza detecta o LibreOffice instalado e, se não houver, mostra o link oficial | 019 |
+| SEC-58, PRIV-03 | Nenhum download além da atualização. O motor de documentos vem dentro do **Pizza Jumbo** (LibreOffice embutido pelo CI, versão e SHA-256 fixos), em AppContainer sem rede, pelo LibreOfficeKit; o **Pizza Brotinho** faz só as conversões de documento sem diagramação. Ninguém precisa instalar pacote Office | 019, 034 |
 | §9 | Políticas do v1: POL-02, 03, 04, 05, 06, 12 e 15. A POL-12 fica sem efeito enquanto não houver downloads | 019 |
 | §10.1 | Saem `showHint` e `accentColor` | 019 |
 | SEC-10, 11, 12, 14, 16, TST-06, TST-27 | Removidos: o canal com o Worker usa pipes sem nome, entregues só a ele. SEC-13 e SEC-15 continuam valendo | 021 |
@@ -256,7 +256,7 @@ O Pizza é uma **ferramenta** que roda no computador do cliente. Quem decide con
 | --- | --- |
 | v0.1 | Imagem: JPG, PNG, WEBP, AVIF, TIFF, ICO, GIF, Imagem → PDF |
 | v0.2 | PDF: Comprimir, Juntar, Dividir, Imagens, Word, Girar |
-| v0.3 | Documento: DOCX/XLSX/PPTX → PDF |
+| v0.3 | Documento: DOCX/XLSX/PPTX → PDF no Pizza Jumbo; conversões simples (DOCX → TXT/HTML/MD, XLSX → CSV) também no Pizza Brotinho (ADR-034) |
 | v1.x | Áudio e vídeo (FFmpeg LGPL) e aba Web |
 
 Os níveis de qualidade de cada conversão estão na Parte 7 do `PIZZA-PROJETO.md`.
