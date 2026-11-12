@@ -16,7 +16,9 @@
 
 Conversor de imagens para Windows com menu circular, processamento local e arquivo original preservado.
 
-[Instalar](docs/INSTALACAO.md) · [Guia de TI](docs/TI-GPO.md) · [Como usar](docs/USO.md) · [Dossiê e design](docs/dossie/README.md) · [Documentação](docs/README.md) · [Próximas etapas](docs/ROADMAP.md)
+[![Baixar a prévia](https://img.shields.io/github/v/release/GuiTiburcio/Pizza?include_prereleases&label=baixar%20pr%C3%A9via&color=2F6BFF&style=for-the-badge)](https://github.com/GuiTiburcio/Pizza/releases)
+
+[Baixar](https://github.com/GuiTiburcio/Pizza/releases) · [Instalar](docs/INSTALACAO.md) · [Guia de TI](docs/TI-GPO.md) · [Como usar](docs/USO.md) · [Dossiê e design](docs/dossie/README.md) · [Documentação](docs/README.md) · [Próximas etapas](docs/ROADMAP.md)
 
 </div>
 
