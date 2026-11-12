@@ -15,7 +15,8 @@ public sealed class LogScanTests : IDisposable
     [Fact]
     public void Tudo_o_que_o_pizza_registra_passa_na_varredura()
     {
-        var lines = Enum.GetValues<LogEvent>().Select(logEvent => LogFormat.Line(Moment, logEvent));
+        var lines = Enum.GetValues<LogEvent>().Select(logEvent => LogFormat.Line(Moment, logEvent))
+            .Append(LogFormat.Line(Moment, LogEvent.MenuOpened, 87));
         WriteLog(lines.ToArray());
 
         var (code, output) = Scan();
@@ -28,6 +29,9 @@ public sealed class LogScanTests : IDisposable
     [InlineData("""{"ts":"2026-11-09T19:20:11.482-03:00","lvl":"info","evt":"fachada.jpg"}""")]
     [InlineData("""{"ts":"2026-11-09T19:20:11.482-03:00","lvl":"info","evt":"menu.opened","x":120,"y":300}""")]
     [InlineData("""{"ts":"2026-11-09T19:20:11.482-03:00","lvl":"info","evt":"menu.opened","file":"fachada.jpg"}""")]
+    [InlineData("""{"ts":"2026-11-09T19:20:11.482-03:00","lvl":"info","evt":"menu.opened","ms":"fachada"}""")]
+    [InlineData("""{"ts":"2026-11-09T19:20:11.482-03:00","lvl":"info","evt":"menu.opened","ms":123456}""")]
+    [InlineData("""{"ts":"2026-11-09T19:20:11.482-03:00","lvl":"info","evt":"conversion.done","ms":12}""")]
     [InlineData("senha=segredo123")]
     [InlineData("")]
     public void Linha_fora_do_formato_reprova_sem_mostrar_o_conteudo(string forbidden)

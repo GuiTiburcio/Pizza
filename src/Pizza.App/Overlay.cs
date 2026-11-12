@@ -29,6 +29,7 @@ internal static unsafe partial class Overlay
     private const uint ChoiceIdleMs = 10_000; // ADR-025: 10 s sem nenhuma interação, a escolha fecha.
     private static long _choiceDeadline;
     private static long _dropDeadline;
+    private static long _gestureStarted; // NFR-03: do início do gesto até o menu na tela.
     private const uint LeaveGraceMs = 80;
     private const uint WatchdogMs = 250;
     private const uint AnimationMs = 10;
@@ -136,7 +137,9 @@ internal static unsafe partial class Overlay
         IsVisible = true;
         Render();
         SetWindowPos(Disc, HWND_TOPMOST, _left, _top, width, height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
-        Log.Write(LogEvent.MenuOpened);
+        int? elapsed = _gestureStarted == 0 ? null : (int)System.Diagnostics.Stopwatch.GetElapsedTime(_gestureStarted).TotalMilliseconds;
+        _gestureStarted = 0;
+        Log.Write(LogEvent.MenuOpened, elapsed);
     }
 
     public static MotionStyle ResolveMotion()

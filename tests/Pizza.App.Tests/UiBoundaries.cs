@@ -22,7 +22,7 @@ internal static class DiscRenderer
 
 internal static class Log
 {
-    public static void Write(LogEvent value) { }
+    public static void Write(LogEvent value, int? milliseconds = null) { }
 }
 
 internal static class OptionsPanel

@@ -10,7 +10,7 @@ internal static class Log
 
     public static string Folder { get; } = Path.Combine(ProductInfo.DataFolder, "logs");
 
-    public static void Write(LogEvent logEvent)
+    public static void Write(LogEvent logEvent, int? milliseconds = null)
     {
         try
         {
@@ -23,7 +23,7 @@ internal static class Log
                 _lastPurge = today;
             }
 
-            File.AppendAllText(Path.Combine(Folder, LogFormat.FileName(today)), LogFormat.Line(now, logEvent) + Environment.NewLine);
+            File.AppendAllText(Path.Combine(Folder, LogFormat.FileName(today)), LogFormat.Line(now, logEvent, milliseconds) + Environment.NewLine);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
