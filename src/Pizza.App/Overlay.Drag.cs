@@ -203,6 +203,7 @@ internal static unsafe partial class Overlay
         HideWindow();
         _files = null;
         Session.Begin();
+        PrepareAtCursor();
 
         SetWindowPos(
             _catcher,
