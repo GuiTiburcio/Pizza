@@ -7,7 +7,7 @@ public static class ConverterRegistry
     [
         new ImageJpegConverter(), new ImagePngConverter(), new ImageWebpConverter(), new ImageAvifConverter(), new ImagePdfConverter(),
         new ImageTiffConverter(), new ImageIcoConverter(), new ImageGifConverter(),
-        new Pdf.PdfRotateConverter(),
+        new Pdf.PdfSplitConverter(), new Pdf.PdfRotateConverter(),
     ];
 
     public static IConverter? Find(string id) => All.FirstOrDefault(converter => converter.Id == id);

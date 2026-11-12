@@ -110,7 +110,9 @@ internal static unsafe class Notifications
         else
         {
             History.Complete(finished.Id, Path.Combine(Path.GetDirectoryName(entry.SourcePath)!, result.OutputName!));
-            Stack.Set(finished.Id, NotificationKind.Success, "Conversão concluída", took is null ? result.OutputName! : $"{result.OutputName} · {took}");
+            // Dividir: o primeiro arquivo e quantos vieram junto; "Abrir" abre o primeiro.
+            var created = result.Count > 1 ? $"{result.OutputName} e mais {result.Count - 1}" : result.OutputName!;
+            Stack.Set(finished.Id, NotificationKind.Success, "Conversão concluída", took is null ? created : $"{created} · {took}");
             Play("concluido.wav");
         }
 

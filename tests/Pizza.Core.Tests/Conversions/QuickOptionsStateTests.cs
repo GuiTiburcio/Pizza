@@ -68,6 +68,8 @@ public class QuickOptionsStateTests
     [InlineData("pdf.rotate", "Girar páginas", 0, "90° · padrão")]
     [InlineData("pdf.rotate", "Girar páginas", 1, "180°")]
     [InlineData("pdf.rotate", "Girar páginas", 2, "90°")]
+    [InlineData("pdf.split", "Como dividir", 0, "1 arquivo por pág. · padrão")]
+    [InlineData("pdf.split", "Como dividir", 1, "2 arquivos")]
     public void Faixa_mostra_titulo_e_detalhe_de_cada_nivel(string id, string title, int level, string detail)
     {
         // Prancha 4b-1: "Qualidade do WEBP", com o valor embaixo do nome e o padrão marcado.

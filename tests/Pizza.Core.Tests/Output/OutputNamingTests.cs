@@ -30,6 +30,18 @@ public class OutputNamingTests
     }
 
     [Theory]
+    [InlineData("pages", 1, 5, " - pág 01")]
+    [InlineData("pages", 12, 12, " - pág 12")]
+    [InlineData("pages", 7, 150, " - pág 007")]
+    [InlineData("half", 1, 2, " - parte 1")]
+    [InlineData("half", 2, 2, " - parte 2")]
+    public void Partes_do_dividir_ficam_em_ordem_no_explorer(string mode, int part, int count, string expected)
+    {
+        // Prancha 6A-1: "escritura - pág 01.pdf" e "escritura - parte 1.pdf".
+        Assert.Equal(expected, OutputNaming.PartSuffix(mode, part, count));
+    }
+
+    [Theory]
     [InlineData("nota fiscal ação.jpg", "nota fiscal ação.png")]
     [InlineData("foto.final.v2.jpeg", "foto.final.v2.png")]
     [InlineData("sem-extensao", "sem-extensao.png")]
