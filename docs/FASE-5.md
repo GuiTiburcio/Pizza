@@ -6,7 +6,7 @@ Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste) (
 
 | Etapa | Entrega | Situação |
 | --- | --- | --- |
-| 5a — medições | NFR-01 a NFR-04 medidos e registrados | Em andamento |
+| 5a — medições | NFR-01 a NFR-04 medidos e registrados | NFR-01, 02 e 03 dentro da meta; NFR-04 acima em PNG padrão, WEBP e AVIF (só registrado); fotos reais e memória retida pendentes |
 | 5b — endurecimento | PRIV-05 e TST-20 (sem dump e fora do WER), V-03 (ACL), V-04 (SVG renomeado), SBOM pelas dependências, alto contraste | Pendente |
 | TST-13 | Captura de tráfego por 24 h de uso | Pendente; roda no PC do mantenedor |
 | 5c — auditoria | TST-28 com a skill `security-audit` (completa, perfil standard, verificação independente) e o Strix | Pendente |
@@ -25,7 +25,7 @@ Cópia local do `main` em `d13c760` (prévia 0.1.0), Windows 11, notebook do man
 | CPU em 60 s parado | 0 ms | 0% |
 | Conjunto de trabalho | 34,9 MB | — (inclui DLLs do Windows, ver NFR-01 na §2.1) |
 
-Com o menu aberto: medição em andamento.
+Com uso real (menu, painel e conversão, amostragem a cada 100 ms por 3 minutos): pico de **19,5 MB**, dentro da meta mas perto dela. Depois do uso, parado, ficou em 17,7 MB, contra 7,9 MB ao abrir: cerca de 10 MB não voltam. A investigar no endurecimento (5b).
 
 ### NFR-04 — imagem de 12 MP
 
@@ -57,4 +57,16 @@ O esforço muda quanto o codificador procura a melhor compressão, não a qualid
 
 ### NFR-03 — gesto até o menu
 
-Pendente: precisa de medição dentro do app, do início do arraste até o primeiro quadro do menu na tela.
+O evento `menu.opened` do log passou a levar o tempo do início do gesto até o menu na tela, em ms (só um número, PRIV-16; o verificador do TST-09 aceita só esse campo extra).
+
+| | Antes | Depois da correção |
+| --- | --- | --- |
+| Mediana | 140 ms (16 gestos) | **87 ms** (9 gestos) |
+| Faixa | 77 a 174 ms | 69 a 149 ms |
+| Dentro de ≤ 100 ms | 2 de 16 | 8 de 9 |
+
+**Causa**, medida por trecho numa versão temporária do app (10 gestos, escala de 100%): o Windows leva de 12 a 19 ms, ou de 83 a 91 ms, para entregar o arraste de arquivos; a cópia da tela com o desfoque do vidro levava de 40 a 54 ms; o desenho, de 9 a 12 ms.
+
+**Correção:** o desfoque passou a ser feito em meia resolução, igual a olho e com cerca de um quarto do trabalho; e a cópia com o desfoque passou para o início do gesto, enquanto o Windows ainda não confirmou o arraste. Se não for arquivo, o fechamento zera a cópia (ADR-023).
+
+O único gesto acima da meta foi o primeiro depois de abrir o Pizza (149 ms), quando o Windows ainda carrega fontes e o GDI+.
