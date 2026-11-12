@@ -26,6 +26,11 @@ internal sealed unsafe class PdfDocument : IDisposable
 
     private static readonly string[] ActionPayload = ["/F", "/Win", "/Mac", "/Unix", "/Fields", "/Next"];
 
+    // Mapas de recursos: as chaves são apelidos escolhidos pelo autor ("/AA 12 Tf"), não chaves de conteúdo ativo.
+    // Eles não são limpos; os objetos para onde apontam, sim.
+    private static readonly string[] ResourceMaps =
+        ["/Font", "/XObject", "/ExtGState", "/ColorSpace", "/Pattern", "/Shading", "/Properties"];
+
     private readonly int _length;
     private nint _qpdf;
     private byte* _source;
@@ -109,13 +114,15 @@ internal sealed unsafe class PdfDocument : IDisposable
     public int RemoveActiveContent()
     {
         var removed = 0;
-        var visited = new HashSet<(int, int)>();
-        var pending = new Stack<uint>();
-        pending.Push(Qpdf.Trailer(_qpdf));
-        while (pending.TryPop(out var handle))
+        // O papel entra na chave: um objeto usado ao mesmo tempo como mapa de recursos e como /Names é limpo mesmo assim.
+        var visited = new HashSet<(int, int, bool)>();
+        var pending = new Stack<(uint Handle, bool NameMap)>();
+        pending.Push((Qpdf.Trailer(_qpdf), false));
+        while (pending.TryPop(out var item))
         {
+            var handle = item.Handle;
             var id = Qpdf.ObjectId(_qpdf, handle);
-            if (id != 0 && !visited.Add((id, Qpdf.Generation(_qpdf, handle))))
+            if (id != 0 && !visited.Add((id, Qpdf.Generation(_qpdf, handle), item.NameMap)))
             {
                 continue;
             }
@@ -129,15 +136,19 @@ internal sealed unsafe class PdfDocument : IDisposable
             {
                 for (var index = 0; index < Qpdf.ArrayCount(_qpdf, handle); index++)
                 {
-                    pending.Push(Qpdf.ArrayItem(_qpdf, handle, index));
+                    pending.Push((Qpdf.ArrayItem(_qpdf, handle, index), false));
                 }
             }
             else if (Qpdf.IsDictionary(_qpdf, handle) != 0)
             {
-                removed += Clean(handle);
+                if (!item.NameMap)
+                {
+                    removed += Clean(handle);
+                }
+
                 foreach (var key in Keys(handle))
                 {
-                    pending.Push(Qpdf.Key(_qpdf, handle, key));
+                    pending.Push((Qpdf.Key(_qpdf, handle, key), !item.NameMap && ResourceMaps.Contains(key)));
                 }
             }
         }

@@ -91,6 +91,48 @@ public class PdfRotateConverterTests
     }
 
     [Fact]
+    public void Recurso_com_nome_igual_a_chave_ativa_continua_na_pagina()
+    {
+        // Nos mapas de recursos, /AA, /JS e /EF são só apelidos usados pelo conteúdo ("/AA 12 Tf").
+        var pdf = TestPdf.Build(
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [4 0 R] /Count 1 >>",
+            "<< /Length 30 >>\nstream\nBT /AA 12 Tf (oi) Tj ET /JS Do\nendstream",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] /Contents 3 0 R /Resources << /Font << /AA 5 0 R >> /XObject << /JS 6 0 R >> /ExtGState << /EF << /CA 1 >> >> >> >>",
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+            "<< /Type /XObject /Subtype /Form /BBox [0 0 10 10] /Length 0 >>\nstream\n\nendstream");
+
+        var (error, output) = Rotate(pdf);
+
+        Assert.Null(error);
+        var inspection = PdfInspection.Of(output);
+        Assert.True(inspection.Valid);
+        Assert.Matches(@"/Font << /AA \d+ 0 R >>", inspection.Everything);
+        Assert.Matches(@"/XObject << /JS \d+ 0 R >>", inspection.Everything);
+        Assert.Matches(@"/ExtGState << /EF ", inspection.Everything);
+    }
+
+    [Fact]
+    public void Mapa_de_recursos_reaproveitado_como_names_nao_esconde_javascript()
+    {
+        // O objeto 6 é ao mesmo tempo o mapa de fontes da página e o /Names do catálogo.
+        var pdf = TestPdf.Build(
+            "<< /Type /Catalog /Pages 2 0 R /Names 6 0 R >>",
+            "<< /Type /Pages /Kids [4 0 R] /Count 1 >>",
+            "<< /Length 0 >>\nstream\n\nendstream",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] /Contents 3 0 R /Resources << /Font 6 0 R >> >>",
+            "<< /S /JavaScript /JS (escondido) >>",
+            "<< /JavaScript << /Names [(a) 5 0 R] >> >>");
+
+        var (error, output) = Rotate(pdf);
+
+        Assert.Null(error);
+        var inspection = PdfInspection.Of(output);
+        Assert.Empty(inspection.ActiveContent);
+        Assert.DoesNotContain("escondido", inspection.Everything);
+    }
+
+    [Fact]
     public void Pdf_com_senha_e_recusado_sem_gravar_nada()
     {
         // SEC-74 enquanto o campo de senha (FR-24) não existe: nada sai sem proteção.
