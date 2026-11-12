@@ -6,6 +6,8 @@ Regras para qualquer pessoa ou agente que escreva código neste repositório. El
 
 **Troca assumida:** estas regras preferem cautela a velocidade. Para tarefas triviais, use bom senso.
 
+**Comunicação do projeto:** leia e aplique a skill [caveman](.agents/skills/caveman/SKILL.md), solicitada pelo mantenedor. Use português conciso e preserve todos os detalhes técnicos necessários. A compressão é só das respostas no chat; código, comentários, documentação, interface, testes, commits e PRs mantêm redação completa. Segurança, clareza e instruções da plataforma prevalecem. Perguntas e opções usam frases completas.
+
 ---
 
 ## 1. Pensar antes de codar
