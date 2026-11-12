@@ -7,7 +7,7 @@ Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste) (
 | Etapa | Entrega | Situação |
 | --- | --- | --- |
 | 5a — medições | NFR-01 a NFR-04 medidos e registrados | NFR-01, 02 e 03 dentro da meta; NFR-04 acima em PNG padrão, WEBP e AVIF (só registrado); fotos reais e memória retida pendentes |
-| 5b — endurecimento | PRIV-05 e TST-20 (sem dump e fora do WER), V-03 (ACL), V-04 (SVG renomeado), SBOM pelas dependências, alto contraste | Pendente |
+| 5b — endurecimento | Memória retida, PRIV-05 e TST-20 (sem dump e fora do WER), V-03 (ACL), V-04 (SVG renomeado), SBOM pelas dependências, alto contraste | Memória retida: causa achada, desfoque corrigido; o resto pendente |
 | TST-13 | Captura de tráfego por 24 h de uso | Pendente; roda no PC do mantenedor |
 | 5c — auditoria | TST-28 com a skill `security-audit` (completa, perfil standard, verificação independente) e o Strix | Pendente |
 
@@ -26,6 +26,18 @@ Cópia local do `main` em `d13c760` (prévia 0.1.0), Windows 11, notebook do man
 | Conjunto de trabalho | 34,9 MB | — (inclui DLLs do Windows, ver NFR-01 na §2.1) |
 
 Com uso real (menu, painel e conversão, amostragem a cada 100 ms por 3 minutos): pico de **19,5 MB**, dentro da meta mas perto dela. Depois do uso, parado, ficou em 17,7 MB, contra 7,9 MB ao abrir: cerca de 10 MB não voltam. A investigar no endurecimento (5b).
+
+### Memória retida depois do uso (5b, 12/11/2026)
+
+Reproduzida fora do app, com o mesmo desenho e o mesmo desfoque compilados em NativeAOT: cada gesto copia e desfoca a tela e desenha 60 quadros. De 7,8 MB ao abrir, chega a 18 a 21,5 MB e para de crescer entre 50 e 150 gestos: **não é vazamento**. São três partes:
+
+| Parte | Quanto | O que é | Situação |
+| --- | --- | --- | --- |
+| Rascunhos do desfoque | 4 a 5 MB | A meia resolução era alocada no heap grande do .NET a cada gesto, com pixels da tela, e só sumia quando o coletor passava. Contrariava a cópia da tela "zerada ao fechar" (ADR-023) | **Corrigido:** rascunhos fora do heap gerenciado, zerados e soltos ao fim de cada desfoque |
+| Geração 0 do coletor | cerca de 4 MB | O .NET mantém reservado o espaço da geração 0, enchido pelo lixo pequeno dos quadros | Comportamento do runtime; o ajuste do tamanho não é aceito embutido no NativeAOT. Só uma coleta agressiva devolve |
+| GDI+ | cerca de 4 MB | Fontes e caches criados no primeiro desenho | Fixo, não cresce |
+
+Depois da correção, o medidor fica em 16,0 a 16,6 MB depois dos gestos (antes, 18 a 21,5 MB). A confirmação no app, com gestos de verdade, está pendente.
 
 ### NFR-04 — imagem de 12 MP
 

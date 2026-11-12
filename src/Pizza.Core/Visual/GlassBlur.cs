@@ -25,10 +25,10 @@ public static class GlassBlur
 
         var halfWidth = width / 2;
         var halfHeight = height / 2;
-        var half = new byte[halfWidth * halfHeight * 4];
-        Shrink(bgra, width, half, halfWidth, halfHeight);
-        BlurPasses(half, halfWidth, halfHeight, (radius + 1) / 2);
-        Enlarge(half, halfWidth, halfHeight, bgra, width, height);
+        using var half = new Scratch<byte>(halfWidth * halfHeight * 4);
+        Shrink(bgra, width, half.Span, halfWidth, halfHeight);
+        BlurPasses(half.Span, halfWidth, halfHeight, (radius + 1) / 2);
+        Enlarge(half.Span, halfWidth, halfHeight, bgra, width, height);
         Saturate(bgra, saturation);
     }
 
@@ -41,11 +41,36 @@ public static class GlassBlur
 
     private static void BlurPasses(Span<byte> bgra, int width, int height, int radius)
     {
-        var line = new int[Math.Max(width, height) * 3];
+        using var line = new Scratch<int>(Math.Max(width, height) * 3);
         for (var pass = 0; pass < Passes; pass++)
         {
-            Blur(bgra, width, height, radius, horizontal: true, line);
-            Blur(bgra, width, height, radius, horizontal: false, line);
+            Blur(bgra, width, height, radius, horizontal: true, line.Span);
+            Blur(bgra, width, height, radius, horizontal: false, line.Span);
+        }
+    }
+
+    /// <summary>
+    /// Rascunho com pixels da tela (ADR-023): fora do heap gerenciado e zerado antes de ser solto, como a cópia da
+    /// tela. Assim nada fica para o coletor (NFR-01) nem sobra conteúdo da tela na memória depois do gesto.
+    /// </summary>
+    private readonly unsafe struct Scratch<T> : IDisposable
+        where T : unmanaged
+    {
+        private readonly T* _pointer;
+        private readonly int _length;
+
+        public Scratch(int length)
+        {
+            _length = length;
+            _pointer = (T*)System.Runtime.InteropServices.NativeMemory.Alloc((nuint)length, (nuint)sizeof(T));
+        }
+
+        public Span<T> Span => new(_pointer, _length);
+
+        public void Dispose()
+        {
+            Span.Clear();
+            System.Runtime.InteropServices.NativeMemory.Free(_pointer);
         }
     }
 
@@ -108,7 +133,7 @@ public static class GlassBlur
     }
 
     /// <summary>Média deslizante numa direção, com a borda repetida.</summary>
-    private static void Blur(Span<byte> bgra, int width, int height, int radius, bool horizontal, int[] line)
+    private static void Blur(Span<byte> bgra, int width, int height, int radius, bool horizontal, Span<int> line)
     {
         var length = horizontal ? width : height;
         var lines = horizontal ? height : width;
