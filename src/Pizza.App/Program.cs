@@ -40,9 +40,31 @@ internal static unsafe class Program
         GestureHook.Install();
         Log.Write(LogEvent.AppStarted);
 
+        // NFR-01: o hook do mouse não passa por aqui; só mensagens das janelas do Pizza e da conversão adiam a coleta.
+        var idle = new IdleCollection();
+        nuint idleTimer = 0;
         MSG message;
         while (GetMessageW(&message, 0, 0, 0) > 0)
         {
+            var isIdleTimer = message.Message == WM_TIMER && message.Hwnd == 0 && idleTimer != 0 && message.WParam == idleTimer;
+            switch (idle.OnMessage(isIdleTimer))
+            {
+                case IdleStep.Rearm:
+                    idleTimer = SetTimer(0, idleTimer, (uint)IdleCollection.Delay.TotalMilliseconds, 0);
+                    break;
+
+                case IdleStep.Collect:
+                    KillTimer(0, idleTimer);
+                    idleTimer = 0;
+                    GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+                    break;
+            }
+
+            if (isIdleTimer)
+            {
+                continue;
+            }
+
             TranslateMessage(&message);
             DispatchMessageW(&message);
         }

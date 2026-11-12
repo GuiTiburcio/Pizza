@@ -106,6 +106,23 @@ public class GlassBlurTests
         Assert.All(Enumerable.Range(0, width * height), p => Assert.Equal(255, fast[(p * 4) + 3]));
     }
 
+    [Theory]
+    [InlineData(11)] // meia resolução
+    [InlineData(3)] // resolução cheia
+    public void Desfoque_nao_deixa_pixels_da_tela_no_heap_gerenciado(int radius)
+    {
+        // ADR-023 e NFR-01: os rascunhos do desfoque guardam pixels da tela. Ficam fora do heap gerenciado, zerados
+        // e soltos ao fim, para não esperar o coletor nem engordar a memória retida depois do gesto.
+        var pixels = Solid(400, 562, 10, 20, 30);
+        GlassBlur.Apply(pixels, 400, 562, radius, saturation: 1.8);
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        GlassBlur.Apply(pixels, 400, 562, radius, saturation: 1.8);
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.True(allocated < 1024, $"alocou {allocated} bytes");
+    }
+
     [Fact]
     public void Imagem_menor_que_o_raio_nao_quebra()
     {
