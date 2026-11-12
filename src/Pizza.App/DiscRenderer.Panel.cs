@@ -145,7 +145,12 @@ internal static unsafe partial class DiscRenderer
                     DrawKeep(g, bounds.Top, enabled: true, state.KeepMetadata, colors);
                     if (state.Focus.Kind == PanelTargetKind.Keep)
                     {
-                        FocusRing(g, bounds, colors);
+                        // O foco contorna só a caixinha; o clique continua valendo na linha inteira (44 px).
+                        const float left = OptionsPanelState.Padding + 3 - 4;
+                        var boxTop = bounds.Top + ((OptionsPanelState.KeepRowHeight - KeepBoxSize) / 2) - 4;
+                        var ring = RoundedRect(left, boxTop, KeepBoxSize + 8, KeepBoxSize + 8, 7);
+                        Stroke(g, Ink(colors.Text), 2, ring);
+                        GdipDeletePath(ring);
                     }
 
                     break;
@@ -189,13 +194,32 @@ internal static unsafe partial class DiscRenderer
 
         Lens(g, Ellipse(thumbX, cy, 14), thumbX, cy, 0, 1, veil);
 
-        const float boxWidth = 64;
-        const float boxHeight = 30;
-        var boxLeft = state.Width - OptionsPanelState.Padding - boxWidth;
-        var boxTop = OptionsPanelState.RowLabelTop(row) - 6;
-        var box = new PanelRect((int)boxLeft, (int)boxTop, (int)(boxLeft + boxWidth), (int)(boxTop + boxHeight));
+        var box = state.ValueBox(row);
+        float boxLeft = box.Left, boxTop = box.Top, boxWidth = box.Right - box.Left, boxHeight = box.Bottom - box.Top;
         Surface(g, box, 8);
-        Text(g, state.ValueText(row) + " %", _semibold, 13, StyleBold, Ink(colors.Text), boxLeft, boxTop, boxWidth, boxHeight);
+        var text = state.ValueText(row);
+        var editing = state.IsEditing(row);
+        var typing = state.IsTyping(row);
+        const float numberWidth = 30;
+        const float numberLeft = 8;
+        if (editing && !typing)
+        {
+            // Valor selecionado: o primeiro dígito o substitui.
+            var selection = RoundedRect(boxLeft + numberLeft, boxTop + 5, numberWidth, boxHeight - 10, 3);
+            Fill(g, Ink(colors.Accent), selection);
+            GdipDeletePath(selection);
+        }
+
+        Text(g, text, _semibold, 13, StyleBold, editing && !typing ? Ink(colors.OnAccent) : Ink(colors.Text), boxLeft + numberLeft, boxTop, numberWidth, boxHeight, typing ? AlignFar : AlignCenter);
+        Text(g, "%", _semibold, 13, StyleBold, Ink(colors.Text), boxLeft + numberLeft + numberWidth, boxTop, boxWidth - numberLeft - numberWidth - 4, boxHeight);
+        if (typing)
+        {
+            // Cursor logo depois do que foi digitado.
+            var caret = RoundedRect(boxLeft + numberLeft + numberWidth + 1, boxTop + 7, 1.5f, boxHeight - 14, 0.5f);
+            Fill(g, Ink(colors.Text), caret);
+            GdipDeletePath(caret);
+        }
+
         if (state.Focus == (PanelTargetKind.Slider, row))
         {
             var ring = RoundedRect(boxLeft + 1, boxTop + 1, boxWidth - 2, boxHeight - 2, 8);

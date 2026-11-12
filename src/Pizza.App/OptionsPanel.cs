@@ -237,6 +237,14 @@ internal static unsafe class OptionsPanel
             return;
         }
 
+        if (state.ValueBoxAt(x, y + viewport.Offset) is { } editRow)
+        {
+            // ADR-030: a caixa do valor é editável; o número fica selecionado até o primeiro dígito.
+            state.EditValue(editRow);
+            Render();
+            return;
+        }
+
         if (state.TargetAt(x, y + viewport.Offset) is not { } target)
         {
             return;

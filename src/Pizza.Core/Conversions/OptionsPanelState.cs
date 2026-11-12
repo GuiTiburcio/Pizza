@@ -66,10 +66,14 @@ public sealed class OptionsPanelState
     private const int Full = 100;
     private const int BigStep = 10;
     private const int MaxDigits = 3;
+    private const int BoxWidth = 64;
+    private const int BoxHeight = 28;
+    private const int BoxRaise = 6;
 
     private readonly int[] _selected;
     private readonly int[] _percent;
     private string? _typed;
+    private bool _editing;
     private readonly List<(PanelTargetKind Kind, int Row)> _stops = [];
     private readonly List<PanelTarget> _targets = [];
     private int _focus;
@@ -149,6 +153,37 @@ public sealed class OptionsPanelState
     /// <summary>O que a caixa ao lado do título mostra: o que está sendo digitado, ou o valor.</summary>
     public string ValueText(int row) => IsTyping(row) ? _typed! : _percent[row].ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>Caixa do valor, à direita do título da régua, acima do trilho.</summary>
+    public PanelRect ValueBox(int row)
+    {
+        var top = RowLabelTop(row) - BoxRaise;
+        return new PanelRect(PanelWidth - Padding - BoxWidth, top, PanelWidth - Padding, top + BoxHeight);
+    }
+
+    /// <summary>Linha da régua cuja caixa do valor está sob o ponto.</summary>
+    public int? ValueBoxAt(int x, int y)
+    {
+        for (var row = 0; row < Rows.Count; row++)
+        {
+            if (IsSlider(row) && ValueBox(row).Contains(x, y))
+            {
+                return row;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Clique na caixa: foca a régua com o valor selecionado; o primeiro dígito o substitui.</summary>
+    public void EditValue(int row)
+    {
+        Commit();
+        _focus = _stops.IndexOf((PanelTargetKind.Slider, row));
+        _editing = true;
+    }
+
+    public bool IsEditing(int row) => _editing && Focus == (PanelTargetKind.Slider, row);
+
     /// <summary>Trilho da régua: o centro do pino vai de uma ponta à outra, a 14 px da borda do alvo.</summary>
     public PanelRect SliderTrack(int row)
     {
@@ -192,7 +227,8 @@ public sealed class OptionsPanelState
     {
         if (Focus.Kind == PanelTargetKind.Slider)
         {
-            var text = _typed ?? ValueText(Focus.Row);
+            // Com o valor selecionado (clique na caixa), apagar limpa tudo.
+            var text = _typed ?? (IsEditing(Focus.Row) ? "x" : ValueText(Focus.Row));
             _typed = text.Length > 0 ? text[..^1] : text;
         }
     }
@@ -320,11 +356,13 @@ public sealed class OptionsPanelState
         return options;
     }
 
-    private bool IsTyping(int row) => _typed is not null && Focus == (PanelTargetKind.Slider, row);
+    /// <summary>Há dígitos sendo digitados na caixa desta régua.</summary>
+    public bool IsTyping(int row) => _typed is not null && Focus == (PanelTargetKind.Slider, row);
 
     /// <summary>O que foi digitado vale ao sair da caixa, limitado à régua.</summary>
     private void Commit()
     {
+        _editing = false;
         if (_typed is not null)
         {
             _percent[Focus.Row] = Clamp(Focus.Row, TypedValue());

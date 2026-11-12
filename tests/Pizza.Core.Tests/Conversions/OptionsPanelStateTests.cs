@@ -150,6 +150,38 @@ public class OptionsPanelStateTests
     }
 
     [Fact]
+    public void Clicar_na_caixa_seleciona_o_valor_e_o_digito_substitui()
+    {
+        // ADR-030: a caixa ao lado do título é editável com o mouse.
+        var panel = Panel("image.png");
+        panel.Press(PanelKey.Tab);
+        var box = panel.ValueBox(0);
+
+        Assert.Equal(0, panel.ValueBoxAt(box.Left + 1, box.Top + 1));
+        panel.EditValue(0);
+
+        Assert.Equal((PanelTargetKind.Slider, 0), panel.Focus);
+        Assert.True(panel.IsEditing(0));
+        panel.Type('6');
+        panel.Type('7');
+        Assert.Equal("67", panel.ValueText(0));
+        panel.Press(PanelKey.Tab);
+        Assert.False(panel.IsEditing(0));
+        Assert.Equal("67", panel.Options()["resolution"]);
+    }
+
+    [Fact]
+    public void Caixa_do_valor_nao_cobre_a_regua_nem_o_titulo()
+    {
+        var panel = Panel("image.png");
+        var box = panel.ValueBox(0);
+
+        Assert.All(panel.Targets, target => Assert.False(target.Bounds.Overlaps(box)));
+        Assert.Null(panel.ValueBoxAt(1, 1));
+        Assert.True(box.Right <= panel.Width - OptionsPanelState.Padding);
+    }
+
+    [Fact]
     public void Digitar_fora_da_regua_nao_faz_nada()
     {
         var panel = Panel("image.png");
