@@ -7,7 +7,7 @@ Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste) (
 | Etapa | Entrega | Situação |
 | --- | --- | --- |
 | 5a — medições | NFR-01 a NFR-04 medidos e registrados | NFR-01, 02 e 03 dentro da meta; NFR-04 acima em PNG padrão, WEBP e AVIF (só registrado); fotos reais e memória retida pendentes |
-| 5b — endurecimento | Memória retida, PRIV-05 e TST-20 (sem dump e fora do WER), V-03 (ACL), V-04 (SVG renomeado), SBOM pelas dependências, alto contraste | Memória retida: causa achada, desfoque corrigido; o resto pendente |
+| 5b — endurecimento | Memória retida, PRIV-05 e TST-20 (sem dump e fora do WER), V-03 (ACL), V-04 (SVG renomeado), SBOM pelas dependências, alto contraste | Memória retida corrigida (17,7 → 11,2 MB depois do uso); o resto pendente |
 | TST-13 | Captura de tráfego por 24 h de uso | Pendente; roda no PC do mantenedor |
 | 5c — auditoria | TST-28 com a skill `security-audit` (completa, perfil standard, verificação independente) e o Strix | Pendente |
 
@@ -37,7 +37,7 @@ Reproduzida fora do app, com o mesmo desenho e o mesmo desfoque compilados em Na
 | Geração 0 do coletor | cerca de 4 MB | O .NET mantém reservado o espaço da geração 0, enchido pelo lixo pequeno dos quadros | **Corrigido:** o ajuste do tamanho não é aceito embutido no NativeAOT; então, 10 s sem mensagens nas janelas do Pizza (o hook do mouse não conta), o residente faz uma coleta agressiva, uma vez, que devolve esse espaço |
 | GDI+ | cerca de 4 MB | Fontes e caches criados no primeiro desenho | Fixo, não cresce |
 
-Depois das duas correções, o medidor fica em 16,0 a 16,6 MB logo depois dos gestos e em 12,0 a 12,6 MB depois da coleta (antes, 18 a 21,5 MB). A confirmação no app, com gestos de verdade, está pendente.
+Depois das duas correções, o medidor fica em 16,0 a 16,6 MB logo depois dos gestos e em 12,0 a 12,6 MB depois da coleta (antes, 18 a 21,5 MB). No app, com gestos e conversão de verdade, o mantenedor mediu **11,2 MB** parado depois do uso, contra 17,7 MB antes.
 
 ### NFR-04 — imagem de 12 MP
 
