@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
+using Pizza.Core.Diagnostics;
 using Pizza.Core.Ipc;
 
 namespace Pizza.Integration.Tests;
@@ -41,6 +42,18 @@ public sealed class SandboxTests(SandboxFixture fixture) : IDisposable
     public void No_sandbox_o_token_do_Windows_confirma_o_AppContainer()
     {
         Assert.Equal("True", RunProbeInSandbox()["is_appcontainer"]);
+    }
+
+    [Fact]
+    public void No_sandbox_o_Worker_trava_sem_chamar_o_WER()
+    {
+        // PRIV-05 (ADR-032): o Worker herda do residente o modo sem WER antes de rodar qualquer código. Sem essa
+        // herança, o Worker sabotado gerou dump mesmo no AppContainer.
+        const uint NoGpFaultErrorBox = 0x0002;
+        CrashReporting.Suppress(); // como o residente faz ao abrir
+        var mode = uint.Parse(RunProbeInSandbox()["error_mode"], System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.Equal(NoGpFaultErrorBox, mode & NoGpFaultErrorBox);
     }
 
     [Theory]

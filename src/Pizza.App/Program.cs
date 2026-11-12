@@ -12,12 +12,15 @@ internal static unsafe class Program
     [STAThread]
     private static int Main()
     {
+        // PRIV-05 (ADR-032): antes de tudo, para que nenhum travamento vire dump ou relatório do Windows.
+        CrashReporting.Suppress();
         using var instance = new Mutex(initiallyOwned: true, @"Local\Pizza.Residente", out var isFirst);
         if (!isFirst)
         {
             return 0;
         }
 
+        CrashReporting.ExcludeFromWer([Environment.ProcessPath!, Path.Combine(AppContext.BaseDirectory, "Pizza.Worker.exe")]);
         SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         Marshal.ThrowExceptionForHR(OleInitialize(0));
 

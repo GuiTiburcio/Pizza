@@ -3,6 +3,7 @@ using System.Globalization;
 using Microsoft.Win32.SafeHandles;
 using Pizza.Converters;
 using Pizza.Core.Conversions;
+using Pizza.Core.Diagnostics;
 using Pizza.Core.Ipc;
 
 namespace Pizza.Worker;
@@ -21,6 +22,8 @@ internal static class Program
     /// </summary>
     private static int Main(string[] args)
     {
+        // PRIV-05 (ADR-032): o job já força este modo; aqui fica a segunda barreira.
+        CrashReporting.Suppress();
         if (args is not ["--in", var input, "--out", var output])
         {
             return InvalidArguments;
