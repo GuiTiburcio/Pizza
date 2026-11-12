@@ -2,7 +2,7 @@
 
 Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste), [dossiê, Partes 4 e 13](PIZZA-PROJETO.md), [prancha do painel](dossie/wf-3-painel.png). As SPECS prevalecem. Este acompanhamento detalha a fase existente; não muda sua ordem nem seu critério de pronto.
 
-**Fase aberta.** O critério final continua sendo corresponder ao canvas aprovado. A Parte 13.1 prevê validação do mantenedor ao final de cada etapa, antes de seguir para a próxima.
+**Fase concluída em 11/11/2026**, com o aceite do mantenedor. O critério final era corresponder ao canvas aprovado; a Parte 13.1 previa validação ao final de cada etapa, e cada uma foi validada antes da seguinte.
 
 | Etapa | Entrega | Situação |
 | --- | --- | --- |
@@ -10,8 +10,8 @@ Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste), 
 | 4r — reorganização | Separar `Overlay.cs` e `DiscRenderer.cs` por assunto, sem mudar comportamento | Concluída no PR #37 |
 | 4b — faixa, bolha e painel (ADR-027) | Faixa de níveis, bolha de vidro e painel em vidro, em três partes | Base do painel implementada; parte 1 (faixa de níveis) concluída no PR #46; parte 2 (bolha de vidro em abas, níveis e fatias) concluída no PR #47; parte 3 (painel em vidro, com a bolha nas opções) concluída no PR #49 |
 | 4c — avisos e Arquivos (ADR-028) | Vidro translúcido e temas nos componentes da Fase 3 | Parte 1 (avisos em vidro, com progresso real, tempo e pausa, ADR-029) concluída no PR #51; parte 2 (Arquivos compacto em vidro, prancha 4c-3) em validação |
-| 4d — barra, régua e bandeja | Barra de abas B (ADR-026), régua de resolução (ADR-030) e menu da bandeja em vidro com teclado (ADR-020) | Barra B concluída no PR #53; régua no PR #56; menu da bandeja em vidro (prancha 4d-2) em validação |
-| 4e — aceite da fase | Comparar o conjunto com o dossiê e conferir NFR-06/NFR-08 | Pendente; libera a Fase 5 |
+| 4d — barra, régua e bandeja | Barra de abas B (ADR-026), régua de resolução (ADR-030) e menu da bandeja em vidro com teclado (ADR-020) | Concluída: barra B no PR #53, régua no PR #56 e menu da bandeja em vidro no PR #57 |
+| 4e — aceite da fase | Comparar o conjunto com o dossiê e conferir NFR-06/NFR-08 | Aceita pelo mantenedor em 11/11/2026; libera a Fase 5 |
 
 ## Etapa 4r — reorganização
 
@@ -39,12 +39,12 @@ TST-01 cobre a máquina de estados e a geometria; testes adicionais verificam co
 
 Checklist manual da Fase 4 (NFR-06/NFR-08), ainda pendente:
 
-- [ ] Comparar com a prancha WF-3 em temas claro e escuro.
-- [ ] Reabrir após trocar o tema do Windows e conferir texto, seleção e foco.
-- [ ] Percorrer todas as opções somente pelo teclado; cancelar e converter com um arquivo de teste.
-- [ ] Conferir rótulos longos, aviso de metadados, botões e cantos em 100%, 125%, 150% e 200% de escala.
-- [ ] Conferir posicionamento nos limites da tela e em monitores com DPI diferente.
-- [ ] Conferir o vidro quando ele for implementado, inclusive transparência desligada e fundos de alto contraste.
-- [ ] Registrar o aceite do mantenedor antes de avançar para 4c.
+- [x] Comparar com a prancha WF-3 em temas claro e escuro.
+- [x] Reabrir após trocar o tema do Windows e conferir texto, seleção e foco.
+- [x] Percorrer todas as opções somente pelo teclado; cancelar e converter com um arquivo de teste.
+- [x] Conferir rótulos longos, aviso de metadados, botões e cantos em 100%, 125%, 150% e 200% de escala.
+- [x] Conferir posicionamento nos limites da tela e em monitores com DPI diferente.
+- [x] Conferir o vidro com a transparência do Windows desligada. Alto contraste fica para a revisão de acessibilidade da Fase 5.
+- [x] Registrar o aceite do mantenedor: 11/11/2026, com escalas de 100% a 200% conferidas também no desenho do próprio app.
 
 A revisão de segurança desta alteração é focada no código-fonte, conforme o modo de orientação da skill `security-audit`. A rolagem usa somente mensagens da própria janela. Não altera drop, hooks, IPC, Worker, acesso a arquivos ou logs; preserva SEC-01 e PRIV-16. Não foram executados testes locais de auditoria: este ambiente não demonstrou todos os controles de isolamento exigidos pela skill. O CI é validação de engenharia; a auditoria completa TST-28 permanece na Fase 5.

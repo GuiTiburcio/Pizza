@@ -16,6 +16,7 @@ Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equival
 | Vídeo, em aba própria (Media Foundation e FFmpeg) | Planejado para v1.x ([ADR-026](adr/026-aba-video-e-motores.md)); [estudo da barra compacta](propostas/barra-compacta.svg) para a Fase 4d |
 | Lotes | Planejados para v1.x |
 | Configurações completas e políticas de TI | Planejadas |
+| Prévias 0.x ([ADR-031](adr/031-previa-pelo-ci.md)) | `.zip` do CI com `SHA256SUMS`, SBOM e proveniência, como pré-lançamento |
 | Instaladores assinados, atualização verificada, SBOM e proveniência de release | Pendentes antes da distribuição estável |
 | Auditoria completa e medições finais de desempenho | Pendentes para a v1.0 |
 | Artefato original do Claude Design | [Referência disponível](dossie/README.md) |
@@ -23,7 +24,7 @@ Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equival
 
 Fases e critérios completos estão nas [SPECS](SPECS.md). Artefatos experimentais do CI são builds de desenvolvimento.
 
-**Fase atual: 4 — Visual Pizza, ainda aberta.** O [acompanhamento por etapas](FASE-4.md) separa implementação, verificação automática e aceite visual, para manter Claude, Codex e mantenedor no mesmo ponto do plano. A Fase 5 só começa após o aceite da Fase 4.
+**Fase 4 — Visual Pizza: concluída em 11/11/2026** ([acompanhamento](FASE-4.md)). A seguir, a prévia 0.1.0 ([ADR-031](adr/031-previa-pelo-ci.md)) e a Fase 5.
 
 ## Ideias para depois da v1.x
 

@@ -572,6 +572,7 @@ Todas têm `v` (versão do protocolo), `type` e `jobId` (12 hex aleatórios). Ta
 | Workflows de contribuição | Proibido `pull_request_target` com checkout do código do PR; PRs de fork rodam sem segredos e sem permissão de escrita |
 | Job de assinatura | Só em tag, num *environment* protegido com aprovação manual, consumindo o artefato pelo **digest** produzido no build (nunca por nome) |
 | Rotação da chave Ed25519 | Chave atual + próxima embutidas no app; troca anunciada num manifesto assinado pelas duas; chave comprometida entra na lista de revogadas |
+| Prévias 0.x (ADR-031) | Antes da v1.0: `.zip` portátil gerado só pelo CI a partir de tag `v*-previa*` na `main`, com os testes do CI, `SHA256SUMS`, SBOM CycloneDX e atestado de proveniência, publicado como pré-lançamento. Sem Authenticode nem Ed25519 e sem atualização automática; as notas avisam do SmartScreen |
 
 ---
 
