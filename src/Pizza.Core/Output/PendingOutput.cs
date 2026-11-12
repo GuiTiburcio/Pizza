@@ -56,28 +56,32 @@ public sealed unsafe class PendingOutput : IDisposable
         }
     }
 
-    /// <summary>Passa a marca de internet do original para a saída, se houver (SEC-35). Diz se havia marca.</summary>
-    public bool CopyZoneFrom(string sourcePath)
+    /// <summary>
+    /// Passa a marca de internet do original para a saída, se houver (SEC-35). Com vários originais (Juntar), vale a
+    /// zona mais restritiva entre eles.
+    /// </summary>
+    public void CopyZoneFrom(params string[] sourcePaths)
     {
-        string content;
-        try
+        if (ZoneIdentifier.MostRestrictive(sourcePaths.Select(ReadZone)) is not { } zone)
         {
-            content = File.ReadAllText(sourcePath + ZoneStream);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            return false;
-        }
-
-        if (ZoneIdentifier.ParseZone(content) is not { } zone)
-        {
-            return false;
+            return;
         }
 
         // FileShare.Delete é exigido porque o temporário segue aberto com acesso de renomear.
         using var stream = new FileStream(_temporaryPath + ZoneStream, FileMode.CreateNew, FileAccess.Write, FileShare.Read | FileShare.Delete);
         stream.Write(System.Text.Encoding.ASCII.GetBytes(ZoneIdentifier.Format(zone)));
-        return true;
+    }
+
+    private static int? ReadZone(string sourcePath)
+    {
+        try
+        {
+            return ZoneIdentifier.ParseZone(File.ReadAllText(sourcePath + ZoneStream));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     /// <summary>

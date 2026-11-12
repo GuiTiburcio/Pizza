@@ -87,6 +87,23 @@ public sealed class PdfConversionTests(SandboxFixture fixture) : IDisposable
     }
 
     [Fact]
+    public void Juntar_leva_a_zona_mais_restritiva_entre_os_arquivos()
+    {
+        // SEC-35: o primeiro veio da intranet (1) e o segundo da internet (3); a saída fica marcada como internet.
+        var first = Path.Combine(_folder, "escritura.pdf");
+        var second = Path.Combine(_folder, "anexo.pdf");
+        File.WriteAllBytes(first, Pages(1));
+        File.WriteAllBytes(second, Pages(1));
+        File.WriteAllText(first + ":Zone.Identifier", "[ZoneTransfer]\r\nZoneId=1\r\n");
+        File.WriteAllText(second + ":Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\nHostUrl=https://site.example/anexo.pdf\r\n");
+
+        var result = Runner().Run(first, "pdf.merge", "pdf", suffix: " - juntado", moreSources: [second]);
+
+        Assert.Null(result.ErrorCode);
+        Assert.Equal("[ZoneTransfer]\r\nZoneId=3\r\n", File.ReadAllText(Path.Combine(_folder, result.OutputName!) + ":Zone.Identifier"));
+    }
+
+    [Fact]
     public void Juntar_com_um_arquivo_corrompido_nao_grava_nada()
     {
         var first = Path.Combine(_folder, "escritura.pdf");

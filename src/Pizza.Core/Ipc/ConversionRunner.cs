@@ -55,8 +55,8 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
             others.AddRange((moreSources ?? []).Select(PendingOutput.OpenSource));
             using var output = PendingOutput.Create(source, Path.GetDirectoryName(Path.GetFullPath(sourcePath))!, journal);
 
-            // SEC-35: se algum dos arquivos veio da internet, o resultado também fica marcado.
-            _ = new[] { sourcePath }.Concat(moreSources ?? []).Any(output.CopyZoneFrom);
+            // SEC-35: no Juntar, a saída leva a zona mais restritiva entre todos os arquivos.
+            output.CopyZoneFrom([sourcePath, .. moreSources ?? []]);
 
             var error = RunWorker(source, others, output.Handle, converterId, options ?? new Dictionary<string, string>(), cancellation, control);
             if (error is not null)
