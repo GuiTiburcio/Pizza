@@ -112,6 +112,12 @@ internal static unsafe partial class DiscRenderer
 
         for (var row = 0; row < state.Rows.Count; row++)
         {
+            if (state.IsSlider(row))
+            {
+                DrawSlider(g, state, row, colors, veil);
+                continue;
+            }
+
             var (left, right, top, bottom) = state.BubbleAt(row, frame.Bubbles[row]);
             var swell = (float)frame.Swells[row];
             var lens = RoundedRect((float)left - (3 * swell), top - (2 * swell), (float)(right - left) + (6 * swell), bottom - top + (4 * swell), ButtonRadius);
@@ -158,6 +164,43 @@ internal static unsafe partial class DiscRenderer
         {
             DrawKeep(g, state.KeepTop, enabled: false, isChecked: false, colors);
             Text(g, MetadataNotice, _regular, 12, StyleRegular, Ink(colors.SecondaryText), padding, state.KeepTop + OptionsPanelState.KeepRowHeight, inner, 20, AlignNear);
+        }
+    }
+
+    /// <summary>
+    /// Régua (ADR-030, prancha 4d-1): trilho com a parte escolhida em azul, o pino na bolha de vidro B e o valor
+    /// numa caixa ao lado do título, sem marcas embaixo. Em foco, a caixa ganha o contorno do teclado.
+    /// </summary>
+    private static void DrawSlider(nint g, OptionsPanelState state, int row, PanelPalette colors, double veil)
+    {
+        var track = state.SliderTrack(row);
+        var cy = (track.Top + track.Bottom) / 2f;
+        var thumbX = track.Left + (float)((track.Right - track.Left) * state.SliderAmount(row));
+
+        var rail = RoundedRect(track.Left, cy - 3, track.Right - track.Left, 6, 3);
+        Fill(g, WithAlpha(Ink(colors.Text), 0.14), rail);
+        GdipDeletePath(rail);
+        if (thumbX > track.Left)
+        {
+            var done = RoundedRect(track.Left, cy - 3, thumbX - track.Left, 6, 3);
+            Gradient(g, done, cy - 3, cy + 3, Argb(255, 84, 134, 255), Argb(255, 47, 106, 255));
+            GdipDeletePath(done);
+        }
+
+        Lens(g, Ellipse(thumbX, cy, 14), thumbX, cy, 0, 1, veil);
+
+        const float boxWidth = 64;
+        const float boxHeight = 30;
+        var boxLeft = state.Width - OptionsPanelState.Padding - boxWidth;
+        var boxTop = OptionsPanelState.RowLabelTop(row) - 6;
+        var box = new PanelRect((int)boxLeft, (int)boxTop, (int)(boxLeft + boxWidth), (int)(boxTop + boxHeight));
+        Surface(g, box, 8);
+        Text(g, state.ValueText(row) + " %", _semibold, 13, StyleBold, Ink(colors.Text), boxLeft, boxTop, boxWidth, boxHeight);
+        if (state.Focus == (PanelTargetKind.Slider, row))
+        {
+            var ring = RoundedRect(boxLeft + 1, boxTop + 1, boxWidth - 2, boxHeight - 2, 8);
+            Stroke(g, Ink(colors.Accent), 2, ring);
+            GdipDeletePath(ring);
         }
     }
 

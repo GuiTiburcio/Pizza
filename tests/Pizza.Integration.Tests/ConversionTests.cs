@@ -106,6 +106,18 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
     }
 
     [Fact]
+    public void Porcentagem_livre_da_regua_chega_ao_conversor_isolado()
+    {
+        // ADR-030: qualquer valor de 20 a 99 passa na validação do Worker; a amostra tem 64 × 48.
+        var result = Runner().Run(CopySample(), "image.png", "png", new Dictionary<string, string> { ["resolution"] = "67" });
+
+        Assert.Null(result.ErrorCode);
+        var output = File.ReadAllBytes(Path.Combine(_folder, "fachada.png"));
+        Assert.InRange(BinaryPrimitives.ReadInt32BigEndian(output.AsSpan(16)), 42, 43);
+        Assert.InRange(BinaryPrimitives.ReadInt32BigEndian(output.AsSpan(20)), 32, 33);
+    }
+
+    [Fact]
     public void Avif_funciona_no_worker_sem_alterar_a_origem()
     {
         var source = CopySample();

@@ -50,8 +50,24 @@ public class ConverterCatalogTests
     }
 
     [Theory]
+    [InlineData("20")]
+    [InlineData("67")]
+    [InlineData("99")]
+    public void Regua_aceita_qualquer_porcentagem_inteira_de_20_a_99(string value)
+    {
+        // ADR-030: o 100% é "original"; o Worker valida o intervalo com o mesmo catálogo (SEC-13).
+        Assert.Equal(value, ConverterCatalog.ResolveOptions(Png, Given(("resolution", value)))!["resolution"]);
+    }
+
+    [Theory]
     [InlineData("compression", "ultra")]
     [InlineData("resolution", "200")]
+    [InlineData("resolution", "100")]
+    [InlineData("resolution", "19")]
+    [InlineData("resolution", "067")]
+    [InlineData("resolution", "+67")]
+    [InlineData("resolution", " 67")]
+    [InlineData("resolution", "6.7")]
     [InlineData("resolution", "")]
     [InlineData("caminho", "C:\\a.png")]
     public void Opcao_fora_do_esquema_e_recusada(string key, string value)

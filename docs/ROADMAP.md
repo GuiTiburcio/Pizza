@@ -31,7 +31,7 @@ Pedidos do mantenedor, anotados em 10/11/2026. Cada um passa por alinhamento e A
 
 | Ideia | O que é |
 | --- | --- |
-| Régua de porcentagem | No painel de opções, um controle deslizante (slider) no lugar dos botões fixos de 75% e 50%. Antecipada para a Fase 4 em 11/11/2026: 100% é o original; prancha antes do código |
+| Régua de porcentagem | No painel de opções, um controle deslizante (slider) no lugar dos botões fixos de 75% e 50%. Antecipada para a Fase 4d em 11/11/2026 ([ADR-030](adr/030-regua-de-resolucao.md)) |
 | Interação por voz | Uso guiado por voz, para incluir pessoas com deficiência visual |
 | Dicas de uso | Um tutorial curto na primeira vez; as dicas continuam enquanto o usuário quiser, e uma opção desliga |
 | Site no GitHub Pages | Layout "cartoonizado", com uma animação simples mostrando como o Pizza funciona. Segue o "efeito halo": primeira impressão premium em poucos segundos, mais visual que texto, poucos cards, caminho claro de por onde começar. Consentimento de cookies (LGPD) só se o site usar cookie ou rastreio não essencial; se a pessoa negar, nada é gravado. Pedido em 11/11/2026 |
