@@ -99,7 +99,9 @@ public sealed unsafe partial class SandboxedProcess : IDisposable
         directory.SetAccessControl(acl);
     }
 
-    public static SandboxedProcess Start(string path, string profile, string arguments = "")
+    /// <param name="desktop">Área de trabalho do processo ("WinSta0\nome"); nula, a de sempre. ADR-034: o motor de
+    /// documentos roda numa área oculta, para nenhuma janela dele aparecer na tela da pessoa.</param>
+    public static SandboxedProcess Start(string path, string profile, string arguments = "", string? desktop = null)
     {
         var sid = AcquireSid(profile);
         nint job = 0;
@@ -135,8 +137,9 @@ public sealed unsafe partial class SandboxedProcess : IDisposable
             Array.Resize(ref commandLine, commandLine.Length + 1);
 
             PROCESS_INFORMATION process;
-            fixed (char* application = path, command = commandLine)
+            fixed (char* application = path, command = commandLine, desktopName = desktop)
             {
+                info.Desktop = (nint)desktopName;
                 Check(CreateProcessW(application, command, null, null, 1, ExtendedStartupInfoPresent | CreateSuspended | CreateNoWindow, null, null, &info, &process));
             }
 

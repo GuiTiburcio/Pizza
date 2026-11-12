@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Motor de documentos do Pizza Jumbo (Pizza.Docs.exe): hospeda o LibreOffice pelo LibreOfficeKit, isolado (ADR-034). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AssemblyName>Pizza.Docs</AssemblyName>
+    <RootNamespace>Pizza.Docs</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pizza.Core\Pizza.Core.csproj" />
+  </ItemGroup>
+
+</Project>

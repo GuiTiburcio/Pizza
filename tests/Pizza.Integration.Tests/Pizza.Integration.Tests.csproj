@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Pizza.Core\Pizza.Core.csproj" />
     <ProjectReference Include="..\..\src\Pizza.Worker\Pizza.Worker.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\Pizza.Docs\Pizza.Docs.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Pizza.Sandbox.Probe\Pizza.Sandbox.Probe.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
