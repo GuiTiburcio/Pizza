@@ -10,7 +10,7 @@
 | Plataforma | Windows 10 21H2+ e Windows 11, x64 |
 | Documentos relacionados | `PIZZA-PROJETO.md` (visão geral) · canvas "Pizza — Wireframes e Engenharia" (WF-1 a WF-6, ENG-1 a ENG-4) |
 
-> **Princípio que governa tudo:** o Pizza trata documentos de cartórios, contabilidades e farmácias. **Nenhum dado sai do computador**, o app **nunca vê nada além do que precisa** e **qualquer falha deixa o original intacto**. Um requisito que contrarie esse princípio está errado, mesmo que pareça mais prático.
+> **Princípio que governa tudo:** o Pizza trata arquivos pessoais e de trabalho, muitas vezes sensíveis, de qualquer pessoa ou empresa no Windows. **Nenhum dado sai do computador**, o app **nunca vê nada além do que precisa** e **qualquer falha deixa o original intacto**. Um requisito que contrarie esse princípio está errado, mesmo que pareça mais prático.
 
 Esta especificação **substitui** o que o `PIZZA-PROJETO.md` dizia sobre venda e licença (Partes 1.4 e 10.4). O Pizza agora é gratuito e de código aberto.
 

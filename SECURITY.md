@@ -1,6 +1,6 @@
 # Segurança
 
-O Pizza trata documentos de cartórios, contabilidades e farmácias, então relatos de vulnerabilidade têm prioridade.
+O Pizza lida com arquivos pessoais e de trabalho, muitas vezes sensíveis, de qualquer pessoa ou empresa que usa Windows. Por isso, relatos de vulnerabilidade têm prioridade.
 
 ## Como reportar
 

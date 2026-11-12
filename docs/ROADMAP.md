@@ -31,10 +31,11 @@ Pedidos do mantenedor, anotados em 10/11/2026. Cada um passa por alinhamento e A
 
 | Ideia | O que é |
 | --- | --- |
-| Régua de porcentagem | No painel de opções, um controle deslizante (slider) no lugar dos botões fixos de 75% e 50% |
+| Régua de porcentagem | No painel de opções, um controle deslizante (slider) no lugar dos botões fixos de 75% e 50%. Antecipada para a Fase 4 em 11/11/2026: 100% é o original; prancha antes do código |
 | Interação por voz | Uso guiado por voz, para incluir pessoas com deficiência visual |
 | Dicas de uso | Um tutorial curto na primeira vez; as dicas continuam enquanto o usuário quiser, e uma opção desliga |
 | Site no GitHub Pages | Layout "cartoonizado", com uma animação simples mostrando como o Pizza funciona. Segue o "efeito halo": primeira impressão premium em poucos segundos, mais visual que texto, poucos cards, caminho claro de por onde começar. Consentimento de cookies (LGPD) só se o site usar cookie ou rastreio não essencial; se a pessoa negar, nada é gravado. Pedido em 11/11/2026 |
+| Melhorar imagens | Uma opção que melhora uma imagem borrada ou de baixa qualidade: nitidez, menos ruído e mais resolução. Tudo no próprio PC, dentro do Worker isolado e sem rede (SEC-20, SEC-50); exige estudo de motor e de licença antes. Pedido em 11/11/2026 |
 | Bolha com borda distorcida | Nas extremidades, a bolha de vidro (ADR-027) distorce levemente o que está atrás, como uma lente de verdade. Pedido em 11/11/2026 |
 
 Decisões com fase marcada (faixa de níveis na 4b, barra de abas mais fina na 4d, temas do vidro e frase no Sobre na Fase 8) estão na SPECS §2.1.

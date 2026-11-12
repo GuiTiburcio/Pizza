@@ -163,6 +163,24 @@ Captura do painel de opções em vidro, com a bolha nas opções (PR #49).
 
 ![Painel implementado](4b-5-painel-implementado.png)
 
+## Fase 4c · aprovado e implementado
+
+Aprovado pelo mantenedor em 11/11/2026. Avisos e Arquivos em vidro translúcido, sem cópia da tela ([ADR-028](../adr/028-avisos-e-arquivos-em-vidro.md)), e progresso real com tempo e pausa ([ADR-029](../adr/029-progresso-real-e-pausa.md)).
+
+### Avisos em vidro
+
+A janela Arquivos desta prancha foi substituída pela versão compacta, mais abaixo.
+
+![Avisos em vidro](4c-1-avisos-vidro.png)
+
+### Progresso com porcentagem e tempo
+
+![Progresso](4c-2-progresso.png)
+
+### Arquivos compacto, botões no foco
+
+![Arquivos compacto](4c-3-arquivos-compacto.png)
+
 ## Wireframes
 
 ### WF-1 · Anatomia do menu radial
