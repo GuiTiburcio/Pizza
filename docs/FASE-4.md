@@ -9,7 +9,7 @@ Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste), 
 | 4a — disco | Vidro, fatias, hover, animação, temas e escolha por clique | Implementado nos PRs #26 e #30; conferência visual ampla pendente |
 | 4r — reorganização | Separar `Overlay.cs` e `DiscRenderer.cs` por assunto, sem mudar comportamento | Concluída no PR #37 |
 | 4b — faixa, bolha e painel (ADR-027) | Faixa de níveis, bolha de vidro e painel em vidro, em três partes | Base do painel implementada; parte 1 (faixa de níveis) concluída no PR #46; parte 2 (bolha de vidro em abas, níveis e fatias) concluída no PR #47; parte 3 (painel em vidro, com a bolha nas opções) concluída no PR #49 |
-| 4c — avisos e Arquivos (ADR-028) | Vidro translúcido e temas nos componentes da Fase 3 | Parte 1 (avisos em vidro, com progresso real, tempo e pausa, ADR-029) concluída no PR #51; parte 2 (Arquivos compacto em vidro, prancha 4c-3) em validação |
+| 4c — avisos e Arquivos (ADR-028) | Vidro translúcido e temas nos componentes da Fase 3 | Concluída: avisos em vidro, com progresso real, tempo e pausa (ADR-029), no PR #51; Arquivos compacto em vidro (prancha 4c-3) no PR #52 |
 | 4d — barra, régua e bandeja | Barra de abas B (ADR-026), régua de resolução (ADR-030) e menu da bandeja em vidro com teclado (ADR-020) | Concluída: barra B no PR #53, régua no PR #56 e menu da bandeja em vidro no PR #57 |
 | 4e — aceite da fase | Comparar o conjunto com o dossiê e conferir NFR-06/NFR-08 | Aceita pelo mantenedor em 11/11/2026; libera a Fase 5 |
 
