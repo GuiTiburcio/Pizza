@@ -11,7 +11,8 @@ public static class ConversionMessages
         "NO_PERMISSION" => "Sem permissão para gravar nesta pasta",
         "LIMIT_EXCEEDED" => "O arquivo passa do limite permitido (tamanho, páginas ou pixels)",
         "TIMEOUT" => "A conversão demorou mais que o limite",
-        "UNSUPPORTED" => "Este tipo de conversão não é suportado para este arquivo",
+        "PASSWORD" => "O PDF está protegido por senha; por enquanto o Pizza não abre PDF protegido",
+        "UNSUPPORTED" =>"Este tipo de conversão não é suportado para este arquivo",
         _ => "O conversor parou inesperadamente; o original não foi alterado",
     };
 }

@@ -7,10 +7,13 @@ public static class OutputNaming
 {
     public const int MaxAttempts = 10_000;
 
-    /// <summary>Nomes a tentar, em ordem: <c>a.png</c>, <c>a (1).png</c>, <c>a (2).png</c>…</summary>
-    public static IEnumerable<string> Candidates(string sourcePath, string extension)
+    /// <summary>
+    /// Nomes a tentar, em ordem: <c>a.png</c>, <c>a (1).png</c>, <c>a (2).png</c>… Com sufixo (ADR-033):
+    /// <c>a - girado.pdf</c>, <c>a - girado (1).pdf</c>…
+    /// </summary>
+    public static IEnumerable<string> Candidates(string sourcePath, string extension, string suffix = "")
     {
-        var name = Path.GetFileNameWithoutExtension(sourcePath);
+        var name = Path.GetFileNameWithoutExtension(sourcePath) + suffix;
         yield return $"{name}.{extension}";
         for (var number = 1; number < MaxAttempts; number++)
         {

@@ -18,7 +18,8 @@ public sealed class ExifToolTests : IDisposable
 
     private readonly string _folder = Directory.CreateTempSubdirectory("pizza-exif-").FullName;
 
-    public static TheoryData<string> AllOutputs => new(ConverterCatalog.All.Select(converter => converter.Id));
+    // Entram imagens com EXIF: só as conversões da aba Imagem. O PDF → PDF tem os próprios testes (TST-22).
+    public static TheoryData<string> AllOutputs => new(ConverterCatalog.All.Where(converter => converter.Tab == ConverterCatalog.ImageTab).Select(converter => converter.Id));
 
     public void Dispose() => Directory.Delete(_folder, recursive: true);
 

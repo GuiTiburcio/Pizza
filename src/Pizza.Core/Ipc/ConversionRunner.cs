@@ -28,7 +28,8 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     private const int PauseCheckMs = 50;
     private static readonly TimeSpan ExitGrace = TimeSpan.FromSeconds(5);
 
-    public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null, CancellationToken cancellation = default, ConversionControl? control = null)
+    /// <summary><paramref name="suffix"/>: entra no nome quando a extensão não muda, como " - girado" (ADR-033).</summary>
+    public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null, CancellationToken cancellation = default, ConversionControl? control = null, string suffix = "")
     {
         if (cancellation.IsCancellationRequested)
         {
@@ -43,7 +44,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
 
             var error = RunWorker(source, output.Handle, converterId, options ?? new Dictionary<string, string>(), cancellation, control);
             return error is null
-                ? new ConversionResult(output.Commit(OutputNaming.Candidates(sourcePath, extension)), null)
+                ? new ConversionResult(output.Commit(OutputNaming.Candidates(sourcePath, extension, suffix)), null)
                 : ConversionResult.Failed(error);
         }
         catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
