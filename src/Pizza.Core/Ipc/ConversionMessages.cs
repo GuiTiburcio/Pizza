@@ -13,6 +13,7 @@ public static class ConversionMessages
         "TIMEOUT" => "A conversão demorou mais que o limite",
         "PASSWORD" => "O PDF está protegido por senha; por enquanto o Pizza não abre PDF protegido",
         "UNSUPPORTED" =>"Este tipo de conversão não é suportado para este arquivo",
+        "MEDIA_UNAVAILABLE" => "Este Windows não tem os recursos de mídia. Instale o Media Feature Pack.",
         _ => "O conversor parou inesperadamente; o original não foi alterado",
     };
 }

@@ -5,7 +5,7 @@ public sealed record OptionChoice(string Value, string Label);
 
 /// <summary>Uma opção do painel. O padrão é sempre uma das escolhas.</summary>
 /// <summary><c>Minimum</c>: a opção é uma régua de porcentagem (ADR-030), de Minimum a 100; 100 é "original".</summary>
-public sealed record ConverterOption(string Key, string Label, string Default, IReadOnlyList<OptionChoice> Choices, int? Minimum = null)
+public sealed record ConverterOption(string Key, string Label, string Default, IReadOnlyList<OptionChoice> Choices, int? Minimum = null, IReadOnlyList<OptionChoice>? QuickChoices = null)
 {
     public const string Original = "original";
 
@@ -48,6 +48,15 @@ public static class ConverterCatalog
 
     public const int ImageTab = 0;
     public const int PdfTab = 1;
+    public const int AudioTab = 3;
+
+    private static readonly string[] AudioInputs = [".mp3", ".m4a", ".aac", ".flac", ".wav"];
+    private static readonly ConverterOption AudioChannels = new("channels", "Canais", "original",
+        [new("original", "Original"), new("mono", "Mono")]);
+    private static readonly ConverterOption AudioRate = new("sampleRate", "Taxa de amostragem", "original",
+        [new("original", "Original"), new("48000", "48 kHz"), new("44100", "44,1 kHz")]);
+    private static readonly ConverterOption AudioDepth = new("depth", "Profundidade", "original",
+        [new("original", "Original"), new("16", "16 bits"), new("24", "24 bits")]);
 
     // SEC-45. HEIC fica de fora: o libvips empacotado não traz o codec HEVC.
     private static readonly string[] ImageInputs = [".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".gif", ".avif"];
@@ -96,6 +105,18 @@ public static class ConverterCatalog
             ImageInputs,
             [new("size", "Tamanho", "256", [new("256", "Grande"), new("128", "Médio"), new("48", "Pequeno")])]),
         new("image.gif", ImageTab, "GIF", "256 cores", "gif", ImagesExcept(".gif"), []),
+
+        // ADR-035: somente formatos de áudio; vídeo é validado/recusado também pelo conteúdo no Worker.
+        new("audio.mp3", AudioTab, "MP3", "Compacto", "mp3", AudioInputs.Except([".mp3"]).ToArray(),
+            [new("bitrate", "Qualidade (kbps)", "192", new[] { "96", "112", "128", "160", "192", "224", "256", "320" }.Select(v => new OptionChoice(v, v)).ToArray(),
+                QuickChoices: [new("320", "Alta"), new("192", "Equilibrada"), new("128", "Compacta")]), AudioChannels, AudioRate]),
+        new("audio.m4a", AudioTab, "M4A", "AAC ou ALAC", "m4a", AudioInputs.Except([".m4a"]).ToArray(),
+            [new("bitrate", "Qualidade (kbps / ALAC)", "160", new[] { "64", "96", "128", "160", "192", "256", "320", "lossless" }.Select(v => new OptionChoice(v, v == "lossless" ? "ALAC" : v)).ToArray(),
+                QuickChoices: [new("256", "Alta"), new("160", "Equilibrada"), new("96", "Compacta")]), AudioChannels, AudioRate]),
+        new("audio.flac", AudioTab, "FLAC", "Sem perda", "flac", AudioInputs.Except([".flac"]).ToArray(),
+            [AudioDepth, AudioChannels, AudioRate]),
+        new("audio.wav", AudioTab, "WAV", "Sem compressão", "wav", AudioInputs.Except([".wav"]).ToArray(),
+            [AudioDepth, AudioChannels, AudioRate]),
 
         // ADR-033 e prancha 6A-1: a extensão não muda, então o nome ganha o sufixo.
         new(

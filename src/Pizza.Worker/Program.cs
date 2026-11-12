@@ -55,8 +55,7 @@ internal static class Program
     private static IpcMessage Convert(IpcMessage request, IProgress<int> progress)
     {
         // SPECS §10.3: só o que está no registro, e só com opções dentro do esquema.
-        if (ConverterRegistry.Find(request.ConverterId!) is not { } converter
-            || ConverterCatalog.Find(converter.Id) is not { } info
+        if (ConverterCatalog.Find(request.ConverterId!) is not { } info
             || ConverterCatalog.ResolveOptions(info, request.Options!) is not { } options)
         {
             return new IpcMessage(IpcType.Error, request.JobId) { Code = "UNSUPPORTED" };
@@ -64,6 +63,17 @@ internal static class Program
 
         var clock = Stopwatch.StartNew();
         string? error;
+
+        // Um Worker serve só um arquivo: a política do áudio não atinge imagens/PDF em outro processo.
+        if (info.Tab == ConverterCatalog.AudioTab && !AudioPolicy.EnableMicrosoftOnly())
+        {
+            return new IpcMessage(IpcType.Error, request.JobId) { Code = "UNSUPPORTED" };
+        }
+
+        if (ConverterRegistry.Find(info.Id) is not { } converter)
+        {
+            return new IpcMessage(IpcType.Error, request.JobId) { Code = "UNSUPPORTED" };
+        }
 
         // O destino é fechado antes da resposta: depois de "done", o Worker não tem como escrever.
         using (var source = OpenHandle(request.SrcHandle!.Value, FileAccess.Read))

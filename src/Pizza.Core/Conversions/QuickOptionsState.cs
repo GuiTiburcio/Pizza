@@ -14,6 +14,7 @@ public sealed class QuickOptionsState
         Converter = converter;
         _wheelDelta = 0;
         Primary = converter.Options.FirstOrDefault(option => option.Key != ConverterCatalog.MetadataKey);
+        if (Primary?.QuickChoices is { } quick) Primary = Primary with { Choices = quick };
         Selected = Primary is null ? 0 : Primary.Choices.ToList().FindIndex(choice => choice.Value == Primary.Default);
     }
 
@@ -47,6 +48,8 @@ public sealed class QuickOptionsState
         var value = (Primary.Key, choice.Value) switch
         {
             ("quality", var quality) => $"{quality}%",
+            ("bitrate", "lossless") => "Sem perda",
+            ("bitrate", var bitrate) => $"{bitrate} kbps",
             ("mode", "pages") => "1 arquivo por pág.",
             ("mode", "half") => "2 arquivos",
             ("size", var size) => $"{size} px",

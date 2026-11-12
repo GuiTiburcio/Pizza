@@ -48,7 +48,7 @@ public static partial class IpcCodec
     private static readonly string[] ErrorCodes =
     [
         "CORRUPTED", "LOCKED", "NO_SPACE", "NO_PERMISSION", "PASSWORD", "LIMIT_EXCEEDED",
-        "TIMEOUT", "UNSUPPORTED", "WORKER_CRASHED", "OFFICE_UNAVAILABLE",
+        "TIMEOUT", "UNSUPPORTED", "WORKER_CRASHED", "OFFICE_UNAVAILABLE", "MEDIA_UNAVAILABLE",
     ];
 
     private static readonly Dictionary<IpcType, string[]> Fields = new()
