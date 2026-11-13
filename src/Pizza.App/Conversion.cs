@@ -18,6 +18,7 @@ internal static class Conversion
     private static readonly ConcurrentDictionary<long, int> Percents = new();
     private static readonly Lock Gate = new();
     private static ConversionRunner _runner = null!;
+    private static DocumentEngine? _documents;
 
     /// <summary>Prepara o diário e limpa temporários de uma queda anterior (SEC-34, SEC-37).</summary>
     public static void Initialize()
@@ -44,9 +45,54 @@ internal static class Conversion
         }
 
         _runner = new ConversionRunner(Path.Combine(AppContext.BaseDirectory, "Pizza.Worker.exe"), Profile, journal, Timeout);
+
+        // ADR-034: o Pizza Jumbo traz o motor de documentos na pasta "motor"; o Brotinho, não.
+        var engine = Path.Combine(AppContext.BaseDirectory, "motor");
+        var docs = Path.Combine(AppContext.BaseDirectory, "Pizza.Docs.exe");
+        if (File.Exists(Path.Combine(engine, "program", "mergedlo.dll")) && File.Exists(docs))
+        {
+            DocumentEngine.ReleaseStaleDrives(engine);
+            try
+            {
+                DocumentEngine.CleanWorkFolder();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException)
+            {
+                // Sem limpeza agora: sobras são removidas na próxima vez.
+            }
+
+            _documents = new DocumentEngine(docs, engine, journal, Timeout);
+            ConverterCatalog.DocumentEngineAvailable = true;
+        }
     }
 
-    public static void Start(long id, string sourcePath, ConverterInfo converter, IReadOnlyDictionary<string, string> options, nint notifyWindow, uint notifyMessage, uint progressMessage)
+    /// <summary>
+    /// ADR-034: o menu abriu sobre um documento; o motor começa a carregar enquanto a pessoa escolhe a fatia.
+    /// Fora da thread da interface, porque iniciar o processo leva alguns milissegundos.
+    /// </summary>
+    public static void WarmUp(string path)
+    {
+        if (_documents is { } documents && ConverterCatalog.All.Any(converter => converter.DocumentEngine && converter.InputExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase)))
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    documents.WarmUp();
+                }
+                catch (Exception)
+                {
+                    // Sem reserva, a conversão inicia o motor na hora, como antes.
+                }
+            });
+        }
+    }
+
+    /// <summary>Ao sair: o motor de reserva encerra e leva a letra e a área oculta junto.</summary>
+    public static void Shutdown() => _documents?.Dispose();
+
+    /// <param name="moreSources">Juntar (ADR-033): os outros arquivos, na ordem do arraste; vazio nas demais.</param>
+    public static void Start(long id, string sourcePath, IReadOnlyList<string> moreSources, ConverterInfo converter, IReadOnlyDictionary<string, string> options, nint notifyWindow, uint notifyMessage, uint progressMessage)
     {
         var cancellation = new CancellationTokenSource();
         Running[id] = cancellation;
@@ -68,7 +114,9 @@ internal static class Conversion
             {
                 lock (Gate)
                 {
-                    result = _runner.Run(sourcePath, converter.Id, converter.Extension, options, cancellation.Token, control);
+                    result = converter.DocumentEngine
+                        ? _documents!.Run(sourcePath, converter.Id, converter.Extension, cancellation.Token, control)
+                        : _runner.Run(sourcePath, converter.Id, converter.Extension, options, cancellation.Token, control, converter.Suffix, converter.PartSuffix(options), moreSources.Count == 0 ? null : moreSources);
                 }
             }
             catch (Exception)

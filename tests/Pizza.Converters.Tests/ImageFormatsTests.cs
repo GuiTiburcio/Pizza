@@ -9,7 +9,7 @@ namespace Pizza.Converters.Tests;
 /// <summary>TST-02, TST-14 e TST-25 para os formatos da aba Imagem (SPECS, SEC-45, PRIV-30).</summary>
 public class ImageFormatsTests
 {
-    public static TheoryData<string> Outputs => new(ConverterRegistry.All.Select(c => c.Id));
+    public static TheoryData<string> Outputs => new(ConverterRegistry.All.Select(c => c.Id).Where(id => id.StartsWith("image.", StringComparison.Ordinal)));
 
     [Fact]
     public void Jpg_tem_a_assinatura_certa()

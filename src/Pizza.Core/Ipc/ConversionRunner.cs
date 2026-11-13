@@ -6,9 +6,15 @@ using Pizza.Core.Output;
 
 namespace Pizza.Core.Ipc;
 
-/// <summary>Resultado de uma conversão: o nome do arquivo criado, ou o código de erro da SPECS §10.4.</summary>
-public sealed record ConversionResult(string? OutputName, string? ErrorCode)
+/// <summary>
+/// Resultado de uma conversão: o nome do arquivo criado, ou o código de erro da SPECS §10.4. Com várias saídas
+/// (Dividir), o nome é o da primeira e <paramref name="Count"/> diz quantas foram.
+/// </summary>
+public sealed record ConversionResult(string? OutputName, string? ErrorCode, int Count = 1)
 {
+    /// <summary>SEC-42: no máximo uma parte por página.</summary>
+    public const int MaxParts = 2000;
+
     public static ConversionResult Failed(string code) => new(null, code);
 }
 
@@ -16,7 +22,7 @@ public sealed record ConversionResult(string? OutputName, string? ErrorCode)
 /// Conduz uma conversão de ponta a ponta. O residente abre os arquivos e entrega só os handles ao
 /// Worker (SEC-22); a saída só vira definitiva depois que o Worker encerrou (SEC-29).
 /// </summary>
-public sealed class ConversionRunner(string workerPath, string profile, TempJournal journal, TimeSpan timeout, string workerArguments = "", string? desktop = null)
+public sealed class ConversionRunner(string workerPath, string profile, TempJournal journal, TimeSpan timeout, string workerArguments = "", string? desktop = null, Func<SandboxedProcess>? start = null)
 {
     /// <summary>Não é erro do Worker nem vai ao usuário: o cartão só some.</summary>
     public const string Cancelled = "CANCELLED";
@@ -28,23 +34,44 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     private const int PauseCheckMs = 50;
     private static readonly TimeSpan ExitGrace = TimeSpan.FromSeconds(5);
 
-    public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null, CancellationToken cancellation = default, ConversionControl? control = null)
+    /// <summary>
+    /// <paramref name="suffix"/>: entra no nome quando a extensão não muda, como " - girado" (ADR-033).
+    /// <paramref name="parts"/>: a saída do Worker é um <see cref="OutputBundle"/>, e cada parte ganha o sufixo
+    /// devolvido para (parte, total), contando a partir de 1.
+    /// <paramref name="moreSources"/>: Juntar (ADR-033), os outros arquivos na ordem do arraste. Também abertos só
+    /// para leitura pelo residente e entregues como handles (SEC-15, SEC-31); a saída fica ao lado do primeiro.
+    /// </summary>
+    public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null, CancellationToken cancellation = default, ConversionControl? control = null, string suffix = "", Func<int, int, string>? parts = null, IReadOnlyList<string>? moreSources = null)
     {
         if (cancellation.IsCancellationRequested)
         {
             return ConversionResult.Failed(Cancelled);
         }
 
+        var others = new List<SafeFileHandle>();
         try
         {
             using var source = PendingOutput.OpenSource(sourcePath);
+            others.AddRange((moreSources ?? []).Select(PendingOutput.OpenSource));
             using var output = PendingOutput.Create(source, Path.GetDirectoryName(Path.GetFullPath(sourcePath))!, journal);
-            output.CopyZoneFrom(sourcePath);
 
-            var error = RunWorker(source, output.Handle, converterId, options ?? new Dictionary<string, string>(), cancellation, control);
-            return error is null
-                ? new ConversionResult(output.Commit(OutputNaming.Candidates(sourcePath, extension)), null)
-                : ConversionResult.Failed(error);
+            // SEC-35: no Juntar, a saída leva a zona mais restritiva entre todos os arquivos.
+            output.CopyZoneFrom([sourcePath, .. moreSources ?? []]);
+
+            var error = RunWorker(source, others, output.Handle, converterId, options ?? new Dictionary<string, string>(), cancellation, control);
+            if (error is not null)
+            {
+                return ConversionResult.Failed(error);
+            }
+
+            return parts is null
+                ? new ConversionResult(output.Commit(OutputNaming.Candidates(sourcePath, extension, suffix)), null)
+                : CommitParts(sourcePath, source, output.Handle, extension, parts);
+        }
+        catch (InvalidDataException)
+        {
+            // O Worker entregou um pacote fora do formato: nada é gravado.
+            return ConversionResult.Failed("WORKER_CRASHED");
         }
         catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
@@ -66,17 +93,76 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         {
             return ConversionResult.Failed("WORKER_CRASHED");
         }
+        finally
+        {
+            others.ForEach(handle => handle.Dispose());
+        }
     }
 
-    private string? RunWorker(SafeFileHandle source, SafeFileHandle destination, string converterId, IReadOnlyDictionary<string, string> options, CancellationToken cancellation, ConversionControl? control)
+    /// <summary>
+    /// Copia cada parte do pacote para o seu próprio temporário e só então dá os nomes. Se um nome falhar, as
+    /// partes já nomeadas são apagadas: ou saem todas, ou nenhuma (SEC-40, "nada pela metade").
+    /// </summary>
+    private ConversionResult CommitParts(string sourcePath, SafeFileHandle source, SafeFileHandle bundle, string extension, Func<int, int, string> suffix)
     {
-        using var worker = SandboxedProcess.Start(workerPath, profile, workerArguments, desktop);
+        var directory = Path.GetDirectoryName(Path.GetFullPath(sourcePath))!;
+        var list = OutputBundle.Read(bundle, ConversionResult.MaxParts);
+        var pending = new List<PendingOutput>(list.Count);
+        var committed = new List<string>(list.Count);
+        try
+        {
+            var buffer = new byte[1024 * 1024];
+            foreach (var part in list)
+            {
+                var output = PendingOutput.Create(source, directory, journal);
+                pending.Add(output);
+                output.CopyZoneFrom(sourcePath);
+                for (long copied = 0; copied < part.Length;)
+                {
+                    var read = RandomAccess.Read(bundle, buffer.AsSpan(0, (int)Math.Min(buffer.Length, part.Length - copied)), part.Offset + copied);
+                    if (read <= 0)
+                    {
+                        throw new InvalidDataException("Pacote de saída cortado.");
+                    }
+
+                    RandomAccess.Write(output.Handle, buffer.AsSpan(0, read), copied);
+                    copied += read;
+                }
+            }
+
+            for (var index = 0; index < pending.Count; index++)
+            {
+                committed.Add(pending[index].Commit(OutputNaming.Candidates(sourcePath, extension, suffix(index + 1, pending.Count))));
+            }
+
+            return new ConversionResult(committed[0], null, committed.Count);
+        }
+        catch
+        {
+            foreach (var name in committed)
+            {
+                File.Delete(Path.Combine(directory, name));
+            }
+
+            throw;
+        }
+        finally
+        {
+            pending.ForEach(output => output.Dispose());
+        }
+    }
+
+    private string? RunWorker(SafeFileHandle source, IReadOnlyList<SafeFileHandle> others, SafeFileHandle destination, string converterId, IReadOnlyDictionary<string, string> options, CancellationToken cancellation, ConversionControl? control)
+    {
+        // ADR-034: o motor de documentos pode chegar já aquecido; nenhum outro arquivo passou por ele.
+        using var worker = start?.Invoke() ?? SandboxedProcess.Start(workerPath, profile, workerArguments, desktop);
         var jobId = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(6));
 
         IpcFraming.WriteFrame(worker.Input, IpcCodec.Serialize(new IpcMessage(IpcType.Convert, jobId)
         {
             ConverterId = converterId,
             SrcHandle = worker.DuplicateIntoProcess(source, SandboxedProcess.GenericRead),
+            MoreSrcHandles = others.Count == 0 ? null : others.Select(other => worker.DuplicateIntoProcess(other, SandboxedProcess.GenericRead)).ToList(),
             DstHandle = worker.DuplicateIntoProcess(destination, GenericWrite),
             Options = options,
         }));

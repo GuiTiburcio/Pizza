@@ -13,6 +13,24 @@ public class MenuPagesTests
     }
 
     [Theory]
+    [InlineData("a.jpg", 0, 0)]
+    [InlineData("escritura.PDF", 1, 1)]
+    public void Menu_abre_na_aba_do_tipo_do_arquivo(string path, int page, int tab)
+    {
+        // FR-03: o PDF não tem conversão de imagem, então a aba Imagem tem uma página só e a PDF é a segunda.
+        Assert.Equal(page, RadialMenu.FirstPage(path));
+        Assert.Equal(tab, RadialMenu.Pages(path)[page].Tab);
+    }
+
+    [Fact]
+    public void Pdf_tem_juntar_dividir_e_girar_na_aba_pdf()
+    {
+        // Ordem da prancha 6A-1 (Comprimir, Juntar, Dividir, Imagens, Word, Girar), só com as que já existem.
+        Assert.Equal(["Juntar", "Dividir", "Girar"], RadialMenu.Slices(1, "escritura.pdf").Select(slice => slice.Label));
+        Assert.Empty(RadialMenu.Slices(0, "escritura.pdf"));
+    }
+
+    [Theory]
     [InlineData("a.jpg", 7)]
     [InlineData("a.avif", 7)]
     [InlineData("a.tiff", 7)]

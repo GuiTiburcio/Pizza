@@ -32,7 +32,8 @@ public sealed class QuickOptionsState
     private int _wheelDelta;
 
     /// <summary>Título da faixa, como "Qualidade do WEBP" (prancha 4b-1).</summary>
-    public string? Title => Primary is null ? null : $"{Primary.Label} do {Converter!.Label}";
+    /// <summary>Na aba PDF a opção já diz a ação, como "Girar páginas" (prancha 6A-1).</summary>
+    public string? Title => Primary is null ? null : Converter!.Tab == ConverterCatalog.ImageTab ? $"{Primary.Label} do {Converter.Label}" : Primary.Label;
 
     /// <summary>Valor embaixo do nome do nível; o padrão ganha "padrão". Null quando o nome já diz o valor.</summary>
     public string? Detail(int level)
@@ -46,7 +47,11 @@ public sealed class QuickOptionsState
         var value = (Primary.Key, choice.Value) switch
         {
             ("quality", var quality) => $"{quality}%",
+            ("mode", "pages") => "1 arquivo por pág.",
+            ("mode", "half") => "2 arquivos",
             ("size", var size) => $"{size} px",
+            ("rotation", "270") => "90°",
+            ("rotation", var degrees) => $"{degrees}°",
             ("resolution", var dpi) when Converter!.Extension == "pdf" && dpi != "original" => $"{dpi} dpi",
             _ => null,
         };

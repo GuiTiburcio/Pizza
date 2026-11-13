@@ -27,10 +27,32 @@ public sealed record ConverterInfo(
     string Caption,
     string Extension,
     IReadOnlyList<string> InputExtensions,
-    IReadOnlyList<ConverterOption> Options)
+    IReadOnlyList<ConverterOption> Options,
+    string Suffix = "",
+    bool Splits = false,
+    bool Merges = false,
+    bool DocumentEngine = false)
 {
+    /// <summary>SEC-46: até 500 arquivos por arraste.</summary>
+    public const int MaxFiles = 500;
+
     /// <summary>Sem opções, a conversão começa ao soltar (FR-21).</summary>
     public bool HasPanel => Options.Count > 0;
+
+    /// <summary>
+    /// Se a fatia vale para estes arquivos. FR-30 com a emenda da ADR-033: vários arquivos só no Juntar, e o
+    /// Juntar só com dois ou mais; todos precisam ser de um tipo que a conversão aceita.
+    /// </summary>
+    public bool Accepts(IReadOnlyList<string> paths) =>
+        (Merges ? paths.Count is >= 2 and <= MaxFiles : paths.Count == 1)
+        && paths.All(path => InputExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase));
+
+    /// <summary>Legenda da fatia quando ela não vale para o que foi arrastado (prancha 6A-1).</summary>
+    public string UnavailableCaption => Merges ? "2 ou mais PDFs" : "um por vez";
+
+    /// <summary>Com várias saídas (Dividir), o sufixo de cada parte; null quando há uma saída só.</summary>
+    public Func<int, int, string>? PartSuffix(IReadOnlyDictionary<string, string> options) =>
+        Splits ? (part, count) => Output.OutputNaming.PartSuffix(options.GetValueOrDefault("mode", Options[0].Default), part, count) : null;
 }
 
 /// <summary>Lista das conversões. O menu e o painel se montam daqui; a ordem é a das fatias (ADR-012).</summary>
@@ -40,7 +62,15 @@ public static class ConverterCatalog
     public const string MetadataStrip = "strip";
     public const string MetadataKeep = "keep";
 
-    private const int ImageTab = 0;
+    public const int ImageTab = 0;
+    public const int PdfTab = 1;
+    public const int DocsTab = 2;
+
+    // ADR-034: o que o motor de documentos do Pizza Jumbo abre (Writer, Calc e Impress, formatos atuais e antigos).
+    private static readonly string[] DocumentInputs = [".docx", ".doc", ".odt", ".rtf", ".xlsx", ".xls", ".ods", ".pptx", ".ppt", ".odp"];
+
+    /// <summary>ADR-034: o motor de documentos existe só no Pizza Jumbo; o residente liga isto ao abrir.</summary>
+    public static bool DocumentEngineAvailable { get; set; }
 
     // SEC-45. HEIC fica de fora: o libvips empacotado não traz o codec HEVC.
     private static readonly string[] ImageInputs = [".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".gif", ".avif"];
@@ -89,6 +119,30 @@ public static class ConverterCatalog
             ImageInputs,
             [new("size", "Tamanho", "256", [new("256", "Grande"), new("128", "Médio"), new("48", "Pequeno")])]),
         new("image.gif", ImageTab, "GIF", "256 cores", "gif", ImagesExcept(".gif"), []),
+
+        // ADR-033 e prancha 6A-1: a extensão não muda, então o nome ganha o sufixo.
+        new("pdf.merge", PdfTab, "Juntar", "Vários em 1", "pdf", [".pdf"], [], Suffix: " - juntado", Merges: true),
+        new(
+            "pdf.split",
+            PdfTab,
+            "Dividir",
+            "Por página",
+            "pdf",
+            [".pdf"],
+            [new("mode", "Como dividir", "pages", [new("pages", "Cada página"), new("half", "Pela metade")])],
+            Splits: true),
+        new(
+            "pdf.rotate",
+            PdfTab,
+            "Girar",
+            "Todas as páginas",
+            "pdf",
+            [".pdf"],
+            [new("rotation", "Girar páginas", "90", [new("90", "Direita"), new("180", "Ponta-cabeça"), new("270", "Esquerda")])],
+            Suffix: " - girado"),
+
+        // ADR-034: pelo motor de documentos isolado, só no Pizza Jumbo.
+        new("document.pdf", DocsTab, "PDF", "Para enviar", "pdf", DocumentInputs, [], DocumentEngine: true),
     ];
 
     private static string[] ImagesExcept(params string[] own) => ImageInputs.Except(own).ToArray();

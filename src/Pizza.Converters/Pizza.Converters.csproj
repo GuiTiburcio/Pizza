@@ -15,6 +15,31 @@
     <PackageReference Include="NetVips.Native.win-x64" Version="8.18.7" />
   </ItemGroup>
 
+  <!--
+    ADR-033: QPDF (Apache-2.0) para as operações de estrutura de PDF. Vem da release oficial, com versão e
+    SHA-256 fixados; só a DLL e o runtime do Visual C++ que ela importa vão para a pasta do Worker.
+  -->
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <QpdfVersion>12.4.2</QpdfVersion>
+    <QpdfSha256>db87077e683630c1217e0e8f9a20a9749d952ab676e881c3689187763a5de25d</QpdfSha256>
+    <QpdfZip>qpdf-$(QpdfVersion)-msvc64.zip</QpdfZip>
+    <QpdfCache>$(MSBuildThisFileDirectory)..\..\artifacts\deps\qpdf-$(QpdfVersion)\</QpdfCache>
+    <QpdfBin>$(QpdfCache)qpdf-$(QpdfVersion)-msvc64\bin\</QpdfBin>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <QpdfRuntime Include="qpdf30.dll;msvcp140.dll;vcruntime140.dll;vcruntime140_1.dll" />
+    <None Include="@(QpdfRuntime->'$(QpdfBin)%(Identity)')" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
+  <Target Name="FetchQpdf" BeforeTargets="BeforeBuild;AssignTargetPaths" Condition="!Exists('$(QpdfBin)qpdf30.dll')">
+    <DownloadFile SourceUrl="https://github.com/qpdf/qpdf/releases/download/v$(QpdfVersion)/$(QpdfZip)" DestinationFolder="$(QpdfCache)" Retries="2" />
+    <VerifyFileHash File="$(QpdfCache)$(QpdfZip)" Hash="$(QpdfSha256)" Algorithm="SHA256" />
+    <Unzip SourceFiles="$(QpdfCache)$(QpdfZip)" DestinationFolder="$(QpdfCache)" />
+    <Delete Files="$(QpdfCache)$(QpdfZip)" />
+  </Target>
+
   <ItemGroup>
     <InternalsVisibleTo Include="Pizza.Converters.Tests" />
   </ItemGroup>

@@ -40,6 +40,7 @@ internal static unsafe class Program
         }
 
         Conversion.Initialize();
+        Overlay.MenuOpened = Conversion.WarmUp;
         GestureHook.Install();
         Log.Write(LogEvent.AppStarted);
 
@@ -73,6 +74,7 @@ internal static unsafe class Program
         }
 
         GestureHook.Uninstall();
+        Conversion.Shutdown();
         Tray.Remove();
         Overlay.Destroy();
         OleUninitialize();

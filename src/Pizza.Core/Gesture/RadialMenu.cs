@@ -86,9 +86,18 @@ public static class RadialMenu
             .SelectMany(tab => Enumerable.Range(0, Math.Max(1, (Available(path).Count(converter => converter.Tab == tab) + SlotCount - 1) / SlotCount))
                 .Select(turn => new MenuPage(tab, turn))).ToArray();
 
+    /// <summary>FR-03: o menu abre na aba do tipo do arquivo, a primeira com alguma conversão para ele.</summary>
+    public static int FirstPage(string path)
+    {
+        var tab = Available(path).Select(converter => converter.Tab).DefaultIfEmpty(0).Min();
+        return Pages(path).ToList().FindIndex(page => page.Tab == tab);
+    }
+
     private static IEnumerable<ConverterInfo> Available(string path)
     {
         var extension = Path.GetExtension(path);
-        return ConverterCatalog.All.Where(converter => converter.InputExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase));
+        return ConverterCatalog.All.Where(converter =>
+            converter.InputExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase)
+            && (!converter.DocumentEngine || ConverterCatalog.DocumentEngineAvailable));
     }
 }

@@ -23,6 +23,38 @@ public class IpcCodecTests
         Assert.Equal("balanced", message.Options!["compression"]);
     }
 
+    [Fact]
+    public void Juntar_leva_os_outros_arquivos_so_como_handles()
+    {
+        // ADR-033 e SEC-15: as entradas a mais do Juntar chegam como números, na ordem do arraste.
+        var message = Parse("{" + Job + ""","type":"convert","converterId":"pdf.merge","srcHandle":120,"moreSrcHandles":[128,132],"dstHandle":124,"options":{}}""");
+
+        Assert.Equal([128L, 132L], message.MoreSrcHandles);
+        Assert.Equal(message.MoreSrcHandles, IpcCodec.Parse(IpcCodec.Serialize(message)).MoreSrcHandles);
+        Assert.DoesNotContain("moreSrcHandles", Encoding.UTF8.GetString(IpcCodec.Serialize(message with { MoreSrcHandles = null })));
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("[0]")]
+    [InlineData("[\"C:\\\\a.pdf\"]")]
+    [InlineData("[1.5]")]
+    [InlineData("[[1]]")]
+    [InlineData("{\"a\":\"1\"}")]
+    [InlineData("12")]
+    public void Lista_de_handles_fora_do_formato_e_recusada(string list)
+    {
+        Assert.Throws<IpcProtocolException>(() => Parse("{" + Job + ""","type":"convert","converterId":"pdf.merge","srcHandle":1,"moreSrcHandles":""" + list + ""","dstHandle":2,"options":{}}"""));
+    }
+
+    [Fact]
+    public void Lista_de_handles_tem_limite()
+    {
+        // SEC-46: até 500 arquivos por arraste, contando o primeiro.
+        var handles = string.Join(",", Enumerable.Range(1, 500));
+        Assert.Throws<IpcProtocolException>(() => Parse("{" + Job + ""","type":"convert","converterId":"pdf.merge","srcHandle":1,"moreSrcHandles":[""" + handles + """],"dstHandle":2,"options":{}}"""));
+    }
+
     [Theory]
     [InlineData("""{"type":"progress","percent":50}""", IpcType.Progress)]
     [InlineData("""{"type":"done","elapsedMs":182}""", IpcType.Done)]

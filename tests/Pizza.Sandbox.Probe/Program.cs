@@ -24,9 +24,22 @@ var act = Array.IndexOf(args, "--act");
 if (act >= 0)
 {
     // Worker sabotado, para testar como o residente reage.
-    var jobId = Regex.Match(reader.ReadLine() ?? "","\"jobId\":\"([0-9a-f]{12})\"").Groups[1].Value;
+    var request = reader.ReadLine() ?? "";
+    var jobId = Regex.Match(request, "\"jobId\":\"([0-9a-f]{12})\"").Groups[1].Value;
     switch (args[act + 1])
     {
+        case "bad-bundle":
+            // Worker comprometido no Dividir: anuncia duas partes e entrega uma, que nem é PDF.
+            using (var destination = OpenHandle(Regex.Match(request, "\"dstHandle\":(\\d+)").Groups[1].Value, FileAccess.Write))
+            {
+                destination.Write("PZB1"u8);
+                destination.Write(BitConverter.GetBytes(2));
+                destination.Write(BitConverter.GetBytes(4L));
+                destination.Write("MZ.."u8);
+            }
+
+            writer.Write(Done(jobId));
+            return 0;
         case "exit":
             return 1;
         case "crash":
