@@ -146,6 +146,34 @@ internal static unsafe partial class MediaFoundation
         return hr;
     }
 
+    /// <summary>Volta ao começo, para a segunda passada do Normalizar.</summary>
+    public static void Rewind(nint reader)
+    {
+        var variant = stackalloc byte[24];
+        new Span<byte>(variant, 24).Clear();
+        *(ushort*)variant = 20; // VT_I8, posição 0
+        var format = Guid.Empty;
+        Check(((delegate* unmanaged[Stdcall]<nint, Guid*, byte*, int>)Slot(reader, 8))(reader, &format, variant));
+    }
+
+    // IMFSample e IMFMediaBuffer: as amostras PCM, para o Volume trabalhar no próprio buffer.
+    public static nint ContiguousBuffer(nint sample)
+    {
+        nint buffer;
+        Check(((delegate* unmanaged[Stdcall]<nint, nint*, int>)Slot(sample, 41))(sample, &buffer));
+        return buffer;
+    }
+
+    public static Span<byte> Lock(nint buffer)
+    {
+        byte* data;
+        uint maximum, length;
+        Check(((delegate* unmanaged[Stdcall]<nint, byte**, uint*, uint*, int>)Slot(buffer, 3))(buffer, &data, &maximum, &length));
+        return new Span<byte>(data, (int)length);
+    }
+
+    public static void Unlock(nint buffer) => Check(((delegate* unmanaged[Stdcall]<nint, int>)Slot(buffer, 4))(buffer));
+
     /// <summary>Duração em unidades de 100 ns, ou 0 quando o arquivo não informa.</summary>
     public static long DurationOf(nint reader)
     {
