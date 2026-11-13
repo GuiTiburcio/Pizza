@@ -142,6 +142,17 @@ O áudio de teste é gerado pelo próprio teste. Passa quem cumprir:
 - **Efeitos do XAudio2 (XAPO) ou de uma biblioteca de DSP:** foram feitos para tocar, não para converter, ou seriam dependência nova; as contas são curtas e testáveis.
 - **Estimar o tamanho só pelo tamanho da origem:** erra muito quando a origem já é comprimida.
 
+## Verificação de fidelidade de 13/11/2026: ALAC ainda pendente
+
+Os testes de releitura do PR #84 com PCM estéreo de 48 kHz, canais distintos e valores extremos preservaram exatamente as amostras em WAV e FLAC, nas profundidades de 16 e 24 bits. Isso não comprova todas as combinações de entrada, reamostragem, mistura de canais ou efeitos.
+
+O mesmo teste revelou dois problemas no caminho ALAC/M4A:
+
+- A lista de subtipos recusava a própria saída: o MPEG-4 source expõe `616c6163-767a-494d-b478-f29d25dc9037` para a entrada `alac`, além do identificador `MFAudioFormat_ALAC` usado pelo codificador. A correção aceita somente essa representação adicional do mesmo codec.
+- Após essa correção, as 48.000 amostras por canal da origem foram recuperadas integralmente, mas a saída decodificada tinha 49.152 amostras por canal, com 1.152 amostras extras de silêncio (24 ms). O contêiner já informava duração ampliada. Cortar silêncio na releitura poderia apagar silêncio verdadeiro e não corrige o arquivo exportado.
+
+Os casos de ALAC permanecem reprovando a igualdade integral. A fidelidade desse caminho e a conclusão da aba Áudio continuam pendentes. Não substituir o teste por tolerância de duração nem considerar a simples criação do arquivo uma prova de conversão sem perda. As origens dos testes continuam preservadas.
+
 ## Adendo de 13/11/2026: qualidade indisponível exige confirmação
 
 Decisão do mantenedor: quando o codificador do Windows não aceitar a taxa escolhida, oferecer uma taxa menor e só converter depois da confirmação. A redução automática não atende a essa decisão.
