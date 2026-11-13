@@ -133,6 +133,8 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | FR-40, FR-29 e FR-51 (Fase 4c) | O aviso de conversão mostra a porcentagem real informada pelo Worker numa linha no azul do "Abrir", o tempo decorrido e o estimado acima dela e, ao concluir, quanto levou. Três botões pequenos: continuar, pausar e parar (cancela). Pausar uma conversão sai da v1.x e entra agora; pausar a fila continua na v1.x. O prazo do SEC-43 conta só o tempo ativo | 029 |
 | FR-44 (Fase 4c) | Arquivos em vidro translúcido, com linhas compactas (ícone, nome e status). Só a linha em foco abre e mostra os botões; a bolha marca o botão em foco | 028 |
 | FR-20 (Fase 4d) | Na Resolução em porcentagem, o painel usa uma régua de 20% a 100% (100% é o original), com qualquer valor inteiro e uma caixa editável ao lado do título; o pino é a bolha de vidro. O esquema aceita "original" ou de "20" a "99", validado também no Worker. A faixa de níveis mantém Original, 75% e 50% | 030 |
+| FR-03, FR-30 (menu por arquivo) | Numa aba com alguma conversão para o arquivo, aparecem só as fatias que servem a ele, em voltas de seis; a aba Docs é única. As demais abas seguem no scroll com as fatias apagadas; escolher uma delas não converte e mostra sobre a fatia "Não converte para X. Experimente a aba Y.", com a primeira aba que converte o arquivo, e o menu continua aberto. No Pizza Brotinho, fatias do motor de documentos não aparecem. Substitui o pedido de 13/11/2026 de mostrar tudo desabilitado | 036 |
+| Personalizar a pizza (Fase 8) | Em Configurações, nos dois pacotes: ligar e desligar abas e fatias e mudar a ordem. Padrão: tudo ligado | 036 |
 | NFR-01 | A meta de 20 MB vale para a **memória privada** do residente, a coluna Memória do Gerenciador de Tarefas. O conjunto de trabalho total também conta DLLs do Windows compartilhadas com o Explorer (shell32, windows.storage, combase), exigidas pelo arrastar e soltar em qualquer linguagem. Medição de 10/11/2026, em repouso: 7,8 MB privados e 24 MB de conjunto de trabalho. A Fase 5 mede também com o menu aberto | — |
 
 ---
@@ -258,7 +260,10 @@ O Pizza é uma **ferramenta** que roda no computador do cliente. Quem decide con
 | v0.1 | Imagem: JPG, PNG, WEBP, AVIF, TIFF, ICO, GIF, Imagem → PDF |
 | v0.2 | PDF: Comprimir, Juntar, Dividir, Imagens, Word, Girar |
 | v0.3 | Documento: DOCX/XLSX/PPTX → PDF no Pizza Jumbo; conversões simples (DOCX → TXT/HTML/MD, XLSX → CSV) também no Pizza Brotinho (ADR-034) |
-| v1.x | Áudio e vídeo (FFmpeg LGPL) e aba Web |
+| v0.4 | Áudio (Media Foundation, ADR-035) e aba Web: dados, legendas, Markdown/HTML, fontes e compressão; nos dois pacotes (ADR-036) |
+| v1.x | Vídeo (FFmpeg LGPL), só no Pizza Jumbo |
+
+**O que vai em cada pacote (ADR-036).** O Pizza Brotinho faz tudo com o próprio código, o libvips, o QPDF, o PDFium e o Media Foundation: Imagem, PDF (menos PDF → DOCX), Docs simples, Áudio e Web. O Pizza Jumbo acrescenta o que precisa do motor de documentos (formatos de escritório entre si e para PDF, PPTX → PNG, MD/EPUB → PDF, PDF → DOCX) e, na v1.x, o Vídeo. A lista por formato está em `docs/propostas/plano-formatos-pacotes.md`.
 
 Os níveis de qualidade de cada conversão estão na Parte 7 do `PIZZA-PROJETO.md`.
 
