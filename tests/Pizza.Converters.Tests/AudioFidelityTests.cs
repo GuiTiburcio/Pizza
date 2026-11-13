@@ -25,7 +25,9 @@ public partial class AudioConverterTests
         Assert.Equal(48000, Inspect(decoded).SampleRate);
         Assert.Equal(2, Inspect(decoded).Channels);
         Assert.Equal(bits, Inspect(decoded).Bits);
-        Assert.Equal(Pcm(source), Pcm(decoded));
+        var expected = Pcm(source);
+        var actual = Pcm(decoded);
+        Assert.True(expected.SequenceEqual(actual), $"PCM do fixture: origem={expected.Length} bytes, saída={actual.Length} bytes; codificado={Inspect(encoded)}; decodificado={Inspect(decoded)}");
     }
 
     private static byte[] PatternWave(int bits)
