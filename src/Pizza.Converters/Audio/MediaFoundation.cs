@@ -38,6 +38,9 @@ internal static unsafe partial class MediaFoundation
     public static readonly Guid Mp3 = Wave(0x0055);
     public static readonly Guid Aac = Wave(0x1610);
     public static readonly Guid Alac = Wave(0x6C61);
+    // MPEG-4 source: MFMPEG4Format_Base com Data1 = sample-entry 'alac' (SEC-45, ADR-035).
+    // https://learn.microsoft.com/en-us/windows/win32/medfound/mpeg-4-file-source
+    public static readonly Guid Mpeg4Alac = new("616c6163-767a-494d-b478-f29d25dc9037");
     public static readonly Guid Flac = Wave(0xF1AC);
 
     public static readonly Guid Mpeg4Container = new("dc6cd05d-b9d0-40ef-bd35-fa622c1ab28a");

@@ -141,3 +141,28 @@ O áudio de teste é gerado pelo próprio teste. Passa quem cumprir:
 - **Só Normalizar:** o mantenedor escolheu o conjunto completo dos editores de áudio.
 - **Efeitos do XAudio2 (XAPO) ou de uma biblioteca de DSP:** foram feitos para tocar, não para converter, ou seriam dependência nova; as contas são curtas e testáveis.
 - **Estimar o tamanho só pelo tamanho da origem:** erra muito quando a origem já é comprimida.
+
+## Verificação de fidelidade de 13/11/2026: ALAC ainda pendente
+
+Os testes de releitura do PR #84 com PCM estéreo de 48 kHz, canais distintos e valores extremos preservaram exatamente as amostras em WAV e FLAC, nas profundidades de 16 e 24 bits. Isso não comprova todas as combinações de entrada, reamostragem, mistura de canais ou efeitos.
+
+O mesmo teste revelou dois problemas no caminho ALAC/M4A:
+
+- A lista de subtipos recusava a própria saída: o MPEG-4 source expõe `616c6163-767a-494d-b478-f29d25dc9037` para a entrada `alac`, além do identificador `MFAudioFormat_ALAC` usado pelo codificador. A correção aceita somente essa representação adicional do mesmo codec.
+- Após essa correção, as 48.000 amostras por canal da origem foram recuperadas integralmente, mas a saída decodificada tinha 49.152 amostras por canal, com 1.152 amostras extras de silêncio (24 ms). O contêiner já informava duração ampliada. Cortar silêncio na releitura poderia apagar silêncio verdadeiro e não corrige o arquivo exportado.
+
+Os casos de ALAC permanecem reprovando a igualdade integral. A fidelidade desse caminho e a conclusão da aba Áudio continuam pendentes. Não substituir o teste por tolerância de duração nem considerar a simples criação do arquivo uma prova de conversão sem perda. As origens dos testes continuam preservadas.
+
+## Adendo de 13/11/2026: qualidade indisponível exige confirmação
+
+Decisão do mantenedor: quando o codificador do Windows não aceitar a taxa escolhida, oferecer uma taxa menor e só converter depois da confirmação. A redução automática não atende a essa decisão.
+
+- O aviso deve mostrar a taxa solicitada e a taxa menor disponível, ambas em kbps, para a mesma combinação de formato, canais e taxa de amostragem.
+- Oferecer a alternativa não autoriza converter. Cancelar não gera uma saída, e a origem permanece intacta (SEC-30, SEC-31).
+- Confirmar autoriza somente a taxa mostrada. Se essa taxa também for recusada, não tentar outra menor sem nova confirmação.
+- A opção "Sem perda" não pode virar AAC nem outro modo com perda como alternativa automática.
+- A detecção de suporte continua no Worker isolado. Qualquer negociação pelo IPC precisa de esquema estrito e validação nos dois lados (SEC-13), sem caminhos nem conteúdo do arquivo (SEC-15).
+
+**Implementação pendente:** o primeiro backend tenta taxas menores sem pedir confirmação. Este adendo registra o comportamento aprovado; não declara o fluxo implementado nem validado. A entrega precisa cobrir a detecção no Worker, a confirmação na interface e a nova tentativa com a taxa explicitamente aceita.
+
+**Critérios de aceite:** uma combinação recusada oferece a alternativa sem iniciar a conversão; Cancelar não deixa saída; confirmar usa exatamente a taxa mostrada; outra recusa não reduz novamente em silêncio; "Sem perda" nunca é substituído por codificação com perda. Os testes também devem verificar a preservação do original e a rejeição de sugestões fora do catálogo.
