@@ -65,6 +65,82 @@ public sealed class CorruptedFilesTests(SandboxFixture fixture) : IDisposable
         Assert.True(failures.Count == 0, $"{failures.Count} de {cases} casos reprovados:\n" + string.Join('\n', failures));
     }
 
+    [MediaFact]
+    public void Audio_corrompido_nunca_derruba_trava_nem_deixa_resto()
+    {
+        // ADR-035: o corpus de áudio é gerado aqui (WAV de teste convertido pelo próprio Worker), sem arquivo de usuário.
+        var runner = new ConversionRunner(fixture.WorkerPath, SandboxFixture.Profile, new TempJournal(_folder + ".journal"), TimeSpan.FromSeconds(30));
+        var corpus = AudioCorpus(runner);
+        (string Id, string Extension)[] targets = [("audio.mp3", "mp3"), ("audio.m4a", "m4a"), ("audio.flac", "flac"), ("audio.wav", "wav")];
+        var cases = Number("PIZZA_FUZZ_CASES", DefaultCases) / 2;
+        var firstSeed = Number("PIZZA_FUZZ_SEED", 0) * SeedStep;
+        var failures = new List<string>();
+
+        for (long index = 0; index < cases; index++)
+        {
+            var seed = firstSeed + index;
+            var random = new Random((int)(seed % int.MaxValue));
+            var (extension, original) = corpus[(int)(index % corpus.Length)];
+            var bytes = Mutate(original, random);
+            var target = targets[random.Next(targets.Length)];
+            var path = Path.Combine(_folder, "caso." + extension);
+            File.WriteAllBytes(path, bytes);
+
+            var problem = Check(runner.Run(path, target.Id, target.Extension), path, bytes);
+            if (problem is not null)
+            {
+                failures.Add($"semente {seed}, {extension} para {target.Id}: {problem}");
+                Keep(RepositoryRoot(), path, seed);
+            }
+
+            Clear();
+        }
+
+        Assert.True(failures.Count == 0, $"{failures.Count} de {cases} casos reprovados:\n" + string.Join('\n', failures));
+    }
+
+    private (string Extension, byte[] Bytes)[] AudioCorpus(ConversionRunner runner)
+    {
+        var wav = Path.Combine(_folder, "base.wav");
+        File.WriteAllBytes(wav, AudioSample());
+        var corpus = new List<(string, byte[])> { ("wav", File.ReadAllBytes(wav)) };
+        foreach (var (id, extension) in new[] { ("audio.mp3", "mp3"), ("audio.m4a", "m4a"), ("audio.flac", "flac") })
+        {
+            var result = runner.Run(wav, id, extension);
+            Assert.Null(result.ErrorCode);
+            corpus.Add((extension, File.ReadAllBytes(Path.Combine(_folder, result.OutputName!))));
+        }
+
+        Clear();
+        return corpus.ToArray();
+    }
+
+    private static byte[] AudioSample()
+    {
+        const int rate = 22050, frames = rate / 2;
+        using var memory = new MemoryStream();
+        using var writer = new BinaryWriter(memory);
+        writer.Write("RIFF"u8);
+        writer.Write(36 + (frames * 2));
+        writer.Write("WAVEfmt "u8);
+        writer.Write(16);
+        writer.Write((short)1);
+        writer.Write((short)1);
+        writer.Write(rate);
+        writer.Write(rate * 2);
+        writer.Write((short)2);
+        writer.Write((short)16);
+        writer.Write("data"u8);
+        writer.Write(frames * 2);
+        for (var i = 0; i < frames; i++)
+        {
+            writer.Write((short)(Math.Sin(2 * Math.PI * 330 * i / rate) * 9000));
+        }
+
+        writer.Flush();
+        return memory.ToArray();
+    }
+
     private string? Check(ConversionResult result, string path, byte[] bytes)
     {
         if (!bytes.AsSpan().SequenceEqual(File.ReadAllBytes(path)))

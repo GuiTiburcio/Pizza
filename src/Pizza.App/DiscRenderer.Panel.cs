@@ -165,7 +165,7 @@ internal static unsafe partial class DiscRenderer
             }
         }
 
-        if (!state.CanKeepMetadata)
+        if (!state.CanKeepMetadata && state.HasMetadataRow)
         {
             DrawKeep(g, state.KeepTop, enabled: false, isChecked: false, colors);
             Text(g, MetadataNotice, _regular, 12, StyleRegular, Ink(colors.SecondaryText), padding, state.KeepTop + OptionsPanelState.KeepRowHeight, inner, 20, AlignNear);
@@ -200,8 +200,10 @@ internal static unsafe partial class DiscRenderer
         var text = state.ValueText(row);
         var editing = state.IsEditing(row);
         var typing = state.IsTyping(row);
-        const float numberWidth = 30;
+        // Régua em degraus (ADR-035): "192 kbps"; sem número, como "Sem perda", o texto ocupa a caixa toda.
+        var unit = typing ? (state.Rows[row].Steps ? "kbps" : "%") : state.ValueUnit(row);
         const float numberLeft = 8;
+        var numberWidth = unit.Length == 0 ? boxWidth - (2 * numberLeft) : 30f;
         if (editing && !typing)
         {
             // Valor selecionado: o primeiro dígito o substitui.
@@ -211,7 +213,10 @@ internal static unsafe partial class DiscRenderer
         }
 
         Text(g, text, _semibold, 13, StyleBold, editing && !typing ? Ink(colors.OnAccent) : Ink(colors.Text), boxLeft + numberLeft, boxTop, numberWidth, boxHeight, typing ? AlignFar : AlignCenter);
-        Text(g, "%", _semibold, 13, StyleBold, Ink(colors.Text), boxLeft + numberLeft + numberWidth, boxTop, boxWidth - numberLeft - numberWidth - 4, boxHeight);
+        if (unit.Length > 0)
+        {
+            Text(g, unit, _semibold, 13, StyleBold, Ink(colors.Text), boxLeft + numberLeft + numberWidth, boxTop, boxWidth - numberLeft - numberWidth - 4, boxHeight);
+        }
         if (typing)
         {
             // Cursor logo depois do que foi digitado.
