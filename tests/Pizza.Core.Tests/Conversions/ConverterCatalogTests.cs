@@ -24,10 +24,25 @@ public class ConverterCatalogTests
     [InlineData("pdf.rotate", new[] { "a.pdf", "b.pdf" }, false)]
     [InlineData("image.png", new[] { "a.jpg", "b.jpg" }, false)]
     [InlineData("image.png", new[] { "a.pdf" }, false)]
+    [InlineData("document.txt", new[] { "a.DOCX" }, true)]
+    [InlineData("document.txt", new[] { "a.doc" }, false)]
+    [InlineData("document.csv", new[] { "a.xlsx" }, true)]
+    [InlineData("document.csv", new[] { "a.xls" }, false)]
+    [InlineData("document.csv", new[] { "a.xlsx", "b.xlsx" }, false)]
     public void Varios_arquivos_so_valem_no_juntar(string id, string[] paths, bool accepted)
     {
         // FR-30 com a emenda da ADR-033.
         Assert.Equal(accepted, ConverterCatalog.Find(id)!.Accepts(paths));
+    }
+
+    [Fact]
+    public void Csv_numera_as_planilhas_so_quando_ha_mais_de_uma()
+    {
+        // O nome vem do residente, nunca do nome da planilha, que é texto do arquivo não confiável (SEC-30).
+        var suffix = ConverterCatalog.Find("document.csv")!.PartSuffix(new Dictionary<string, string>())!;
+
+        Assert.Equal("", suffix(1, 1));
+        Assert.Equal(" - planilha 3", suffix(3, 3));
     }
 
     [Fact]

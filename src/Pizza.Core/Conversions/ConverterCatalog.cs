@@ -50,9 +50,12 @@ public sealed record ConverterInfo(
     /// <summary>Legenda da fatia quando ela não vale para o que foi arrastado (prancha 6A-1).</summary>
     public string UnavailableCaption => Merges ? "2 ou mais PDFs" : "um por vez";
 
-    /// <summary>Com várias saídas (Dividir), o sufixo de cada parte; null quando há uma saída só.</summary>
+    /// <summary>
+    /// Com várias saídas, o sufixo de cada parte; null quando há uma saída só. O Dividir escolhe pelo modo; o
+    /// CSV, que não tem painel, numera as planilhas.
+    /// </summary>
     public Func<int, int, string>? PartSuffix(IReadOnlyDictionary<string, string> options) =>
-        Splits ? (part, count) => Output.OutputNaming.PartSuffix(options.GetValueOrDefault("mode", Options[0].Default), part, count) : null;
+        Splits ? (part, count) => Output.OutputNaming.PartSuffix(Options.Count == 0 ? "sheets" : options.GetValueOrDefault("mode", Options[0].Default), part, count) : null;
 }
 
 /// <summary>Lista das conversões. O menu e o painel se montam daqui; a ordem é a das fatias (ADR-012).</summary>
@@ -143,6 +146,10 @@ public static class ConverterCatalog
 
         // ADR-034: pelo motor de documentos isolado, só no Pizza Jumbo.
         new("document.pdf", DocsTab, "PDF", "Para enviar", "pdf", DocumentInputs, [], DocumentEngine: true),
+
+        // ADR-034, Pizza Brotinho: sem diagramação, no Worker de sempre; cada planilha vira um CSV.
+        new("document.txt", DocsTab, "TXT", "Só o texto", "txt", [".docx"], []),
+        new("document.csv", DocsTab, "CSV", "Tabela simples", "csv", [".xlsx"], [], Splits: true),
     ];
 
     private static string[] ImagesExcept(params string[] own) => ImageInputs.Except(own).ToArray();

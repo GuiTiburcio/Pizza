@@ -106,7 +106,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     private ConversionResult CommitParts(string sourcePath, SafeFileHandle source, SafeFileHandle bundle, string extension, Func<int, int, string> suffix)
     {
         var directory = Path.GetDirectoryName(Path.GetFullPath(sourcePath))!;
-        var list = OutputBundle.Read(bundle, ConversionResult.MaxParts);
+        var list = OutputBundle.Read(bundle, ConversionResult.MaxParts, extension);
         var pending = new List<PendingOutput>(list.Count);
         var committed = new List<string>(list.Count);
         try

@@ -24,7 +24,7 @@ public sealed class PdfSplitConverterTests : IDisposable
 
         using var handle = File.OpenHandle(_file);
         var bytes = File.ReadAllBytes(_file);
-        return (null, OutputBundle.Read(handle, 2000).Select(part => bytes[(int)part.Offset..(int)(part.Offset + part.Length)]).ToList());
+        return (null, OutputBundle.Read(handle, 2000, "pdf").Select(part => bytes[(int)part.Offset..(int)(part.Offset + part.Length)]).ToList());
     }
 
     [Fact]

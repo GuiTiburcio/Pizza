@@ -24,13 +24,41 @@ public class DocsTabTests
         Assert.Contains(RadialMenu.Slices(ConverterCatalog.DocsTab, file), slice => slice.Id == "document.pdf" && slice.Label == "PDF");
     }
 
-    [Fact]
-    public void Sem_o_motor_o_documento_nao_abre_o_menu()
+    [Theory]
+    [InlineData("contrato.docx", "document.txt", "TXT")]
+    [InlineData("planilha.xlsx", "document.csv", "CSV")]
+    public void Sem_o_motor_o_Brotinho_faz_as_conversoes_simples(string file, string id, string label)
     {
-        // Pizza Brotinho antes das conversões simples (etapa 3): sem conversão, o menu não abre (FR-09).
+        // ADR-034, etapa 3: DOCX → TXT e XLSX → CSV no Worker, sem o motor; PDF fica só no Pizza Jumbo.
         using var _ = DocumentEngineSwitch.Set(false);
 
-        Assert.False(RadialMenu.CanConvert("contrato.docx"));
+        var slices = RadialMenu.Slices(ConverterCatalog.DocsTab, file);
+        Assert.Contains(slices, slice => slice.Id == id && slice.Label == label);
+        Assert.DoesNotContain(slices, slice => slice.Id == "document.pdf");
+        Assert.Equal(ConverterCatalog.DocsTab, RadialMenu.Pages(file)[RadialMenu.FirstPage(file)].Tab);
+    }
+
+    [Theory]
+    [InlineData("apresentacao.pptx")]
+    [InlineData("antigo.doc")]
+    public void Sem_o_motor_documento_sem_conversao_simples_nao_abre_o_menu(string file)
+    {
+        // FR-09: sem conversão, o menu não abre.
+        using var _ = DocumentEngineSwitch.Set(false);
+
+        Assert.False(RadialMenu.CanConvert(file));
+    }
+
+    [Fact]
+    public void Conversoes_simples_nao_tem_painel_e_rodam_no_Worker()
+    {
+        // FR-21: sem opções, começa ao soltar.
+        Assert.All(["document.txt", "document.csv"], id =>
+        {
+            var converter = ConverterCatalog.Find(id)!;
+            Assert.False(converter.HasPanel);
+            Assert.False(converter.DocumentEngine);
+        });
     }
 
     [Fact]
