@@ -23,5 +23,8 @@ public static class ZoneIdentifier
         return null;
     }
 
+    /// <summary>Juntar (SEC-35): a zona mais restritiva entre as origens, ou null se nenhuma tiver marca.</summary>
+    public static int? MostRestrictive(IEnumerable<int?> zones) => zones.Max();
+
     public static string Format(int zone) => $"[ZoneTransfer]\r\nZoneId={zone.ToString(CultureInfo.InvariantCulture)}\r\n";
 }

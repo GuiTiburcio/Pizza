@@ -28,7 +28,10 @@ internal readonly record struct DiscFrame(
     double SliceGlide = 0,
     double SliceSwell = 0,
     double LevelGlide = 0,
-    double LevelSwell = 0);
+    double LevelSwell = 0,
+    bool[]? Unavailable = null,
+    IReadOnlyList<(string Number, string Name)>? Order = null,
+    bool Merging = false);
 
 /// <summary>
 /// Desenha o menu no visual do Dossiê (DES-1, WF-1, WF-2) com GDI+ e transparência por pixel (ADR-023).

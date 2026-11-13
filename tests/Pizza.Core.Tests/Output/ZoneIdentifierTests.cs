@@ -21,6 +21,22 @@ public class ZoneIdentifierTests
         Assert.Null(ZoneIdentifier.ParseZone(content));
     }
 
+    [Theory]
+    [InlineData(new[] { 1, 3 }, 3)]
+    [InlineData(new[] { 3, 1 }, 3)]
+    [InlineData(new[] { 0, 2, 4 }, 4)]
+    public void Entre_varios_arquivos_vale_a_zona_mais_restritiva(int[] zones, int expected)
+    {
+        // SEC-35 no Juntar: quanto maior o ZoneId, mais restrito (4 é "sites restritos").
+        Assert.Equal(expected, ZoneIdentifier.MostRestrictive(zones.Select(zone => (int?)zone)));
+    }
+
+    [Fact]
+    public void Sem_marca_em_nenhum_arquivo_nao_ha_zona()
+    {
+        Assert.Null(ZoneIdentifier.MostRestrictive([null, null]));
+    }
+
     [Fact]
     public void Texto_gravado_tem_so_a_zona()
     {

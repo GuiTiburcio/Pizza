@@ -25,7 +25,7 @@ internal static unsafe partial class Overlay
             return;
         }
 
-        if (files is { } dragged && _files?.First != dragged.First)
+        if (files is { } dragged && (_files is not { } current || !current.SameAs(dragged)))
         {
             _files = files;
         }
@@ -65,15 +65,15 @@ internal static unsafe partial class Overlay
         }
 
         // ADR-025 / SEC-05: qualquer posição prepara o arquivo; só uma fatia seleciona o formato.
-        return Session.State == GestureState.Menu && _files is { Count: 1 } && IsVisible && _pulseSlot is null;
+        return Session.State == GestureState.Menu && _files is { } files && Usable(files) && IsVisible && _pulseSlot is null;
     }
 
     /// <summary>Aceita o drop numa fatia e mostra o pulso antes de seguir. Devolve falso se o drop não vale.</summary>
     public static bool OnDrop(DraggedFiles? files, int x, int y, bool selectSlice = true)
     {
         // CF_HDROP é relido na soltura. Validar antes de alterar o estado ou indexar o catálogo (SEC-06).
-        if (Session.State != GestureState.Menu || files is not { Count: 1 } file ||
-            _files is not { Count: 1 } entered || !string.Equals(file.First, entered.First, StringComparison.OrdinalIgnoreCase) ||
+        if (Session.State != GestureState.Menu || files is not { } file || !Usable(file) ||
+            _files is not { } entered || !file.SameAs(entered) ||
             !RadialMenu.CanConvert(file.First) || !IsVisible || _pulseSlot is not null)
         {
             return false;
@@ -81,13 +81,13 @@ internal static unsafe partial class Overlay
 
         if (selectSlice && TargetLevel(x, y) is { } level)
         {
-            return SelectLevel(file.First, level);
+            return SelectLevel(file, level);
         }
 
         var slot = selectSlice ? TargetSlot(x, y) : null;
         if (slot is { } selected)
         {
-            return Select(file.First, selected);
+            return Select(file, selected);
         }
 
         if (Session.OnDrop(true) != SessionAction.PrepareChoice)
@@ -106,11 +106,13 @@ internal static unsafe partial class Overlay
     /// ADR-027: a fatia converte direto com o nível marcado na faixa, que é o padrão se a roda não mexeu.
     /// Com <paramref name="panel"/>, o painel completo abre antes (botão direito).
     /// </summary>
-    private static bool Select(string path, int slot, bool panel = false)
+    private static bool Select(DraggedFiles files, int slot, bool panel = false)
     {
         var page = _pages[Carousel.Target];
-        var converter = RadialMenu.Slices(page.Tab, path, page.Turn).ElementAtOrDefault(slot);
-        if (converter is null)
+        var converter = RadialMenu.Slices(page.Tab, files.First, page.Turn).ElementAtOrDefault(slot);
+
+        // FR-30 com a emenda da ADR-033: a fatia esmaecida não converte, nem por teclado.
+        if (converter is null || !converter.Accepts(files.Paths))
         {
             return false;
         }
@@ -125,7 +127,7 @@ internal static unsafe partial class Overlay
         ShowWindow(_catcher, SW_HIDE);
 
         // O resto acontece depois que o Drop retornar: o Explorer fica preso até lá.
-        _dropped = (path, converter, options);
+        _dropped = (files.Paths, converter, options);
         _pulseSlot = slot;
         Render();
         SetTimer(Disc, TimerPulse, _motion == MotionStyle.Instant ? 1 : PulseMs, 0);
@@ -152,15 +154,15 @@ internal static unsafe partial class Overlay
         _pulseSlot = null;
         if (dropped.Options is null)
         {
-            _awaitingOptions = (dropped.Path, dropped.Converter);
+            _awaitingOptions = (dropped.Paths, dropped.Converter);
             var (centerX, centerY) = DiscCenter();
             HideWindow();
-            OptionsPanel.Show(dropped.Converter, Path.GetFileName(dropped.Path), centerX, centerY);
+            OptionsPanel.Show(dropped.Converter, Path.GetFileName(dropped.Paths[0]), centerX, centerY);
         }
         else
         {
             Hide();
-            Notifications.Convert(dropped.Path, dropped.Converter, dropped.Options);
+            Notifications.Convert(dropped.Paths, dropped.Converter, dropped.Options);
         }
     }
 
@@ -180,7 +182,7 @@ internal static unsafe partial class Overlay
             return;
         }
 
-        Notifications.Convert(pending.Path, pending.Converter, options);
+        Notifications.Convert(pending.Paths, pending.Converter, options);
     }
 
     public static void OnDropOutside()

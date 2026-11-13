@@ -30,10 +30,25 @@ public sealed record ConverterInfo(
     IReadOnlyList<ConverterOption> Options,
     string Suffix = "",
     bool Splits = false,
+    bool Merges = false,
     bool DocumentEngine = false)
 {
+    /// <summary>SEC-46: até 500 arquivos por arraste.</summary>
+    public const int MaxFiles = 500;
+
     /// <summary>Sem opções, a conversão começa ao soltar (FR-21).</summary>
     public bool HasPanel => Options.Count > 0;
+
+    /// <summary>
+    /// Se a fatia vale para estes arquivos. FR-30 com a emenda da ADR-033: vários arquivos só no Juntar, e o
+    /// Juntar só com dois ou mais; todos precisam ser de um tipo que a conversão aceita.
+    /// </summary>
+    public bool Accepts(IReadOnlyList<string> paths) =>
+        (Merges ? paths.Count is >= 2 and <= MaxFiles : paths.Count == 1)
+        && paths.All(path => InputExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase));
+
+    /// <summary>Legenda da fatia quando ela não vale para o que foi arrastado (prancha 6A-1).</summary>
+    public string UnavailableCaption => Merges ? "2 ou mais PDFs" : "um por vez";
 
     /// <summary>Com várias saídas (Dividir), o sufixo de cada parte; null quando há uma saída só.</summary>
     public Func<int, int, string>? PartSuffix(IReadOnlyDictionary<string, string> options) =>
@@ -106,6 +121,7 @@ public static class ConverterCatalog
         new("image.gif", ImageTab, "GIF", "256 cores", "gif", ImagesExcept(".gif"), []),
 
         // ADR-033 e prancha 6A-1: a extensão não muda, então o nome ganha o sufixo.
+        new("pdf.merge", PdfTab, "Juntar", "Vários em 1", "pdf", [".pdf"], [], Suffix: " - juntado", Merges: true),
         new(
             "pdf.split",
             PdfTab,

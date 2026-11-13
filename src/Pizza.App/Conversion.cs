@@ -91,7 +91,8 @@ internal static class Conversion
     /// <summary>Ao sair: o motor de reserva encerra e leva a letra e a área oculta junto.</summary>
     public static void Shutdown() => _documents?.Dispose();
 
-    public static void Start(long id, string sourcePath, ConverterInfo converter, IReadOnlyDictionary<string, string> options, nint notifyWindow, uint notifyMessage, uint progressMessage)
+    /// <param name="moreSources">Juntar (ADR-033): os outros arquivos, na ordem do arraste; vazio nas demais.</param>
+    public static void Start(long id, string sourcePath, IReadOnlyList<string> moreSources, ConverterInfo converter, IReadOnlyDictionary<string, string> options, nint notifyWindow, uint notifyMessage, uint progressMessage)
     {
         var cancellation = new CancellationTokenSource();
         Running[id] = cancellation;
@@ -115,7 +116,7 @@ internal static class Conversion
                 {
                     result = converter.DocumentEngine
                         ? _documents!.Run(sourcePath, converter.Id, converter.Extension, cancellation.Token, control)
-                        : _runner.Run(sourcePath, converter.Id, converter.Extension, options, cancellation.Token, control, converter.Suffix, converter.PartSuffix(options));
+                        : _runner.Run(sourcePath, converter.Id, converter.Extension, options, cancellation.Token, control, converter.Suffix, converter.PartSuffix(options), moreSources.Count == 0 ? null : moreSources);
                 }
             }
             catch (Exception)

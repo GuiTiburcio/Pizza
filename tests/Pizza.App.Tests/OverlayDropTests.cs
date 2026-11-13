@@ -50,7 +50,7 @@ public sealed class OverlayDropTests
 
         // A entrada continha JPG; CF_HDROP é lido novamente na soltura.
         // Nenhum arquivo é aberto. Os HWNDs ficam em zero; não são criadas janelas.
-        Assert.False(Overlay.OnDrop(new DraggedFiles(droppedPath, 1), DiscLayout.CenterX, DiscLayout.CenterY - 130));
+        Assert.False(Overlay.OnDrop(Files(droppedPath), DiscLayout.CenterX, DiscLayout.CenterY - 130));
     }
 
     [Fact]
@@ -84,8 +84,59 @@ public sealed class OverlayDropTests
     public void Arraste_com_varios_arquivos_nao_aceita_drop()
     {
         Prepare();
-        Set("_files", new DraggedFiles("entrada.jpg", 2));
+        Set("_files", Files("entrada.jpg", "outra.jpg"));
         Assert.Null(TargetAt(0, -130));
+    }
+
+    [Fact]
+    public void Varios_pdfs_so_acendem_o_juntar()
+    {
+        // FR-30 com a emenda da ADR-033 (prancha 6A-1).
+        PreparePdf("escritura.pdf", "anexo.pdf", "recibo.pdf");
+
+        Assert.Equal(0, TargetAt(SliceCenter(0).X - DiscLayout.CenterX, SliceCenter(0).Y - DiscLayout.CenterY));
+        Assert.Null(TargetAt(SliceCenter(1).X - DiscLayout.CenterX, SliceCenter(1).Y - DiscLayout.CenterY));
+        Assert.Null(TargetAt(SliceCenter(2).X - DiscLayout.CenterX, SliceCenter(2).Y - DiscLayout.CenterY));
+    }
+
+    [Fact]
+    public void Um_pdf_nao_acende_o_juntar_mas_acende_o_resto()
+    {
+        PreparePdf("escritura.pdf");
+
+        Assert.Null(TargetAt(SliceCenter(0).X - DiscLayout.CenterX, SliceCenter(0).Y - DiscLayout.CenterY));
+        Assert.Equal(1, TargetAt(SliceCenter(1).X - DiscLayout.CenterX, SliceCenter(1).Y - DiscLayout.CenterY));
+    }
+
+    [Fact]
+    public void Soltar_varios_pdfs_no_juntar_leva_todos_na_ordem()
+    {
+        PreparePdf("escritura.pdf", "anexo.pdf", "recibo.pdf");
+        var (x, y) = SliceCenter(0);
+
+        Assert.True(Overlay.OnDrop(Files("escritura.pdf", "anexo.pdf", "recibo.pdf"), x, y));
+        Assert.Equal("pdf.merge", Dropped!.Value.Converter.Id);
+        Assert.Equal(["escritura.pdf", "anexo.pdf", "recibo.pdf"], Dropped!.Value.Paths);
+    }
+
+    [Fact]
+    public void Soltura_com_ordem_diferente_da_entrada_e_recusada()
+    {
+        // SEC-06: CF_HDROP relido na soltura tem de ser o mesmo arraste.
+        PreparePdf("escritura.pdf", "anexo.pdf");
+        var (x, y) = SliceCenter(0);
+
+        Assert.False(Overlay.OnDrop(Files("anexo.pdf", "escritura.pdf"), x, y));
+    }
+
+    [Fact]
+    public void Pdf_misturado_com_imagem_nao_acende_nada()
+    {
+        // FR-31 (tipos misturados) é da v1.x.
+        PreparePdf("escritura.pdf", "foto.jpg");
+
+        Assert.Null(TargetAt(SliceCenter(0).X - DiscLayout.CenterX, SliceCenter(0).Y - DiscLayout.CenterY));
+        Assert.False(Overlay.OnDragOver(SliceCenter(0).X, SliceCenter(0).Y));
     }
 
     [Theory]
@@ -95,7 +146,7 @@ public sealed class OverlayDropTests
     public void Soltar_em_qualquer_posicao_prepara_a_escolha(int x, int y)
     {
         Prepare();
-        Assert.True(Overlay.OnDrop(new DraggedFiles("entrada.jpg", 1), x, y, selectSlice: false));
+        Assert.True(Overlay.OnDrop(Files("entrada.jpg"), x, y, selectSlice: false));
         Assert.Equal(GestureState.Choosing, Session.State);
     }
 
@@ -157,7 +208,7 @@ public sealed class OverlayDropTests
         Prepare();
         HoverSlice(1);
 
-        Assert.True(Overlay.OnDrop(new DraggedFiles("entrada.jpg", 1), LevelX(0, 4), LevelY));
+        Assert.True(Overlay.OnDrop(Files("entrada.jpg"), LevelX(0, 4), LevelY));
 
         Assert.Equal("image.webp", Dropped!.Value.Converter.Id);
         Assert.Equal("95", Dropped!.Value.Options!["quality"]);
@@ -171,7 +222,7 @@ public sealed class OverlayDropTests
         var (x, y) = SliceCenter(1);
         HoverSlice(1);
 
-        Assert.True(Overlay.OnDrop(new DraggedFiles("entrada.jpg", 1), x, y));
+        Assert.True(Overlay.OnDrop(Files("entrada.jpg"), x, y));
 
         Assert.Equal("75", Dropped!.Value.Options!["quality"]);
     }
@@ -185,7 +236,7 @@ public sealed class OverlayDropTests
         Assert.Equal(0, Carousel.Target);
 
         var (x, y) = SliceCenter(1);
-        Assert.True(Overlay.OnDrop(new DraggedFiles("entrada.jpg", 1), x, y));
+        Assert.True(Overlay.OnDrop(Files("entrada.jpg"), x, y));
         Assert.Equal("60", Dropped!.Value.Options!["quality"]);
 
         Prepare();
@@ -301,7 +352,7 @@ public sealed class OverlayDropTests
 
     private static void Prepare()
     {
-        Set("_files", new DraggedFiles("entrada.jpg", 1));
+        Set("_files", Files("entrada.jpg"));
         Set("_left", 0);
         Set("_top", 0);
         Set("_scale", 1.0);
@@ -328,7 +379,7 @@ public sealed class OverlayDropTests
     private static void PrepareChoice()
     {
         Prepare();
-        Assert.True(Overlay.OnDrop(new DraggedFiles("entrada.jpg", 1), 0, 0, selectSlice: false));
+        Assert.True(Overlay.OnDrop(Files("entrada.jpg"), 0, 0, selectSlice: false));
     }
 
     private static bool ChooseAt(int x, int y) =>
@@ -341,8 +392,20 @@ public sealed class OverlayDropTests
     private static nuint StripTimer => Convert.ToUInt32(typeof(Overlay).GetField("TimerStrip", PrivateStatic)!.GetRawConstantValue());
     private static int LevelY => DiscLayout.LevelTop + (DiscLayout.LevelHeight / 2);
 
-    private static (string Path, ConverterInfo Converter, IReadOnlyDictionary<string, string>? Options)? Dropped =>
-        ((string, ConverterInfo, IReadOnlyDictionary<string, string>?)?)Get("_dropped");
+    private static (IReadOnlyList<string> Paths, ConverterInfo Converter, IReadOnlyDictionary<string, string>? Options)? Dropped =>
+        ((IReadOnlyList<string>, ConverterInfo, IReadOnlyDictionary<string, string>?)?)Get("_dropped");
+
+    private static DraggedFiles Files(params string[] paths) => new(paths);
+
+    /// <summary>Menu aberto na aba PDF, como o FR-03 faz com um PDF: Juntar, Dividir e Girar nas fatias 0, 1 e 2.</summary>
+    private static void PreparePdf(params string[] paths)
+    {
+        Prepare();
+        Set("_files", Files(paths));
+        var pages = RadialMenu.Pages(paths[0]);
+        Set("_pages", pages);
+        Carousel.Reset(pages.Count, RadialMenu.FirstPage(paths[0]));
+    }
 
     private static int LevelX(int level, int count)
     {
@@ -372,3 +435,4 @@ public sealed class OverlayDropTests
 
     private static void Set(string name, object? value) => typeof(Overlay).GetField(name, PrivateStatic)!.SetValue(null, value);
 }
+

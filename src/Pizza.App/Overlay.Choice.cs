@@ -32,7 +32,7 @@ internal static unsafe partial class Overlay
     /// </summary>
     private static bool ChooseAt(int x, int y, bool panel) =>
         Session.State == GestureState.Choosing && _files is { } file &&
-        (TargetLevel(x, y) is { } level ? SelectLevel(file.First, level) : TargetSlot(x, y) is { } slot && Select(file.First, slot, panel));
+        (TargetLevel(x, y) is { } level ? SelectLevel(file, level) : TargetSlot(x, y) is { } slot && Select(file, slot, panel));
 
     /// <summary>Qualquer interação na escolha (mouse, roda, teclado) reinicia o prazo até fechar.</summary>
     private static void KeepChoosing()

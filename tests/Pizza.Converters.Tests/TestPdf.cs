@@ -47,14 +47,13 @@ internal static partial class TestPdf
     /// <summary>Protege um PDF com senha de usuário, em AES-256, usando a própria QPDF.</summary>
     public static unsafe byte[] Encrypt(byte[] pdf, string password)
     {
+        // A QPDF lê do buffer até o fim, não só na abertura: ele fica fixado até o Cleanup.
+        var pinned = GCHandle.Alloc(pdf, GCHandleType.Pinned);
         var qpdf = Qpdf.Init();
         try
         {
-            fixed (byte* data = pdf)
-            {
-                byte empty = 0;
-                Assert.Equal(0, Qpdf.ReadMemory(qpdf, "teste", data, (ulong)pdf.Length, &empty) & Qpdf.Errors);
-            }
+            byte empty = 0;
+            Assert.Equal(0, Qpdf.ReadMemory(qpdf, "teste", (byte*)pinned.AddrOfPinnedObject(), (ulong)pdf.Length, &empty) & Qpdf.Errors);
 
             Assert.Equal(0, Qpdf.InitWriteMemory(qpdf) & Qpdf.Errors);
             Native.SetR6(qpdf, password, password + "-dono", 1, 1, 1, 1, 1, 1, 0, 1);
@@ -64,6 +63,7 @@ internal static partial class TestPdf
         finally
         {
             Qpdf.Cleanup(ref qpdf);
+            pinned.Free();
         }
     }
 
@@ -99,15 +99,14 @@ internal sealed unsafe class PdfInspection
 
     public static PdfInspection Of(byte[] pdf)
     {
+        // A QPDF lê do buffer até o fim, não só na abertura: ele fica fixado até o Cleanup.
+        var pinned = GCHandle.Alloc(pdf, GCHandleType.Pinned);
         var qpdf = Qpdf.Init();
         try
         {
             Qpdf.SilenceErrors(qpdf);
-            fixed (byte* data = pdf)
-            {
-                byte empty = 0;
-                Assert.Equal(0, Qpdf.ReadMemory(qpdf, "saida", data, (ulong)pdf.Length, &empty) & Qpdf.Errors);
-            }
+            byte empty = 0;
+            Assert.Equal(0, Qpdf.ReadMemory(qpdf, "saida", (byte*)pinned.AddrOfPinnedObject(), (ulong)pdf.Length, &empty) & Qpdf.Errors);
 
             var valid = (TestPdf.Native.Check(qpdf) & Qpdf.Errors) == 0;
             Qpdf.PushInheritedAttributesToPage(qpdf);
@@ -126,6 +125,7 @@ internal sealed unsafe class PdfInspection
         finally
         {
             Qpdf.Cleanup(ref qpdf);
+            pinned.Free();
         }
     }
 
