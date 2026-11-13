@@ -21,7 +21,7 @@ internal static class AudioFile
 
     // Subtipos que o Pizza aceita de origem; qualquer outro (WMA, AC-3, vídeo…) é recusado.
     private static readonly Guid[] AcceptedSubtypes =
-        [MediaFoundation.Pcm, MediaFoundation.Float, MediaFoundation.Mp3, MediaFoundation.Aac, MediaFoundation.Alac, MediaFoundation.Flac];
+        [MediaFoundation.Pcm, MediaFoundation.Float, MediaFoundation.Mp3, MediaFoundation.Aac, MediaFoundation.Alac, MediaFoundation.Mpeg4Alac, MediaFoundation.Flac];
 
     /// <summary>Se este Windows tem o Media Foundation (as edições N vêm sem ele).</summary>
     public static bool Available { get; } = Probe();

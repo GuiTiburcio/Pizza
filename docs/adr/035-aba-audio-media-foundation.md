@@ -141,3 +141,17 @@ O áudio de teste é gerado pelo próprio teste. Passa quem cumprir:
 - **Só Normalizar:** o mantenedor escolheu o conjunto completo dos editores de áudio.
 - **Efeitos do XAudio2 (XAPO) ou de uma biblioteca de DSP:** foram feitos para tocar, não para converter, ou seriam dependência nova; as contas são curtas e testáveis.
 - **Estimar o tamanho só pelo tamanho da origem:** erra muito quando a origem já é comprimida.
+
+## Adendo de 13/11/2026: qualidade indisponível exige confirmação
+
+Decisão do mantenedor: quando o codificador do Windows não aceitar a taxa escolhida, oferecer uma taxa menor e só converter depois da confirmação. A redução automática não atende a essa decisão.
+
+- O aviso deve mostrar a taxa solicitada e a taxa menor disponível, ambas em kbps, para a mesma combinação de formato, canais e taxa de amostragem.
+- Oferecer a alternativa não autoriza converter. Cancelar não gera uma saída, e a origem permanece intacta (SEC-30, SEC-31).
+- Confirmar autoriza somente a taxa mostrada. Se essa taxa também for recusada, não tentar outra menor sem nova confirmação.
+- A opção "Sem perda" não pode virar AAC nem outro modo com perda como alternativa automática.
+- A detecção de suporte continua no Worker isolado. Qualquer negociação pelo IPC precisa de esquema estrito e validação nos dois lados (SEC-13), sem caminhos nem conteúdo do arquivo (SEC-15).
+
+**Implementação pendente:** o primeiro backend tenta taxas menores sem pedir confirmação. Este adendo registra o comportamento aprovado; não declara o fluxo implementado nem validado. A entrega precisa cobrir a detecção no Worker, a confirmação na interface e a nova tentativa com a taxa explicitamente aceita.
+
+**Critérios de aceite:** uma combinação recusada oferece a alternativa sem iniciar a conversão; Cancelar não deixa saída; confirmar usa exatamente a taxa mostrada; outra recusa não reduz novamente em silêncio; "Sem perda" nunca é substituído por codificação com perda. Os testes também devem verificar a preservação do original e a rejeição de sugestões fora do catálogo.
