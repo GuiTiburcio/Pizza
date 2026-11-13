@@ -9,7 +9,7 @@
 | --- | --- |
 | Áudio | Entra também no **Brotinho**: o Media Foundation é do Windows e não aumenta o pacote |
 | Aba Docs | **Uma aba só, com voltas.** Dentro de Docs aparecem só as fatias que servem ao arquivo arrastado (DOCX não mostra CSV) |
-| Outras abas | Continuam visíveis. Fatia incompatível fica apagada; ao clicar ou soltar nela, aparece um aviso leve sobre a fatia: "Este arquivo não converte para PNG. Experimente a aba Docs." A aba citada é a que tem conversões para o arquivo. O menu continua aberto para nova escolha |
+| Outras abas | Continuam visíveis. Fatia incompatível fica apagada; ao clicar ou soltar nela, a descrição da fatia vira "Experimente a aba Docs". A aba citada é a que tem conversões para o arquivo. O menu continua aberto para nova escolha |
 | Personalizar a pizza | Fase 8, **nos dois pacotes**: ligar e desligar abas e fatias e reordenar, em Configurações. Padrão: tudo ligado |
 | Fora do Pizza | Compactados, 3D e CAD, PSD/AI/CDR, OCR, arquivos com DRM, PAGES/KEY/NUMBERS e raster → vetor. Vão para `docs/ideias-descartadas` com o motivo |
 | Pizza — VII | Nova sessão no grupo Pizza: aba Web, dados, legendas e Markdown/HTML, em .NET puro, nos dois pacotes |

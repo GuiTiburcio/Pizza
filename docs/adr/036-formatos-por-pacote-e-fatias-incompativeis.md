@@ -23,7 +23,7 @@ Dois problemas apareceram:
 **Menu**
 
 - **Aba do arquivo:** numa aba com alguma conversão para o arquivo arrastado, aparecem só as fatias que servem a ele, em voltas de seis (ADR-024). A aba Docs continua única.
-- **Outras abas:** continuam no scroll. Suas fatias aparecem apagadas. Escolher uma delas, clicando ou soltando, não converte: aparece um aviso curto sobre a fatia, "Não converte para JPG. Experimente a aba PDF.", que nomeia a primeira aba com conversão para o arquivo. O menu continua aberto para outra escolha.
+- **Outras abas:** continuam no scroll. Suas fatias aparecem apagadas. Escolher uma delas, clicando ou soltando, não converte: a descrição da fatia vira "Experimente a aba PDF", com a primeira aba que converte o arquivo, em tinta legível sobre a fatia apagada. O menu continua aberto para outra escolha.
 - **Personalizar a pizza (Fase 8):** em Configurações, nos dois pacotes, ligar e desligar abas e fatias e mudar a ordem. Padrão: tudo ligado.
 
 **Fora do Pizza:** compactados (não convertem conteúdo), 3D e CAD, PSD/AI/CDR, OCR, arquivos com DRM, PAGES/KEY/NUMBERS e raster → vetor. Motivos em [`ideias-descartadas`](../ideias-descartadas/README.md).

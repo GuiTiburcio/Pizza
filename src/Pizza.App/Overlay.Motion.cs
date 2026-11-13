@@ -26,14 +26,35 @@ internal static unsafe partial class Overlay
             return null;
         }
 
-        // O alvo é a fatia como está desenhada: girada na troca de aba e, a em hover, maior.
+        // A fatia esmaecida (Juntar com um arquivo, as outras com vários, as de outro tipo) não acende nem recebe o drop.
+        return SliceUnder(file, x, y) is ({ } slot, { } converter) && converter.Accepts(file.Paths) ? slot : null;
+    }
+
+    /// <summary>A fatia como está desenhada: girada na troca de aba e, a em hover, maior.</summary>
+    private static (int? Slot, Pizza.Core.Conversions.ConverterInfo? Converter) SliceUnder(Interop.DraggedFiles file, int x, int y)
+    {
         var (centerX, centerY) = DiscCenter();
         var growth = Hover.Select(transition => _motion == MotionStyle.Slide ? transition.Value : 0).ToArray();
         var slot = RadialMenu.SlotAt((x - centerX) / _scale, (y - centerY) / _scale, Rotation(), growth);
         var page = _pages[Carousel.Target];
+        return (slot, RadialMenu.Slices(page.Tab, file.First, page.Turn).ElementAtOrDefault(slot ?? -1));
+    }
 
-        // A fatia esmaecida (Juntar com um arquivo, as outras com vários) não acende nem recebe o drop.
-        return RadialMenu.Slices(page.Tab, file.First, page.Turn).ElementAtOrDefault(slot ?? -1) is { } converter && converter.Accepts(file.Paths) ? slot : null;
+    /// <summary>
+    /// ADR-036: escolher uma fatia de outro tipo não converte; ela passa a dizer qual aba serve ao arquivo, e o
+    /// menu continua aberto.
+    /// </summary>
+    private static void HintAt(int x, int y)
+    {
+        if (_files is not { } file || !IsVisible || _pulseSlot is not null ||
+            SliceUnder(file, x, y) is not ({ } slot, { } converter) || RadialMenu.Fits(converter, file.First))
+        {
+            return;
+        }
+
+        _hintPage = _pages[Carousel.Target];
+        _hintSlot = slot;
+        Render();
     }
 
     private static double Rotation() =>
