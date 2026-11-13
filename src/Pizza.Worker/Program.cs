@@ -62,6 +62,12 @@ internal static class Program
             return new IpcMessage(IpcType.Error, request.JobId) { Code = "UNSUPPORTED" };
         }
 
+        if (converter is Pizza.Converters.Audio.AudioConverter)
+        {
+            // SEC-26 (ADR-035): só codecs do próprio Windows, antes de o Media Foundation carregar qualquer um.
+            Pizza.Converters.Audio.SignaturePolicy.RequireMicrosoftSigned();
+        }
+
         var clock = Stopwatch.StartNew();
         string? error;
 

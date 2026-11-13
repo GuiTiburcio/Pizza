@@ -5,6 +5,9 @@ public sealed class QuickOptionsState
 {
     public ConverterInfo? Converter { get; private set; }
     public ConverterOption? Primary { get; private set; }
+
+    /// <summary>Níveis da faixa: os atalhos da opção, quando ela tem (prancha AU-2), ou todas as escolhas.</summary>
+    public IReadOnlyList<OptionChoice> Levels => Primary is null ? [] : Primary.Quick ?? Primary.Choices;
     public int Selected { get; private set; }
 
     /// <summary>Espaço vazio preserva o contexto; outra fatia restaura os padrões.</summary>
@@ -14,7 +17,7 @@ public sealed class QuickOptionsState
         Converter = converter;
         _wheelDelta = 0;
         Primary = converter.Options.FirstOrDefault(option => option.Key != ConverterCatalog.MetadataKey);
-        Selected = Primary is null ? 0 : Primary.Choices.ToList().FindIndex(choice => choice.Value == Primary.Default);
+        Selected = Primary is null ? 0 : Levels.ToList().FindIndex(choice => choice.Value == Primary.Default);
     }
 
     /// <summary>Roda/teclado só alteram a prévia, sem dar a volta nas extremidades.</summary>
@@ -22,7 +25,7 @@ public sealed class QuickOptionsState
     {
         if (Primary is not null)
         {
-            Selected = (int)Math.Clamp((long)Selected + direction, 0, Primary.Choices.Count - 1);
+            Selected = (int)Math.Clamp((long)Selected + direction, 0, Levels.Count - 1);
         }
     }
 
@@ -33,7 +36,8 @@ public sealed class QuickOptionsState
 
     /// <summary>Título da faixa, como "Qualidade do WEBP" (prancha 4b-1).</summary>
     /// <summary>Na aba PDF a opção já diz a ação, como "Girar páginas" (prancha 6A-1).</summary>
-    public string? Title => Primary is null ? null : Converter!.Tab == ConverterCatalog.ImageTab ? $"{Primary.Label} do {Converter.Label}" : Primary.Label;
+    public string? Title => Primary is null ? null
+        : Converter!.Tab is ConverterCatalog.ImageTab or ConverterCatalog.AudioTab ? $"{Primary.Label} do {Converter.Label}" : Primary.Label;
 
     /// <summary>Valor embaixo do nome do nível; o padrão ganha "padrão". Null quando o nome já diz o valor.</summary>
     public string? Detail(int level)
@@ -43,10 +47,13 @@ public sealed class QuickOptionsState
             return null;
         }
 
-        var choice = Primary.Choices[level];
+        var choice = Levels[level];
         var value = (Primary.Key, choice.Value) switch
         {
             ("quality", var quality) => $"{quality}%",
+            ("bitrate", var kbps) => $"{kbps} kbps",
+            ("depth", "16") => "CD",
+            ("depth", "24") => "estúdio",
             ("mode", "pages") => "1 arquivo por pág.",
             ("mode", "half") => "2 arquivos",
             ("size", var size) => $"{size} px",
@@ -90,7 +97,7 @@ public sealed class QuickOptionsState
     {
         if (Converter is null || Primary is null) return null;
         return ConverterCatalog.ResolveOptions(Converter,
-            new Dictionary<string, string> { [Primary.Key] = Primary.Choices[Selected].Value });
+            new Dictionary<string, string> { [Primary.Key] = Levels[Selected].Value });
     }
 
     public void Clear()

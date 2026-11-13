@@ -67,6 +67,7 @@ public sealed class OptionsPanelState
     private const int BigStep = 10;
     private const int MaxDigits = 3;
     private const int BoxWidth = 64;
+    private const int StepsBoxWidth = 96;
     private const int BoxHeight = 28;
     private const int BoxRaise = 6;
 
@@ -105,14 +106,14 @@ public sealed class OptionsPanelState
         }
 
         KeepTop = top;
-        if (CanKeepMetadata)
+        if (CanKeepMetadata && HasMetadataRow)
         {
             _stops.Add((PanelTargetKind.Keep, 0));
             _targets.Add(new PanelTarget(PanelTargetKind.Keep, 0, 0, new PanelRect(Padding, top, PanelWidth - Padding, top + KeepRowHeight)));
         }
 
         // O espaço do aviso "Este formato não guarda metadados" só existe quando ele aparece (prancha 4d-1).
-        top += KeepRowHeight + (CanKeepMetadata ? 0 : NoticeHeight) + ButtonsGap;
+        top += (HasMetadataRow ? KeepRowHeight + (CanKeepMetadata ? 0 : NoticeHeight) : 0) + ButtonsGap;
         var cancelLeft = PanelWidth - Padding - (2 * ButtonWidth) - Gap;
         _stops.Add((PanelTargetKind.Cancel, 0));
         _targets.Add(new PanelTarget(PanelTargetKind.Cancel, 0, 0, new PanelRect(cancelLeft, top, cancelLeft + ButtonWidth, top + ButtonHeight)));
@@ -127,6 +128,9 @@ public sealed class OptionsPanelState
     public IReadOnlyList<ConverterOption> Rows { get; }
 
     public bool CanKeepMetadata { get; }
+
+    /// <summary>ADR-035: no áudio a saída sai sem etiquetas e a linha "Manter metadados" não aparece.</summary>
+    public bool HasMetadataRow => Converter.Tab != ConverterCatalog.AudioTab;
 
     public bool KeepMetadata { get; private set; }
 
@@ -145,19 +149,34 @@ public sealed class OptionsPanelState
 
     public bool IsSelected(int row, int choice) => _selected[row] == choice;
 
-    public bool IsSlider(int row) => Rows[row].Minimum is not null;
+    public bool IsSlider(int row) => Rows[row].Minimum is not null || Rows[row].Steps;
 
     /// <summary>Valor da régua, de Minimum a 100 (100 é o original).</summary>
     public int Percent(int row) => IsTyping(row) ? Clamp(row, TypedValue()) : _percent[row];
 
     /// <summary>O que a caixa ao lado do título mostra: o que está sendo digitado, ou o valor.</summary>
-    public string ValueText(int row) => IsTyping(row) ? _typed! : _percent[row].ToString(CultureInfo.InvariantCulture);
+    public string ValueText(int row) =>
+        IsTyping(row) ? _typed!
+        : Rows[row].Steps ? (IsNumber(Rows[row].Choices[_selected[row]].Value) ? Rows[row].Choices[_selected[row]].Value : Rows[row].Choices[_selected[row]].Label)
+        : _percent[row].ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Unidade depois do número na caixa: "%" na régua de porcentagem; na de degraus, a do rótulo ("kbps").</summary>
+    public string ValueUnit(int row)
+    {
+        if (!Rows[row].Steps)
+        {
+            return "%";
+        }
+
+        var choice = Rows[row].Choices[_selected[row]];
+        return IsNumber(choice.Value) && choice.Label.StartsWith(choice.Value + " ", StringComparison.Ordinal) ? choice.Label[(choice.Value.Length + 1)..] : "";
+    }
 
     /// <summary>Caixa do valor, à direita do título da régua, acima do trilho.</summary>
     public PanelRect ValueBox(int row)
     {
         var top = RowLabelTop(row) - BoxRaise;
-        return new PanelRect(PanelWidth - Padding - BoxWidth, top, PanelWidth - Padding, top + BoxHeight);
+        return new PanelRect(PanelWidth - Padding - (Rows[row].Steps ? StepsBoxWidth : BoxWidth), top, PanelWidth - Padding, top + BoxHeight);
     }
 
     /// <summary>Linha da régua cuja caixa do valor está sob o ponto.</summary>
@@ -192,7 +211,9 @@ public sealed class OptionsPanelState
     }
 
     /// <summary>Posição do pino, de 0 (mínimo) a 1 (original).</summary>
-    public double SliderAmount(int row) => (Percent(row) - Rows[row].Minimum!.Value) / (double)(Full - Rows[row].Minimum!.Value);
+    public double SliderAmount(int row) =>
+        Rows[row].Steps ? StepAt(row) / (double)(Rows[row].Choices.Count - 1)
+        : (Percent(row) - Rows[row].Minimum!.Value) / (double)(Full - Rows[row].Minimum!.Value);
 
     /// <summary>Arrastar ou clicar na régua: o valor exato sob o cursor, sem degraus.</summary>
     public void Slide(int row, int x)
@@ -200,8 +221,15 @@ public sealed class OptionsPanelState
         Commit();
         _focus = _stops.IndexOf((PanelTargetKind.Slider, row));
         var track = SliderTrack(row);
-        var minimum = Rows[row].Minimum!.Value;
         var amount = Math.Clamp((x - track.Left) / (double)(track.Right - track.Left), 0, 1);
+        if (Rows[row].Steps)
+        {
+            // ADR-035: o pino para no degrau mais próximo; o codificador só aceita esses valores.
+            _selected[row] = (int)Math.Round(amount * (Rows[row].Choices.Count - 1), MidpointRounding.AwayFromZero);
+            return;
+        }
+
+        var minimum = Rows[row].Minimum!.Value;
         _percent[row] = (int)Math.Round(minimum + (amount * (Full - minimum)), MidpointRounding.AwayFromZero);
     }
 
@@ -209,6 +237,12 @@ public sealed class OptionsPanelState
     public void Nudge(int row, int steps)
     {
         Commit();
+        if (Rows[row].Steps)
+        {
+            _selected[row] = StepClamp(row, _selected[row] + steps);
+            return;
+        }
+
         _percent[row] = Clamp(row, _percent[row] + steps);
     }
 
@@ -286,6 +320,14 @@ public sealed class OptionsPanelState
                 _focus = (_focus + _stops.Count - 1) % _stops.Count;
                 return PanelAction.None;
 
+            case PanelKey.Left or PanelKey.Right or PanelKey.ShiftLeft or PanelKey.ShiftRight when Focus.Kind == PanelTargetKind.Slider && Rows[Focus.Row].Steps:
+                _selected[Focus.Row] = StepClamp(Focus.Row, _selected[Focus.Row] + (key is PanelKey.Left or PanelKey.ShiftLeft ? -1 : 1));
+                return PanelAction.None;
+
+            case PanelKey.Home or PanelKey.End when Focus.Kind == PanelTargetKind.Slider && Rows[Focus.Row].Steps:
+                _selected[Focus.Row] = key == PanelKey.Home ? 0 : Rows[Focus.Row].Choices.Count - 1;
+                return PanelAction.None;
+
             case PanelKey.Left or PanelKey.Right or PanelKey.ShiftLeft or PanelKey.ShiftRight when Focus.Kind == PanelTargetKind.Slider:
                 var step = key switch { PanelKey.Left => -1, PanelKey.Right => 1, PanelKey.ShiftLeft => -BigStep, _ => BigStep };
                 _percent[Focus.Row] = Clamp(Focus.Row, _percent[Focus.Row] + step);
@@ -343,7 +385,7 @@ public sealed class OptionsPanelState
         var options = new Dictionary<string, string>();
         for (var row = 0; row < Rows.Count; row++)
         {
-            options[Rows[row].Key] = !IsSlider(row) ? Rows[row].Choices[_selected[row]].Value
+            options[Rows[row].Key] = !IsSlider(row) || Rows[row].Steps ? Rows[row].Choices[StepAt(row)].Value
                 : Percent(row) == Full ? ConverterOption.Original
                 : Percent(row).ToString(CultureInfo.InvariantCulture);
         }
@@ -365,10 +407,37 @@ public sealed class OptionsPanelState
         _editing = false;
         if (_typed is not null)
         {
-            _percent[Focus.Row] = Clamp(Focus.Row, TypedValue());
+            if (Rows[Focus.Row].Steps)
+            {
+                _selected[Focus.Row] = StepAt(Focus.Row);
+            }
+            else
+            {
+                _percent[Focus.Row] = Clamp(Focus.Row, TypedValue());
+            }
+
             _typed = null;
         }
     }
+
+    /// <summary>Degrau escolhido; com dígitos na caixa, o degrau numérico mais próximo do que foi digitado.</summary>
+    private int StepAt(int row)
+    {
+        if (!IsTyping(row) || _typed!.Length == 0)
+        {
+            return _selected[row];
+        }
+
+        var typed = TypedValue();
+        var choices = Rows[row].Choices;
+        return Enumerable.Range(0, choices.Count)
+            .Where(index => IsNumber(choices[index].Value))
+            .MinBy(index => Math.Abs(int.Parse(choices[index].Value, CultureInfo.InvariantCulture) - typed));
+    }
+
+    private int StepClamp(int row, int index) => Math.Clamp(index, 0, Rows[row].Choices.Count - 1);
+
+    private static bool IsNumber(string value) => value.Length > 0 && value.All(char.IsAsciiDigit);
 
     private int TypedValue() => _typed is { Length: > 0 } text ? int.Parse(text, CultureInfo.InvariantCulture) : 0;
 
