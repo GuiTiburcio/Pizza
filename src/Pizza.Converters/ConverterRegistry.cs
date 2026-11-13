@@ -3,7 +3,7 @@ namespace Pizza.Converters;
 /// <summary>Os conversores que o Worker sabe executar.</summary>
 public static class ConverterRegistry
 {
-    public static IReadOnlyList<IConverter> All => Core.Conversions.ConverterCatalog.All.Select(c => Find(c.Id)!).ToArray();
+    public static IReadOnlyList<IConverter> All => Core.Conversions.ConverterCatalog.All.Where(c => !c.DocumentEngine).Select(c => Find(c.Id)!).ToArray();
 
     // SEC-26: o Worker de áudio não deve inicializar libvips ao buscar seu conversor.
     public static IConverter? Find(string id) => id switch
