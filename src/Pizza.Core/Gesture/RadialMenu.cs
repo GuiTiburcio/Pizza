@@ -96,6 +96,8 @@ public static class RadialMenu
     private static IEnumerable<ConverterInfo> Available(string path)
     {
         var extension = Path.GetExtension(path);
-        return ConverterCatalog.All.Where(converter => converter.InputExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase));
+        return ConverterCatalog.All.Where(converter =>
+            converter.InputExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase)
+            && (!converter.DocumentEngine || ConverterCatalog.DocumentEngineAvailable));
     }
 }

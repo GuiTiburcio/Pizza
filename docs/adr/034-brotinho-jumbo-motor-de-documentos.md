@@ -30,6 +30,15 @@ Prova feita em 12/11/2026 com o LibreOffice 26.2.7 (MSI oficial, SHA-256 conferi
 - **Perfil novo e descartável a cada arquivo (SEC-62):** macros desligadas e segurança de macro "Muito alta", sem atualizar vínculos, DDE nem conteúdo remoto (SEC-63). Testes: TST-12 (macro `AutoOpen` não executa) e TST-16 (modelo remoto não gera conexão).
 - Word e WPS continuam fora (ADR-019). O LibreOffice instalado pela pessoa deixa de ser requisito.
 
+### Adendo de 12/11/2026: tempo de conversão
+
+Medido no sandbox: um motor novo fica pronto em ~9–10 s; com o motor pronto, a conversão leva ~2,2 s; um motor pronto e parado ocupa ~200 MB. Decisão do mantenedor:
+
+- **Aquecimento ao abrir o menu:** quando o menu abre sobre um documento, o Pizza inicia um motor novo enquanto a pessoa escolhe a fatia. Depois de cada conversão, um motor novo fica **de reserva por 60 s**. Cada documento continua usando um motor que nenhum outro arquivo tocou (S-02). A letra temporária e a área oculta existem enquanto há motor convertendo ou de reserva, e saem junto com ele.
+- **Perfil-modelo:** criado uma vez por versão do motor, logo depois de iniciar e **antes de qualquer documento**, na pasta do AppContainer. Cada documento recebe uma cópia nova, com as travas de segurança regravadas. Ao abrir, o Pizza apaga as pastas de trabalho que sobrarem.
+- **Opção futura (Fase 8):** "Converter documentos mais rápido (usa ~200 MB)", que deixa um motor sempre pronto (~2 s em toda conversão).
+- **Enxugar o motor** (dicionários, 455 MB) fica para a etapa do pacote, mantendo a hifenização, que muda a quebra de linha, e com teste de fidelidade.
+
 ## Consequências
 
 Ninguém precisa instalar Office para converter documentos: quem quer só imagens baixa o Brotinho (cerca de 10 MB); quem quer DOCX/XLSX/PPTX → PDF baixa o Jumbo (cerca de 300 MB a mais). O isolamento é o mesmo do Worker de imagens: AppContainer, job, sem rede.
