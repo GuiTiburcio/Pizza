@@ -111,12 +111,14 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         var committed = new List<string>(list.Count);
         try
         {
+            // NFR-05: o diário e a zona são feitos uma vez para todas as partes, não uma vez por parte.
+            pending.AddRange(PendingOutput.CreateMany(source, directory, journal, list.Count));
+            var zone = PendingOutput.ZoneOf(sourcePath);
             var buffer = new byte[1024 * 1024];
-            foreach (var part in list)
+            for (var index = 0; index < list.Count; index++)
             {
-                var output = PendingOutput.Create(source, directory, journal);
-                pending.Add(output);
-                output.CopyZoneFrom(sourcePath);
+                var (part, output) = (list[index], pending[index]);
+                output.WriteZone(zone);
                 for (long copied = 0; copied < part.Length;)
                 {
                     var read = RandomAccess.Read(bundle, buffer.AsSpan(0, (int)Math.Min(buffer.Length, part.Length - copied)), part.Offset + copied);
@@ -130,11 +132,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
                 }
             }
 
-            for (var index = 0; index < pending.Count; index++)
-            {
-                committed.Add(pending[index].Commit(OutputNaming.Candidates(sourcePath, extension, suffix(index + 1, pending.Count))));
-            }
-
+            PendingOutput.CommitAll(pending, index => OutputNaming.Candidates(sourcePath, extension, suffix(index + 1, pending.Count)), committed);
             return new ConversionResult(committed[0], null, committed.Count);
         }
         catch

@@ -57,19 +57,62 @@ public sealed unsafe class PendingOutput : IDisposable
     }
 
     /// <summary>
+    /// Dividir: vários temporários de uma vez, registrados no diário numa gravação só (SEC-37). Os arquivos ficam
+    /// vazios até o registro; se algo falhar, todos são apagados.
+    /// </summary>
+    public static IReadOnlyList<PendingOutput> CreateMany(SafeFileHandle source, string directory, TempJournal journal, int count)
+    {
+        var created = new List<(SafeFileHandle Handle, string Path, TempJournal.Entry? Entry)>(count);
+        try
+        {
+            var sourcePath = FileNative.FinalPath(source);
+            for (var index = 0; index < count; index++)
+            {
+                var temporaryPath = Path.Combine(Path.GetFullPath(directory), OutputNaming.TemporaryName());
+                created.Add((FileNative.CreateNewHidden(temporaryPath), temporaryPath, null));
+                var handle = created[^1].Handle;
+                if (!SameDirectory(sourcePath, FileNative.FinalPath(handle)))
+                {
+                    throw new UnauthorizedAccessException("A pasta de destino aponta para outro lugar.");
+                }
+
+                created[^1] = (handle, temporaryPath, FileNative.Identify(handle, directory));
+            }
+
+            journal.AddRange(created.Select(item => item.Entry!));
+            return created.Select(item => new PendingOutput(item.Handle, item.Path, journal, item.Entry!)).ToList();
+        }
+        catch
+        {
+            foreach (var item in created)
+            {
+                FileNative.MarkForDeletion(item.Handle);
+                item.Handle.Dispose();
+            }
+
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Passa a marca de internet do original para a saída, se houver (SEC-35). Com vários originais (Juntar), vale a
     /// zona mais restritiva entre eles.
     /// </summary>
-    public void CopyZoneFrom(params string[] sourcePaths)
+    public void CopyZoneFrom(params string[] sourcePaths) => WriteZone(ZoneOf(sourcePaths));
+
+    /// <summary>A zona mais restritiva entre os originais, lida uma vez para várias saídas (Dividir).</summary>
+    public static int? ZoneOf(params string[] sourcePaths) => ZoneIdentifier.MostRestrictive(sourcePaths.Select(ReadZone));
+
+    public void WriteZone(int? zone)
     {
-        if (ZoneIdentifier.MostRestrictive(sourcePaths.Select(ReadZone)) is not { } zone)
+        if (zone is not { } value)
         {
             return;
         }
 
         // FileShare.Delete é exigido porque o temporário segue aberto com acesso de renomear.
         using var stream = new FileStream(_temporaryPath + ZoneStream, FileMode.CreateNew, FileAccess.Write, FileShare.Read | FileShare.Delete);
-        stream.Write(System.Text.Encoding.ASCII.GetBytes(ZoneIdentifier.Format(zone)));
+        stream.Write(System.Text.Encoding.ASCII.GetBytes(ZoneIdentifier.Format(value)));
     }
 
     private static int? ReadZone(string sourcePath)
@@ -90,6 +133,36 @@ public sealed unsafe class PendingOutput : IDisposable
     /// </summary>
     public string Commit(IEnumerable<string> candidates)
     {
+        var name = Rename(candidates);
+        _journal.Remove(_entry);
+        return name;
+    }
+
+    /// <summary>
+    /// Dividir: dá os nomes, em ordem, em <paramref name="names"/>, e tira todos do diário numa gravação só. Se um nome
+    /// falhar, os já nomeados também saem do diário (não são mais temporários) e ficam em <paramref name="names"/>
+    /// para quem chamou desfazer.
+    /// </summary>
+    public static void CommitAll(IReadOnlyList<PendingOutput> outputs, Func<int, IEnumerable<string>> candidates, List<string> names)
+    {
+        try
+        {
+            for (var index = 0; index < outputs.Count; index++)
+            {
+                names.Add(outputs[index].Rename(candidates(index)));
+            }
+        }
+        finally
+        {
+            if (names.Count > 0)
+            {
+                outputs[0]._journal.RemoveRange(outputs.Take(names.Count).Select(output => output._entry));
+            }
+        }
+    }
+
+    private string Rename(IEnumerable<string> candidates)
+    {
         ObjectDisposedException.ThrowIf(_finished, this);
         FileNative.ClearHidden(Handle);
         foreach (var name in candidates)
@@ -98,7 +171,6 @@ public sealed unsafe class PendingOutput : IDisposable
             {
                 _finished = true;
                 Handle.Dispose();
-                _journal.Remove(_entry);
                 return name;
             }
         }
