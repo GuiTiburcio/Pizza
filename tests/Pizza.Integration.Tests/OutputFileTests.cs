@@ -179,6 +179,43 @@ public sealed class OutputFileTests : IDisposable
     }
 
     [Fact]
+    public void Varias_saidas_registradas_juntas_sao_limpas_depois_de_uma_queda()
+    {
+        // NFR-05 e SEC-37: o Dividir registra as partes no diário de uma vez; uma queda antes de concluir não deixa nada.
+        using var source = PendingOutput.OpenSource(_source);
+        var outputs = PendingOutput.CreateMany(source, _folder, _journal, 3);
+        Assert.Equal(3, _journal.Count);
+        Assert.Equal(3, Temporaries().Count());
+        foreach (var output in outputs)
+        {
+            output.AbandonForTest();
+        }
+
+        new TempJournal(Path.Combine(_root, "journal.dat")).CleanOrphans();
+
+        Assert.Empty(Temporaries());
+    }
+
+    [Fact]
+    public void Varias_saidas_concluidas_juntas_saem_do_diario()
+    {
+        using var source = PendingOutput.OpenSource(_source);
+        var outputs = PendingOutput.CreateMany(source, _folder, _journal, 3);
+        for (var index = 0; index < outputs.Count; index++)
+        {
+            Write(outputs[index], $"parte {index + 1}");
+        }
+
+        var names = new List<string>();
+        PendingOutput.CommitAll(outputs, index => OutputNaming.Candidates(_source, "pdf", $" - pág {index + 1}"), names);
+
+        Assert.Equal(["fachada - pág 1.pdf", "fachada - pág 2.pdf", "fachada - pág 3.pdf"], names);
+        Assert.Equal("parte 2", File.ReadAllText(Path.Combine(_folder, names[1])));
+        Assert.Equal(0, _journal.Count);
+        Assert.Empty(Temporaries());
+    }
+
+    [Fact]
     public void Limpeza_nunca_apaga_pelo_padrao_do_nome()
     {
         // SEC-37 e TST-26: arquivo com o mesmo padrão, que o Pizza não registrou.

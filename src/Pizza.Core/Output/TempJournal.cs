@@ -25,6 +25,23 @@ public sealed class TempJournal(string path)
         Save();
     }
 
+    /// <summary>Dividir: várias entradas numa gravação só (cada gravação passa pelo DPAPI e regrava o diário).</summary>
+    public void AddRange(IEnumerable<Entry> entries)
+    {
+        _entries.AddRange(entries);
+        Save();
+    }
+
+    public void RemoveRange(IEnumerable<Entry> entries)
+    {
+        foreach (var entry in entries)
+        {
+            _entries.Remove(entry);
+        }
+
+        Save();
+    }
+
     internal int Count => _entries.Count;
 
     /// <summary>
