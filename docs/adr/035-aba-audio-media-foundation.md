@@ -1,6 +1,6 @@
 # ADR-035 — Aba Áudio com o Media Foundation do Windows
 
-- **Status:** Aceita pelo mantenedor em 12/11/2026. Antecipa da v1.x a parte de áudio da linha "Áudio/Vídeo" da SPECS §2.1 e detalha o ADR-026 para o áudio.
+- **Status:** Aceita pelo mantenedor em 12/11/2026. Antecipa da v1.x a parte de áudio da linha "Áudio/Vídeo" da SPECS §2.1 e detalha o ADR-026 para o áudio. Adendo de 12/11/2026 (Estéreo, Volume e tamanho previsto), das pranchas AU-1 a AU-5, no fim.
 - **Data:** 2026-11-12
 
 ## Contexto
@@ -84,3 +84,60 @@ Regras das opções:
 - **Aceitar qualquer codec instalado no PC:** abriria o Worker a DLLs de terceiros (SEC-26).
 - **Reconverter no mesmo formato para reduzir o tamanho (MP3 → MP3):** segue a regra das imagens; pode voltar com um sufixo de nome, como no ADR-033.
 - **Régua contínua de kbps:** os codificadores só aceitam valores fixos e recusam o resto.
+
+## Adendo de 12/11/2026: Estéreo, Volume e tamanho previsto
+
+Aprovado nas pranchas AU-1 a AU-5 do Dossiê. O mantenedor pediu opções de som como as dos editores de áudio e o tamanho da saída antes de converter.
+
+### Canais
+
+- A opção passa a ser **Original, Estéreo ou Mono**.
+- Estéreo leva qualquer origem a dois canais. Um 5.1 é mixado em dois, e um mono vira dois canais iguais.
+
+### Volume
+
+- O painel ganha a linha **Volume**: Original (padrão, nada é aplicado) ou **Ajustar…**, que abre o painel Volume.
+- O painel Volume tem quatro efeitos, cada um com caixa para ligar e régua com o valor. São aplicados nesta ordem:
+
+| Efeito | Valor | Padrão ao abrir |
+| --- | --- | --- |
+| Amplificar | −12 a +12 dB, de 1 em 1 | Desligado, +3 dB |
+| Comprimir | Limiar de −40 a 0 dB, de 1 em 1; razão 2:1, 4:1 ou 8:1. Ataque de 10 ms e soltura de 100 ms, fixos | Desligado, −18 dB e 4:1 |
+| Normalizar | Alvo de −23 a −9 LUFS, de 1 em 1, medido pela ITU-R BS.1770 (integrado, com portas) | Ligado, −14 LUFS |
+| Limitar | Teto de −6 a 0 dB, de 1 em 1, no pico de amostra, com 5 ms de antecipação | Ligado, −1 dB |
+
+- Os efeitos são código próprio em C#, sem biblioteca nova. Rodam no Worker sobre o áudio em ponto flutuante, entre a decodificação e o codificador.
+- Normalizar precisa medir antes de aplicar, então o arquivo é lido duas vezes pelo mesmo handle: uma para medir e outra para gravar. O prazo da SEC-43 vale para as duas juntas.
+- As opções novas entram no esquema do catálogo, e o Worker as valida (SEC-13). A faixa de níveis não muda: o Volume fica só no painel.
+
+### Tamanho previsto
+
+- O painel mostra o tamanho da saída e o atualiza quando as opções mudam.
+- O residente não lê o arquivo, então pede ao Worker do próprio arquivo uma mensagem `probe`. O Worker responde `info` com:
+  - duração em milissegundos;
+  - taxa de amostragem;
+  - canais;
+  - bits por amostra.
+- Nenhum nome nem caminho trafega (SEC-15). O mesmo Worker converte depois (ADR-019) e é encerrado se o painel for cancelado.
+- A conta do tamanho:
+  - MP3 e AAC: taxa × duração;
+  - WAV: valor exato;
+  - FLAC e ALAC: estimativa de 55% do WAV, mostrada com "≈".
+- Se o `info` não chegar em 2 s, o painel mostra "—" e continua funcionando.
+
+### Testes do adendo
+
+O áudio de teste é gerado pelo próprio teste. Passa quem cumprir:
+
+- Amplificar +6 dB dobra o pico.
+- Comprimir 4:1 reduz a diferença entre trechos altos e baixos de um sinal em degraus.
+- Normalizar em −14 LUFS mede −14 ± 0,5 LU na saída.
+- Limitar em −1 dB não deixa nenhuma amostra acima do teto.
+- Estéreo leva um 5.1 a dois canais.
+- O `probe` acerta a duração com erro de até 50 ms.
+
+## Alternativas descartadas no adendo
+
+- **Só Normalizar:** o mantenedor escolheu o conjunto completo dos editores de áudio.
+- **Efeitos do XAudio2 (XAPO) ou de uma biblioteca de DSP:** foram feitos para tocar, não para converter, ou seriam dependência nova; as contas são curtas e testáveis.
+- **Estimar o tamanho só pelo tamanho da origem:** erra muito quando a origem já é comprimida.
