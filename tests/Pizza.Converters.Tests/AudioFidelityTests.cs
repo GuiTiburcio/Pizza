@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using Pizza.Converters.Audio;
 
 namespace Pizza.Converters.Tests;
 
@@ -20,12 +21,47 @@ public partial class AudioConverterTests
         var (error, encoded) = Run(id, source, options);
         Assert.Null(error);
         var (decodeError, decoded) = Run("audio.wav", encoded);
-        Assert.Null(decodeError);
+        if (decodeError is not null) Assert.Fail($"{decodeError}; {DescribeEncodedFixture(encoded)}");
         Assert.Equal(source, before);
         Assert.Equal(48000, Inspect(decoded).SampleRate);
         Assert.Equal(2, Inspect(decoded).Channels);
         Assert.Equal(bits, Inspect(decoded).Bits);
         Assert.Equal(Pcm(source), Pcm(decoded));
+    }
+
+    // Diagnóstico apenas do áudio sintético deste teste; nunca registra arquivos ou dados do usuário.
+    private static string DescribeEncodedFixture(byte[] encoded)
+    {
+        var signature = AudioFile.Sniff(encoded.AsSpan(0, Math.Min(encoded.Length, 12)));
+        MediaFoundation.Startup();
+        nint stream = 0, bytes = 0, reader = 0;
+        using var source = new MemoryStream(encoded);
+        try
+        {
+            stream = HandleStream.Create(source);
+            bytes = MediaFoundation.ByteStream(stream);
+            reader = MediaFoundation.SourceReader(bytes);
+            var types = new List<string>();
+            for (uint index = 0; index < 8; index++)
+            {
+                var hr = MediaFoundation.NativeMediaType(reader, index, 0, out var type);
+                if (hr < 0) return $"assinatura={signature}; tipos={string.Join(", ", types)}; fim=0x{hr:X8}";
+                try
+                {
+                    types.Add($"{MediaFoundation.GetGuid(type, MediaFoundation.MajorType)}/{MediaFoundation.GetGuid(type, MediaFoundation.SubType)}");
+                }
+                finally { MediaFoundation.Release(type); }
+            }
+            return $"assinatura={signature}; tipos={string.Join(", ", types)}";
+        }
+        catch (MediaFoundationException error) { return $"assinatura={signature}; erro={error.Message}"; }
+        finally
+        {
+            MediaFoundation.Release(reader);
+            MediaFoundation.Release(bytes);
+            MediaFoundation.Release(stream);
+            MediaFoundation.Shutdown();
+        }
     }
 
     private static byte[] PatternWave(int bits)
