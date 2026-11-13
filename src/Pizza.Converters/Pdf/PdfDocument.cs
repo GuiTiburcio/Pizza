@@ -209,6 +209,45 @@ internal sealed unsafe class PdfDocument : IDisposable
         return null;
     }
 
+    /// <summary>
+    /// Juntar: as páginas de todos os documentos, na ordem dada, num PDF novo regravado por inteiro. Chame
+    /// <see cref="RemoveActiveContent"/> em cada um antes.
+    /// </summary>
+    public static string? Merge(IReadOnlyList<PdfDocument> documents, Stream destination)
+    {
+        var merged = Qpdf.Init();
+        try
+        {
+            Qpdf.SilenceErrors(merged);
+            Qpdf.SuppressWarnings(merged, 1);
+            if ((Qpdf.EmptyPdf(merged) & Qpdf.Errors) != 0)
+            {
+                return "CORRUPTED";
+            }
+
+            foreach (var document in documents)
+            {
+                // Rotação, recursos e tamanho herdados da árvore de páginas iriam se perder na cópia.
+                Qpdf.PushInheritedAttributesToPage(document._qpdf);
+                for (var page = 0; page < document.PageCount; page++)
+                {
+                    if ((Qpdf.AddPage(merged, document._qpdf, Qpdf.Page(document._qpdf, (nuint)page), 0) & Qpdf.Errors) != 0)
+                    {
+                        return "CORRUPTED";
+                    }
+                }
+
+                Qpdf.ReleaseAll(document._qpdf);
+            }
+
+            return WriteAll(merged, destination.Write);
+        }
+        finally
+        {
+            Qpdf.Cleanup(ref merged);
+        }
+    }
+
     private delegate void Sink(ReadOnlySpan<byte> data);
 
     private static string? WriteAll(nint qpdf, Sink destination)

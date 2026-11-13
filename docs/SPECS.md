@@ -529,7 +529,7 @@ Todas têm `v` (versão do protocolo), `type` e `jobId` (12 hex aleatórios). Ta
 | type | Direção | Campos | Validação |
 | --- | --- | --- | --- |
 | `warmup` | App → Worker | `category` | `image` \| `pdf` |
-| `convert` | App → Worker | `converterId`, `srcHandle`, `dstHandle`, `options`, `password?` | `converterId` na lista do registro; `options` validadas pelo `OptionSchema`; handles são números de handles já duplicados |
+| `convert` | App → Worker | `converterId`, `srcHandle`, `moreSrcHandles?`, `dstHandle`, `options`, `password?` | `converterId` na lista do registro; `options` validadas pelo `OptionSchema`; handles são números de handles já duplicados. `moreSrcHandles` só no Juntar (ADR-033): lista de 1 a 499 handles, na ordem do arraste |
 | `cancel` | App → Worker | — | `jobId` existente |
 | `progress` | Worker → App | `percent` | 0–100 |
 | `done` | Worker → App | `elapsedMs` | — |

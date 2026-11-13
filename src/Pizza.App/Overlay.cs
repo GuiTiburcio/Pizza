@@ -59,8 +59,8 @@ internal static unsafe partial class Overlay
     private static int? _hoverSlot;
     private static int? _pulseSlot;
     private static DraggedFiles? _files;
-    private static (string Path, ConverterInfo Converter, IReadOnlyDictionary<string, string>? Options)? _dropped; // Options null: abrir o painel.
-    private static (string Path, ConverterInfo Converter)? _awaitingOptions;
+    private static (IReadOnlyList<string> Paths, ConverterInfo Converter, IReadOnlyDictionary<string, string>? Options)? _dropped; // Options null: abrir o painel.
+    private static (IReadOnlyList<string> Paths, ConverterInfo Converter)? _awaitingOptions;
 
     /// <summary>Janela do menu; também recebe as mensagens enviadas pelos hooks.</summary>
     public static nint Disc { get; private set; }
@@ -225,6 +225,12 @@ internal static unsafe partial class Overlay
         var slices = CurrentSlices();
         var rotation = Rotation();
         var levels = Strip.Primary?.Choices.Select((choice, level) => (choice.Label, Strip.Detail(level))).ToArray();
+
+        // FR-30 com a emenda da ADR-033: fatias que não valem para o que foi arrastado ficam esmaecidas; com vários
+        // PDFs e o Juntar na faixa, ela mostra a ordem em que vão ficar (prancha 6A-1).
+        var unavailable = _files is { } dragged ? slices.Select(slice => !slice.Accepts(dragged.Paths)).ToArray() : null;
+        var merging = _files is { Count: > 1 } many && Usable(many);
+        var order = merging && Strip.Converter is { Merges: true } ? MergeOrder.Chips(_files!.Value.Paths) : null;
         var frame = new DiscFrame(
             _scale,
             fileName,
@@ -239,14 +245,17 @@ internal static unsafe partial class Overlay
             page.Turn,
             _pages.Count(candidate => candidate.Tab == page.Tab),
             Session.State == GestureState.Choosing,
-            Strip.Title,
+            order is null ? Strip.Title : "Juntar nesta ordem",
             levels,
             Strip.Selected,
             _levelHover,
             SliceGlide.Position,
             SliceGlide.Swell,
             LevelGlide.Position,
-            LevelGlide.Swell);
+            LevelGlide.Swell,
+            unavailable,
+            order,
+            merging);
         DiscRenderer.Show(Disc, _left, _top, frame);
     }
 
@@ -299,7 +308,7 @@ internal static unsafe partial class Overlay
                 }
                 else if ((int)wParam is VK_RETURN or VK_SPACE && _hoverSlot is { } focused && _files is { } selectedFile)
                 {
-                    Select(selectedFile.First, focused);
+                    Select(selectedFile, focused);
                 }
                 else if ((int)wParam is VK_TAB or VK_RIGHT or VK_DOWN or VK_LEFT or VK_UP && _files is { } activeFile)
                 {

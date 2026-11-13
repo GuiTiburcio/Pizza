@@ -16,6 +16,29 @@ public class ConverterCatalogTests
         Assert.Null(ConverterCatalog.Find("image.bmp"));
     }
 
+    [Theory]
+    [InlineData("pdf.merge", new[] { "a.pdf", "b.PDF" }, true)]
+    [InlineData("pdf.merge", new[] { "a.pdf" }, false)]
+    [InlineData("pdf.merge", new[] { "a.pdf", "b.jpg" }, false)]
+    [InlineData("pdf.rotate", new[] { "a.pdf" }, true)]
+    [InlineData("pdf.rotate", new[] { "a.pdf", "b.pdf" }, false)]
+    [InlineData("image.png", new[] { "a.jpg", "b.jpg" }, false)]
+    [InlineData("image.png", new[] { "a.pdf" }, false)]
+    public void Varios_arquivos_so_valem_no_juntar(string id, string[] paths, bool accepted)
+    {
+        // FR-30 com a emenda da ADR-033.
+        Assert.Equal(accepted, ConverterCatalog.Find(id)!.Accepts(paths));
+    }
+
+    [Fact]
+    public void Juntar_tem_limite_de_arquivos()
+    {
+        // SEC-46.
+        var merge = ConverterCatalog.Find("pdf.merge")!;
+        Assert.True(merge.Accepts(Enumerable.Range(0, 500).Select(i => $"{i}.pdf").ToArray()));
+        Assert.False(merge.Accepts(Enumerable.Range(0, 501).Select(i => $"{i}.pdf").ToArray()));
+    }
+
     [Fact]
     public void Ids_nao_se_repetem()
     {

@@ -63,7 +63,7 @@ internal static unsafe partial class Overlay
             : null;
 
     /// <summary>Soltar ou clicar num nível converte com ele, pela fatia dona da faixa.</summary>
-    private static bool SelectLevel(string path, int level)
+    private static bool SelectLevel(Interop.DraggedFiles files, int level)
     {
         var slot = Strip.Converter is { } converter ? CurrentSlices().ToList().FindIndex(candidate => candidate.Id == converter.Id) : -1;
         if (slot < 0)
@@ -72,7 +72,7 @@ internal static unsafe partial class Overlay
         }
 
         Strip.Step(level - Strip.Selected);
-        return Select(path, slot);
+        return Select(files, slot);
     }
 
     /// <summary>Com o cursor sobre a faixa, a roda troca o nível; no resto do menu, continua trocando a aba.</summary>
