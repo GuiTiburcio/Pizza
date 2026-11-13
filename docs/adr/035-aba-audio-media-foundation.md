@@ -153,6 +153,8 @@ O mesmo teste revelou dois problemas no caminho ALAC/M4A:
 
 Os casos de ALAC permanecem reprovando a igualdade integral. A fidelidade desse caminho e a conclusão da aba Áudio continuam pendentes. Não substituir o teste por tolerância de duração nem considerar a simples criação do arquivo uma prova de conversão sem perda. As origens dos testes continuam preservadas.
 
+**Decisão do mantenedor em 13/11/2026, após conhecer esse resultado:** corrigir o ALAC antes de concluir a aba Áudio, mesmo que a etapa leve mais tempo. Não adiar nem retirar a opção para declarar a aba concluída. A correção precisa preservar o comprimento válido na codificação ou no contêiner, além das amostras; remover silêncio pelo conteúdo não atende ao aceite. Validar também pacotes completos, pacotes parciais e silêncio verdadeiro no final, em 16 e 24 bits e em 44,1 e 48 kHz.
+
 ## Adendo de 13/11/2026: qualidade indisponível exige confirmação
 
 Decisão do mantenedor: quando o codificador do Windows não aceitar a taxa escolhida, oferecer uma taxa menor e só converter depois da confirmação. A redução automática não atende a essa decisão.

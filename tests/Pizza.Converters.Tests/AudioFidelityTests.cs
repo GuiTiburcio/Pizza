@@ -17,6 +17,8 @@ public partial class AudioConverterTests
     [MediaTheory]
     [InlineData(16, 48000, 8192, 0)]
     [InlineData(24, 48000, 8192, 0)]
+    [InlineData(16, 44100, 8192, 0)]
+    [InlineData(24, 44100, 8192, 0)]
     [InlineData(16, 48000, 48001, 17)]
     [InlineData(24, 48000, 48001, 17)]
     [InlineData(16, 44100, 44101, 19)]
