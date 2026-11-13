@@ -39,3 +39,13 @@ A Fase 6 traz a aba PDF: Girar, Juntar, Dividir, Imagens, Comprimir e Word (SPEC
 - PdfPig, PDFium e QPDF juntos no Worker, como redundância: um parser a mais é mais uma porta para um PDF malicioso, e a conferência dupla já existe nos testes.
 - PDFsharp 6.2.4 (MIT): versão congelada, sem correções.
 - iText, MuPDF e Ghostscript: AGPL (ADR-005).
+
+## Adendo de 13/11/2026: Worker de reserva (NFR-05)
+
+Abrir o Worker isolado custa ~150–300 ms em toda conversão. Agora o residente abre um Worker de reserva quando o menu abre sobre um arquivo que tenha alguma conversão feita pelo Worker (Imagem, Áudio, PDF e as do Brotinho), seguindo o motor de reserva da ADR-034. A conversão usa essa reserva se ela estiver viva; se não, abre um Worker na hora, como antes. Vale para todas as conversões do Worker, por decisão do mantenedor.
+
+- **Isolamento igual (SEC-20, SEC-15, SEC-29):** a reserva é o mesmo `Pizza.Worker.exe`, no mesmo AppContainer sem rede e no mesmo Job. Ela não recebe nada até o pedido, e o pedido só traz handles. Cada Worker continua servindo um único arquivo e encerrando: a reserva usada não volta a ser reserva.
+- **Prazo (SEC-43):** conta a partir do pedido, como antes. A espera da reserva não entra nele.
+- **Espera:** sem pedido em 60 s, a reserva é encerrada. Ao sair do Pizza, também (o Job encerra o processo mesmo se o residente cair).
+- **Custo:** um processo parado por até 60 s depois de cada menu aberto sobre esses arquivos.
+- Código em `WorkerSpare` (Pizza.Core) e `Conversion.WarmUp`. Medição em `docs/FASE-6.md`.
