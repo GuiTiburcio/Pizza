@@ -75,29 +75,43 @@ public static class RadialMenu
     }
 
     /// <summary>Se existe alguma conversão para o arquivo; sem nenhuma, o menu não abre (FR-09).</summary>
-    public static bool CanConvert(string path) => Available(path).Any();
+    public static bool CanConvert(string path) => Fitting(path).Any();
 
     /// <summary>Fatias de uma volta da aba, sem descartar os formatos das voltas seguintes (ADR-024).</summary>
     public static IReadOnlyList<ConverterInfo> Slices(int tab, string path, int turn = 0) =>
-        Available(path).Where(converter => converter.Tab == tab).Skip(turn * SlotCount).Take(SlotCount).ToArray();
+        Shown(path).Where(converter => converter.Tab == tab).Skip(turn * SlotCount).Take(SlotCount).ToArray();
 
     public static IReadOnlyList<MenuPage> Pages(string path) =>
         Enumerable.Range(0, MenuTabs.Names.Count)
-            .SelectMany(tab => Enumerable.Range(0, Math.Max(1, (Available(path).Count(converter => converter.Tab == tab) + SlotCount - 1) / SlotCount))
+            .SelectMany(tab => Enumerable.Range(0, Math.Max(1, (Shown(path).Count(converter => converter.Tab == tab) + SlotCount - 1) / SlotCount))
                 .Select(turn => new MenuPage(tab, turn))).ToArray();
 
     /// <summary>FR-03: o menu abre na aba do tipo do arquivo, a primeira com alguma conversão para ele.</summary>
-    public static int FirstPage(string path)
-    {
-        var tab = Available(path).Select(converter => converter.Tab).DefaultIfEmpty(0).Min();
-        return Pages(path).ToList().FindIndex(page => page.Tab == tab);
-    }
+    public static int FirstPage(string path) => Pages(path).ToList().FindIndex(page => page.Tab == HomeTab(path));
 
-    private static IEnumerable<ConverterInfo> Available(string path)
+    /// <summary>A primeira aba com alguma conversão para o arquivo.</summary>
+    public static int HomeTab(string path) => Fitting(path).Select(converter => converter.Tab).DefaultIfEmpty(0).Min();
+
+    /// <summary>Se a conversão aceita o tipo do arquivo.</summary>
+    public static bool Fits(ConverterInfo converter, string path) =>
+        converter.InputExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>ADR-036: o que a fatia apagada diz quando é escolhida.</summary>
+    public static string Hint(string path) => $"Experimente a aba {MenuTabs.ShortNames[HomeTab(path)]}";
+
+    /// <summary>ADR-034 e ADR-036: sem o motor de documentos (Pizza Brotinho), as fatias dele não existem.</summary>
+    private static IEnumerable<ConverterInfo> Installed =>
+        ConverterCatalog.All.Where(converter => !converter.DocumentEngine || ConverterCatalog.DocumentEngineAvailable);
+
+    private static IEnumerable<ConverterInfo> Fitting(string path) => Installed.Where(converter => Fits(converter, path));
+
+    /// <summary>
+    /// ADR-036: numa aba com conversão para o arquivo, só as que servem a ele; nas outras, todas as fatias, que o
+    /// menu desenha apagadas.
+    /// </summary>
+    private static IEnumerable<ConverterInfo> Shown(string path)
     {
-        var extension = Path.GetExtension(path);
-        return ConverterCatalog.All.Where(converter =>
-            converter.InputExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase)
-            && (!converter.DocumentEngine || ConverterCatalog.DocumentEngineAvailable));
+        var home = Fitting(path).Select(converter => converter.Tab).ToHashSet();
+        return Installed.Where(converter => !home.Contains(converter.Tab) || Fits(converter, path));
     }
 }

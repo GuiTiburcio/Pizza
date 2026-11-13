@@ -28,6 +28,7 @@ internal static unsafe partial class Overlay
         if (files is { } dragged && (_files is not { } current || !current.SameAs(dragged)))
         {
             _files = files;
+            _hintPage = null;
         }
 
         if (action == SessionAction.ShowMenu)
@@ -88,6 +89,12 @@ internal static unsafe partial class Overlay
         if (slot is { } selected)
         {
             return Select(file, selected);
+        }
+
+        // ADR-036: soltar numa fatia de outro tipo deixa o menu aberto e aponta a aba que serve.
+        if (selectSlice)
+        {
+            HintAt(x, y);
         }
 
         if (Session.OnDrop(true) != SessionAction.PrepareChoice)

@@ -171,6 +171,46 @@ public sealed class OverlayDropTests
     }
 
     [Fact]
+    public void Clique_numa_fatia_de_outro_tipo_aponta_a_aba_e_mantem_a_escolha()
+    {
+        // ADR-036: a imagem na aba PDF vê Juntar, Dividir e Girar apagados; escolher um não converte.
+        PrepareChoice();
+        var pdfPage = OpenPage("entrada.jpg", ConverterCatalog.PdfTab);
+
+        Assert.False(ChooseAt(0, -130));
+        Assert.Equal(GestureState.Choosing, Session.State);
+        Assert.Null(Dropped);
+        Assert.Equal(pdfPage, (MenuPage?)Get("_hintPage"));
+        Assert.Equal(0, (int)Get("_hintSlot")!);
+        Assert.Equal("Experimente a aba Imagem", RadialMenu.Hint("entrada.jpg"));
+    }
+
+    [Fact]
+    public void Soltar_numa_fatia_de_outro_tipo_deixa_o_menu_aberto_com_o_aviso()
+    {
+        Prepare();
+        var pdfPage = OpenPage("entrada.jpg", ConverterCatalog.PdfTab);
+        var (x, y) = SliceCenter(1);
+
+        Assert.Null(TargetAt(x - DiscLayout.CenterX, y - DiscLayout.CenterY));
+        Overlay.OnDrop(Files("entrada.jpg"), x, y);
+
+        Assert.Equal(GestureState.Choosing, Session.State);
+        Assert.Null(Dropped);
+        Assert.Equal(pdfPage, (MenuPage?)Get("_hintPage"));
+        Assert.Equal(1, (int)Get("_hintSlot")!);
+    }
+
+    [Fact]
+    public void Clique_numa_fatia_que_serve_nao_mostra_aviso()
+    {
+        PrepareChoice();
+
+        Assert.True(ChooseAt(0, -130));
+        Assert.Null((MenuPage?)Get("_hintPage"));
+    }
+
+    [Fact]
     public void Prazo_sem_interacao_cancela_a_escolha()
     {
         // ADR-025: 10 s sem interação fecham o menu e descartam a cópia da tela.
@@ -363,6 +403,8 @@ public sealed class OverlayDropTests
         Set("_choiceDeadline", 0L);
         Set("_clickArmed", false);
         Set("_levelHover", null);
+        Set("_hintPage", null);
+        Set("_pages", RadialMenu.Pages("entrada.jpg"));
         Strip.Clear();
         LevelGlide.Snap(0);
         SliceGlide.Snap(0);
@@ -405,6 +447,16 @@ public sealed class OverlayDropTests
         var pages = RadialMenu.Pages(paths[0]);
         Set("_pages", pages);
         Carousel.Reset(pages.Count, RadialMenu.FirstPage(paths[0]));
+    }
+
+    /// <summary>Gira o menu até a primeira volta da aba pedida, como a roda faz.</summary>
+    private static MenuPage OpenPage(string path, int tab)
+    {
+        var pages = RadialMenu.Pages(path);
+        var index = pages.ToList().FindIndex(page => page.Tab == tab);
+        Set("_pages", pages);
+        Carousel.Reset(pages.Count, index);
+        return pages[index];
     }
 
     private static int LevelX(int level, int count)
