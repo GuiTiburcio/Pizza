@@ -87,6 +87,7 @@ internal static unsafe partial class Overlay
         const uint exStyle = WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED | WS_EX_NOACTIVATE;
         _catcher = CreateWindowExW(exStyle, ClassName, "Pizza Camada", WS_POPUP, 0, 0, 1, 1, 0, 0, instance, 0);
         Disc = CreateWindowExW(exStyle, ClassName, "Pizza", WS_POPUP, 0, 0, DiscLayout.Width, DiscLayout.Height, 0, 0, instance, 0);
+        CreateBar(instance, exStyle);
         SetLayeredWindowAttributes(_catcher, 0, CatcherAlpha, LWA_ALPHA);
 
         DiscTarget.Register(Disc);
@@ -96,6 +97,7 @@ internal static unsafe partial class Overlay
     public static void Destroy()
     {
         RevokeDragDrop(Disc);
+        RevokeDragDrop(_bar);
         RevokeDragDrop(_catcher);
     }
 
@@ -134,6 +136,7 @@ internal static unsafe partial class Overlay
 
         var (width, height, dpi) = Place(cursor.X, cursor.Y);
         DiscRenderer.Prepare(_left, _top, width, height, dpi);
+        PlaceBar();
         _prepared = (width, height);
     }
 
@@ -145,6 +148,7 @@ internal static unsafe partial class Overlay
         {
             (width, height, var dpi) = Place(x, y);
             DiscRenderer.Prepare(_left, _top, width, height, dpi);
+            PlaceBar();
         }
 
         _prepared = null;
@@ -166,6 +170,8 @@ internal static unsafe partial class Overlay
         IsVisible = true;
         Render();
         SetWindowPos(Disc, HWND_TOPMOST, _left, _top, width, height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        var (barWidth, barHeight) = BarSize();
+        SetWindowPos(_bar, HWND_TOPMOST, BarLeft, BarTop, barWidth, barHeight, SWP_NOACTIVATE | SWP_SHOWWINDOW);
         int? elapsed = _gestureStarted == 0 ? null : (int)System.Diagnostics.Stopwatch.GetElapsedTime(_gestureStarted).TotalMilliseconds;
         _gestureStarted = 0;
         Log.Write(LogEvent.MenuOpened, elapsed);
@@ -209,8 +215,12 @@ internal static unsafe partial class Overlay
     private static void HideWindow()
     {
         KillTimer(Disc, TimerAnimation);
+        KillTimer(Disc, TimerBar);
         _lastFrame = 0;
+        _barFrame = 0;
         ShowWindow(Disc, SW_HIDE);
+        ShowWindow(_bar, SW_HIDE);
+        DiscRenderer.ReleaseTop();
         IsVisible = false;
         _hoverSlot = null;
         _prepared = null;
@@ -262,6 +272,7 @@ internal static unsafe partial class Overlay
             merging,
             RimHover: _rimHover || _grip == GripZone.Resize);
         DiscRenderer.Show(Disc, _left, _top, frame);
+        DiscRenderer.ShowTop(_bar, BarLeft, BarTop, frame);
     }
 
     private static double TabPosition(double position)
@@ -298,7 +309,7 @@ internal static unsafe partial class Overlay
             case WM_MOUSEMOVE when Session.State == GestureState.Choosing && DragGrip():
                 return 0;
 
-            case WM_LBUTTONDOWN when Session.State == GestureState.Choosing && BeginGrip():
+            case WM_LBUTTONDOWN when Session.State == GestureState.Choosing && BeginGrip(hwnd):
             case WM_LBUTTONUP when EndGrip():
                 // ADR-037: segurar o vidro fora dos alvos move; a borda muda o tamanho.
                 return 0;
@@ -307,17 +318,17 @@ internal static unsafe partial class Overlay
                 EndGrip();
                 return 0;
 
-            case WM_SETCURSOR when UpdateGripCursor():
+            case WM_SETCURSOR when UpdateGripCursor(hwnd):
                 return 1;
 
             case WM_MOUSEMOVE when Session.State == GestureState.Choosing:
-                OnDragOver(_left + (short)(lParam & 0xFFFF), _top + (short)((lParam >> 16) & 0xFFFF));
+                OnDragOver(Origin(hwnd).X + (short)(lParam & 0xFFFF), Origin(hwnd).Y + (short)((lParam >> 16) & 0xFFFF));
                 KeepChoosing();
                 return 0;
 
             case WM_LBUTTONDOWN or WM_RBUTTONDOWN or WM_LBUTTONUP or WM_RBUTTONUP when Session.State == GestureState.Choosing:
                 // O botão direito numa fatia abre as opções do formato; fora das fatias, nenhum dos dois faz nada.
-                OnChoiceButton(msg, _left + (short)(lParam & 0xFFFF), _top + (short)((lParam >> 16) & 0xFFFF));
+                OnChoiceButton(msg, Origin(hwnd).X + (short)(lParam & 0xFFFF), Origin(hwnd).Y + (short)((lParam >> 16) & 0xFFFF));
                 return 0;
 
             case WM_KEYDOWN when Session.State == GestureState.Choosing:
@@ -374,8 +385,17 @@ internal static unsafe partial class Overlay
         }
     }
 
+    /// <summary>Canto da janela que recebeu a mensagem: o disco ou a barra (ADR-037).</summary>
+    private static (int X, int Y) Origin(nint hwnd) => hwnd == _bar ? (BarLeft, BarTop) : (_left, _top);
+
     private static void OnTimer(nuint id)
     {
+        if (id == TimerBar)
+        {
+            BarFrame();
+            return;
+        }
+
         if (id == TimerAnimation)
         {
             AnimationFrame();
