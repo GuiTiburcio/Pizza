@@ -80,7 +80,16 @@ public sealed class DocxHtmlConverter(long maxPartBytes = OfficePackage.MaxPartB
                     writer.Write("<pre><code>");
                     for (var first = true; index < blocks.Count && blocks[index] is ParagraphBlock { Kind: BlockKind.Code, List: null } line; index++, first = false)
                     {
-                        writer.Write((first ? "" : "\n") + Text(string.Concat(line.Inlines.OfType<TextRun>().Select(run => run.Text))));
+                        writer.Write(first ? "" : "\n");
+                        foreach (var inline in line.Inlines)
+                        {
+                            writer.Write(inline switch
+                            {
+                                TextRun run => Text(run.Text),
+                                LineBreak => "\n",
+                                _ => "",
+                            });
+                        }
                     }
 
                     writer.Write("</code></pre>\n");
@@ -111,24 +120,28 @@ public sealed class DocxHtmlConverter(long maxPartBytes = OfficePackage.MaxPartB
     /// <summary>Itens seguidos viram listas aninhadas pelo nível; devolve o índice depois do último item.</summary>
     private static int List(IReadOnlyList<Block> blocks, int index, TextWriter writer)
     {
-        var open = new Stack<bool>();
+        var open = new Stack<(int Depth, bool Ordered)>();
         for (; index < blocks.Count && blocks[index] is ParagraphBlock { List: { } item } paragraph; index++)
         {
-            if (open.Count >= item.Depth + 1)
+            while (open.Count > 0 && open.Peek().Depth > item.Depth)
             {
-                while (open.Count > item.Depth + 1)
-                {
-                    writer.Write($"</li>\n{Close(open.Pop())}\n");
-                }
-
-                writer.Write("</li>\n");
+                writer.Write($"</li>\n{Close(open.Pop().Ordered)}\n");
             }
 
-            while (open.Count < item.Depth + 1)
+            if (open.Count > 0 && open.Peek().Depth == item.Depth)
+            {
+                writer.Write("</li>\n");
+                if (open.Peek().Ordered != item.Ordered)
+                {
+                    writer.Write($"{Close(open.Pop().Ordered)}\n");
+                }
+            }
+
+            if (open.Count == 0 || open.Peek().Depth < item.Depth)
             {
                 writer.Write(open.Count > 0 ? "\n" : "");
                 writer.Write(item.Ordered ? "<ol>\n" : "<ul>\n");
-                open.Push(item.Ordered);
+                open.Push((item.Depth, item.Ordered));
             }
 
             writer.Write("<li>");
@@ -137,7 +150,7 @@ public sealed class DocxHtmlConverter(long maxPartBytes = OfficePackage.MaxPartB
 
         while (open.Count > 0)
         {
-            writer.Write($"</li>\n{Close(open.Pop())}\n");
+            writer.Write($"</li>\n{Close(open.Pop().Ordered)}\n");
         }
 
         return index;

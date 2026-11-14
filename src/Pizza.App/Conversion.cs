@@ -20,6 +20,12 @@ internal static class Conversion
     private static ConversionRunner _runner = null!;
     private static DocumentEngine? _documents;
 
+    // Adendo do ADR-035: espera do "info" do Worker; sem resposta nesse prazo, o painel mostra "—".
+    private static readonly TimeSpan ProbeWait = TimeSpan.FromSeconds(2);
+    private static readonly Lock ProbeGate = new();
+    private static (string Path, string ConverterId, ProbedWorker Worker)? _probed;
+    private static int _probeGeneration;
+
     /// <summary>Prepara o diário e limpa temporários de uma queda anterior (SEC-34, SEC-37).</summary>
     public static void Initialize()
     {
@@ -88,8 +94,84 @@ internal static class Conversion
         }
     }
 
+    /// <summary>
+    /// Adendo do ADR-035: o painel de um áudio abriu. Um Worker novo recebe o handle do arquivo, devolve duração e
+    /// formato e fica esperando; a conversão deste arquivo usa esse mesmo Worker. Avisa a janela quando terminar.
+    /// </summary>
+    public static void Probe(string path, ConverterInfo converter, nint notifyWindow, uint notifyMessage)
+    {
+        DiscardProbe();
+        var generation = Interlocked.Increment(ref _probeGeneration);
+        Task.Run(() =>
+        {
+            ProbedWorker? probed = null;
+            try
+            {
+                probed = _runner.Probe(path, converter.Id, ProbeWait);
+            }
+            catch (Exception)
+            {
+                // Sem probe, o painel fica com "—" e a conversão abre o seu Worker, como antes.
+            }
+
+            lock (ProbeGate)
+            {
+                if (generation != _probeGeneration || probed is null)
+                {
+                    // O painel já fechou (ou outro abriu): este Worker não vai converter nada.
+                    probed?.Dispose();
+                    return;
+                }
+
+                _probed = (path, converter.Id, probed);
+            }
+
+            PostMessageW(notifyWindow, notifyMessage, 0, 0);
+        });
+    }
+
+    /// <summary>O "info" do probe deste arquivo, se já chegou.</summary>
+    public static MediaInfo? ProbeInfo()
+    {
+        lock (ProbeGate)
+        {
+            return _probed?.Worker.Info;
+        }
+    }
+
+    /// <summary>O painel fechou sem converter: o Worker do probe é encerrado.</summary>
+    public static void DiscardProbe()
+    {
+        lock (ProbeGate)
+        {
+            Interlocked.Increment(ref _probeGeneration);
+            _probed?.Worker.Dispose();
+            _probed = null;
+        }
+    }
+
+    private static ProbedWorker? TakeProbe(string path, string converterId)
+    {
+        lock (ProbeGate)
+        {
+            Interlocked.Increment(ref _probeGeneration);
+            var probed = _probed is { } match && match.Path == path && match.ConverterId == converterId ? match.Worker : null;
+            if (probed is null)
+            {
+                _probed?.Worker.Dispose();
+            }
+
+            _probed = null;
+            return probed;
+        }
+    }
+
     /// <summary>Ao sair: o motor de reserva encerra e leva a letra e a área oculta junto.</summary>
-    public static void Shutdown() => _documents?.Dispose();
+    public static void Shutdown()
+    {
+        DiscardProbe();
+        _documents?.Dispose();
+    }
 
     /// <param name="moreSources">Juntar (ADR-033): os outros arquivos, na ordem do arraste; vazio nas demais.</param>
     public static void Start(long id, string sourcePath, IReadOnlyList<string> moreSources, ConverterInfo converter, IReadOnlyDictionary<string, string> options, nint notifyWindow, uint notifyMessage, uint progressMessage)
@@ -107,6 +189,7 @@ internal static class Conversion
             },
         };
         Controls[id] = control;
+        var probed = moreSources.Count == 0 ? TakeProbe(sourcePath, converter.Id) : null;
         Task.Run(() =>
         {
             ConversionResult result;
@@ -116,13 +199,17 @@ internal static class Conversion
                 {
                     result = converter.DocumentEngine
                         ? _documents!.Run(sourcePath, converter.Id, converter.Extension, cancellation.Token, control)
-                        : _runner.Run(sourcePath, converter.Id, converter.Extension, options, cancellation.Token, control, converter.Suffix, converter.PartSuffix(options), moreSources.Count == 0 ? null : moreSources);
+                        : _runner.Run(sourcePath, converter.Id, converter.Extension, options, cancellation.Token, control, converter.Suffix, converter.PartSuffix(options), moreSources.Count == 0 ? null : moreSources, probed);
                 }
             }
             catch (Exception)
             {
                 // Sem isto, um erro inesperado deixaria o aviso preso em "Convertendo".
                 result = ConversionResult.Failed("WORKER_CRASHED");
+            }
+            finally
+            {
+                probed?.Dispose();
             }
 
             Running.TryRemove(id, out _);
