@@ -28,6 +28,10 @@ public sealed class DocxHtmlConverterTests
         "<w:abstractNum w:abstractNumId=\"0\"><w:lvl w:ilvl=\"0\"><w:numFmt w:val=\"bullet\"/></w:lvl><w:lvl w:ilvl=\"1\"><w:numFmt w:val=\"decimal\"/></w:lvl></w:abstractNum>"
         + "<w:num w:numId=\"1\"><w:abstractNumId w:val=\"0\"/></w:num>";
 
+    private const string AlternateNumbering =
+        "<w:abstractNum w:abstractNumId=\"1\"><w:lvl w:ilvl=\"0\"><w:numFmt w:val=\"decimal\"/></w:lvl><w:lvl w:ilvl=\"1\"><w:numFmt w:val=\"bullet\"/></w:lvl></w:abstractNum>"
+        + "<w:num w:numId=\"2\"><w:abstractNumId w:val=\"1\"/></w:num>";
+
     private const string Footnotes =
         "<w:footnote w:type=\"separator\" w:id=\"-1\"><w:p><w:r><w:separator/></w:r></w:p></w:footnote>"
         + "<w:footnote w:id=\"2\"><w:p><w:r><w:footnoteRef/></w:r><w:r><w:t xml:space=\"preserve\"> Fonte </w:t></w:r><w:r><w:rPr><w:i/></w:rPr><w:t>X</w:t></w:r><w:r><w:t>.</w:t></w:r></w:p></w:footnote>";
@@ -36,7 +40,7 @@ public sealed class DocxHtmlConverterTests
 
     private static string Run(string properties, string text) => $"<w:r><w:rPr>{properties}</w:rPr><w:t xml:space=\"preserve\">{text}</w:t></w:r>";
 
-    private static string Item(int level, string text) => $"<w:p><w:pPr><w:numPr><w:ilvl w:val=\"{level}\"/><w:numId w:val=\"1\"/></w:numPr></w:pPr><w:r><w:t>{text}</w:t></w:r></w:p>";
+    private static string Item(int level, string text, int number = 1) => $"<w:p><w:pPr><w:numPr><w:ilvl w:val=\"{level}\"/><w:numId w:val=\"{number}\"/></w:numPr></w:pPr><w:r><w:t>{text}</w:t></w:r></w:p>";
 
     private static string Cell(string properties, string text) => $"<w:tc><w:tcPr>{properties}</w:tcPr>{Paragraph(text)}</w:tc>";
 
@@ -112,6 +116,70 @@ public sealed class DocxHtmlConverterTests
             + "<p>[imagem em EMF: salve como PNG no editor e converta de novo]</p>\n"
             + "<section class=\"notas\">\n<hr>\n<ol>\n<li id=\"nota-1\">Fonte <em>X</em>. <a href=\"#ref-1\">↩</a></li>\n</ol>\n</section>\n",
             Body(html));
+    }
+
+    [Fact]
+    public void Trocar_marcadores_por_numeros_no_mesmo_nivel_preserva_o_tipo_da_lista()
+    {
+        // TST-02: a escolha entre marcadores e números faz parte da estrutura do documento.
+        var html = Html(RichDocx(
+            Item(0, "marcador") + Item(0, "primeiro", 2) + Item(0, "segundo", 2) + Item(0, "outro marcador"),
+            numbering: Numbering + AlternateNumbering));
+
+        Assert.Equal(
+            "<ul>\n<li>marcador</li>\n</ul>\n"
+            + "<ol>\n<li>primeiro</li>\n<li>segundo</li>\n</ol>\n"
+            + "<ul>\n<li>outro marcador</li>\n</ul>\n",
+            Body(html));
+    }
+
+    [Fact]
+    public void Trocar_o_tipo_da_sublista_preserva_o_item_pai()
+    {
+        var html = Html(RichDocx(
+            Item(0, "pai") + Item(1, "numerado") + Item(1, "marcado", 2) + Item(0, "seguinte"),
+            numbering: Numbering + AlternateNumbering));
+
+        Assert.Equal(
+            "<ul>\n<li>pai\n<ol>\n<li>numerado</li>\n</ol>\n"
+            + "\n<ul>\n<li>marcado</li>\n</ul>\n</li>\n<li>seguinte</li>\n</ul>\n",
+            Body(html));
+    }
+
+    [Theory]
+    [InlineData(1, "ol")]
+    [InlineData(3, "ul")]
+    [InlineData(8, "ul")]
+    public void Lista_que_comeca_recuada_nao_inventa_itens_vazios(int depth, string tag)
+    {
+        var html = Html(RichDocx(Item(depth, "primeiro") + Item(depth, "segundo"), numbering: Numbering));
+
+        Assert.Equal($"<{tag}>\n<li>primeiro</li>\n<li>segundo</li>\n</{tag}>\n", Body(html));
+    }
+
+    [Fact]
+    public void Saltos_de_nivel_na_lista_mantem_o_conteudo_dentro_dos_itens()
+    {
+        var html = Html(RichDocx(
+            Item(0, "pai") + Item(2, "filho") + Item(4, "neto") + Item(2, "irmao") + Item(0, "seguinte"),
+            numbering: Numbering));
+
+        Assert.Equal(
+            "<ul>\n<li>pai\n<ul>\n<li>filho\n<ul>\n<li>neto</li>\n</ul>\n"
+            + "</li>\n<li>irmao</li>\n</ul>\n</li>\n<li>seguinte</li>\n</ul>\n",
+            Body(html));
+    }
+
+    [Fact]
+    public void Codigo_preserva_quebras_e_tabs_dentro_do_mesmo_paragrafo()
+    {
+        var html = Html(RichDocx(
+            "<w:p><w:pPr><w:pStyle w:val=\"Codigo\"/></w:pPr><w:r>"
+            + "<w:t>alpha</w:t><w:br/><w:t>beta</w:t><w:cr/><w:t>gamma</w:t><w:tab/><w:t>&lt;tag&gt;</w:t>"
+            + "</w:r></w:p>" + Styled("Codigo", "next"),
+            styles: Styles));
+
+        Assert.Equal("<pre><code>alpha\nbeta\ngamma\t&lt;tag&gt;\nnext</code></pre>\n", Body(html));
     }
 
     [Fact]
