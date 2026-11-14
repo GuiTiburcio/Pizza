@@ -104,22 +104,21 @@ internal static unsafe partial class Overlay
     {
         var point = new POINT { X = x, Y = y };
         var monitor = MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST);
-        uint dpiX, dpiY;
-        if (GetDpiForMonitor(monitor, 0, &dpiX, &dpiY) != S_OK)
-        {
-            dpiX = 96;
-        }
-
         var info = new MONITORINFO { CbSize = (uint)sizeof(MONITORINFO) };
         GetMonitorInfoW(monitor, &info);
 
-        _scale = dpiX / 96.0;
-        var width = (int)Math.Round(DiscLayout.Width * _scale);
-        var height = (int)Math.Round(DiscLayout.Height * _scale);
+        // ADR-037: o conjunto ocupa 1/15 da área útil, vezes o fator do usuário.
+        _work = info.RcWork;
+        var dpi = MenuSettings.Dpi(_work);
+        _scale = dpi / 96.0;
+        var (width, height) = DiscSize();
         _left = Math.Max(info.RcWork.Left, Math.Min(x - (int)Math.Round(DiscLayout.CenterX * _scale), info.RcWork.Right - width));
         _top = Math.Max(info.RcWork.Top, Math.Min(y - (int)Math.Round(DiscLayout.CenterY * _scale), info.RcWork.Bottom - height));
-        return (width, height, (int)dpiX);
+        return (width, height, dpi);
     }
+
+    private static (int Width, int Height) DiscSize() =>
+        ((int)Math.Round(DiscLayout.Width * _scale), (int)Math.Round(DiscLayout.Height * _scale));
 
     /// <summary>
     /// NFR-03: copia e desfoca a tela já no início do gesto, enquanto o Windows ainda não confirmou o arraste de
@@ -203,6 +202,7 @@ internal static unsafe partial class Overlay
         _dropped = null;
         _pulseSlot = null;
         _clickArmed = false;
+        ResetGrip();
     }
 
     /// <summary>Some com o menu e descarta a cópia da tela usada no vidro (ADR-023).</summary>
@@ -259,7 +259,8 @@ internal static unsafe partial class Overlay
             LevelGlide.Swell,
             unavailable,
             order,
-            merging);
+            merging,
+            RimHover: _rimHover || _grip == GripZone.Resize);
         DiscRenderer.Show(Disc, _left, _top, frame);
     }
 
@@ -293,6 +294,21 @@ internal static unsafe partial class Overlay
             case WmChoiceReady:
                 PrepareChoice();
                 return 0;
+
+            case WM_MOUSEMOVE when Session.State == GestureState.Choosing && DragGrip():
+                return 0;
+
+            case WM_LBUTTONDOWN when Session.State == GestureState.Choosing && BeginGrip():
+            case WM_LBUTTONUP when EndGrip():
+                // ADR-037: segurar o vidro fora dos alvos move; a borda muda o tamanho.
+                return 0;
+
+            case WM_CAPTURECHANGED:
+                EndGrip();
+                return 0;
+
+            case WM_SETCURSOR when UpdateGripCursor():
+                return 1;
 
             case WM_MOUSEMOVE when Session.State == GestureState.Choosing:
                 OnDragOver(_left + (short)(lParam & 0xFFFF), _top + (short)((lParam >> 16) & 0xFFFF));
@@ -330,6 +346,9 @@ internal static unsafe partial class Overlay
             case WM_ACTIVATE when Session.State == GestureState.Choosing && (wParam & 0xFFFF) == 0:
             case WM_CLOSE:
                 OnDropOutside();
+                return 0;
+
+            case WmWheel when WheelResize((int)lParam):
                 return 0;
 
             case WmWheel:
