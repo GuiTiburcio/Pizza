@@ -354,7 +354,7 @@ public sealed class XlsxCsvConverter(long maxPartBytes = OfficePackage.MaxPartBy
             "str" => (value ?? "", true),
             "b" => (value is null ? "" : value == "1" ? "TRUE" : "FALSE", false),
             "n" when value is not null => (Number(double.Parse(value, NumberStyles.Float, CultureInfo.InvariantCulture), style < dates.Count && dates[style], date1904, culture), false),
-            _ => (value ?? "", false),
+            _ => (value ?? "", true),
         };
     }
 

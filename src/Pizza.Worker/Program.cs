@@ -5,6 +5,7 @@ using Pizza.Converters;
 using Pizza.Core.Conversions;
 using Pizza.Core.Diagnostics;
 using Pizza.Core.Ipc;
+using Pizza.Core.Output;
 
 namespace Pizza.Worker;
 
@@ -36,6 +37,13 @@ internal static class Program
             while (IpcFraming.ReadFrame(reader) is { } frame)
             {
                 var message = IpcCodec.Parse(frame);
+                if (message.Type == IpcType.Probe)
+                {
+                    // Adendo do ADR-035: responde e fica esperando o "convert" deste mesmo arquivo (ADR-019).
+                    IpcFraming.WriteFrame(writer, IpcCodec.Serialize(Probe(message)));
+                    continue;
+                }
+
                 if (message.Type == IpcType.Convert)
                 {
                     var channel = new ProgressChannel(writer, message.JobId);
@@ -52,6 +60,29 @@ internal static class Program
         }
     }
 
+    private static IpcMessage Probe(IpcMessage request)
+    {
+        if (ConverterRegistry.Find(request.ConverterId!) is not Pizza.Converters.Audio.AudioConverter)
+        {
+            return new IpcMessage(IpcType.Error, request.JobId) { Code = "UNSUPPORTED" };
+        }
+
+        RequireMicrosoftSigned();
+        using var source = OpenHandle(request.SrcHandle!.Value, FileAccess.Read);
+        return Pizza.Converters.Audio.AudioConverter.Probe(source) is { } media
+            ? new IpcMessage(IpcType.Info, request.JobId) { Media = media }
+            : new IpcMessage(IpcType.Error, request.JobId) { Code = "UNSUPPORTED" };
+    }
+
+    /// <summary>SEC-26 (ADR-035): só codecs do próprio Windows, antes de o Media Foundation carregar qualquer um.</summary>
+    private static void RequireMicrosoftSigned()
+    {
+        if (!Pizza.Converters.Audio.SignaturePolicy.IsMicrosoftSignedOnly())
+        {
+            Pizza.Converters.Audio.SignaturePolicy.RequireMicrosoftSigned();
+        }
+    }
+
     private static IpcMessage Convert(IpcMessage request, IProgress<int> progress)
     {
         // SPECS §10.3: só o que está no registro, e só com opções dentro do esquema.
@@ -64,8 +95,7 @@ internal static class Program
 
         if (converter is Pizza.Converters.Audio.AudioConverter)
         {
-            // SEC-26 (ADR-035): só codecs do próprio Windows, antes de o Media Foundation carregar qualquer um.
-            Pizza.Converters.Audio.SignaturePolicy.RequireMicrosoftSigned();
+            RequireMicrosoftSigned();
         }
 
         var clock = Stopwatch.StartNew();
@@ -73,29 +103,47 @@ internal static class Program
 
         // O destino é fechado antes da resposta: depois de "done", o Worker não tem como escrever.
         using (var source = OpenHandle(request.SrcHandle!.Value, FileAccess.Read))
-        using (var destination = OpenHandle(request.DstHandle!.Value, FileAccess.Write, DestinationBufferBytes))
+        using (var file = OpenHandle(request.DstHandle!.Value, FileAccess.Write, DestinationBufferBytes))
+        using (var destination = new OutputBudgetStream(file, OutputBudget.ContainerBytes(info.PartSuffix(options) is not null)))
         {
-            if (request.MoreSrcHandles is not { } more)
+            try
             {
-                error = converter.Convert(source, destination, options, progress);
-            }
-            else if (converter is IMergeConverter merger)
-            {
-                // Juntar (ADR-033): as outras entradas também chegam só como handles, na ordem do arraste.
-                var sources = new List<Stream> { source };
-                try
+                if (request.MoreSrcHandles is not { } more)
                 {
-                    sources.AddRange(more.Select(handle => (Stream)OpenHandle(handle, FileAccess.Read)));
-                    error = merger.Convert(sources, destination, options, progress);
+                    error = converter.Convert(source, destination, options, progress);
                 }
-                finally
+                else if (converter is IMergeConverter merger)
                 {
-                    sources.Skip(1).ToList().ForEach(stream => stream.Dispose());
+                    // Juntar (ADR-033): as outras entradas também chegam só como handles, na ordem do arraste.
+                    var sources = new List<Stream> { source };
+                    try
+                    {
+                        sources.AddRange(more.Select(handle => (Stream)OpenHandle(handle, FileAccess.Read)));
+                        error = merger.Convert(sources, destination, options, progress);
+                    }
+                    finally
+                    {
+                        sources.Skip(1).ToList().ForEach(stream => stream.Dispose());
+                    }
+                }
+                else
+                {
+                    error = "UNSUPPORTED";
                 }
             }
-            else
+            catch (Exception) when (destination.Exceeded)
             {
-                error = "UNSUPPORTED";
+                error = "LIMIT_EXCEEDED";
+            }
+            catch (ConversionLimitException)
+            {
+                error = "LIMIT_EXCEEDED";
+            }
+
+            // NetVips e COM podem transformar a exceção de escrita em erro genérico.
+            if (destination.Exceeded)
+            {
+                error = "LIMIT_EXCEEDED";
             }
         }
 

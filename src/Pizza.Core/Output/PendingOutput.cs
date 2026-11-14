@@ -119,7 +119,8 @@ public sealed unsafe class PendingOutput : IDisposable
     {
         try
         {
-            return ZoneIdentifier.ParseZone(File.ReadAllText(sourcePath + ZoneStream));
+            using var source = File.OpenRead(sourcePath + ZoneStream);
+            return ZoneIdentifier.Read(source);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

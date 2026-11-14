@@ -3,6 +3,7 @@ using System.Globalization;
 using Microsoft.Win32.SafeHandles;
 using Pizza.Core.Diagnostics;
 using Pizza.Core.Ipc;
+using Pizza.Core.Output;
 
 namespace Pizza.Docs;
 
@@ -142,7 +143,22 @@ internal static class Program
             // O destino é fechado antes da resposta: depois de "done", nada mais é escrito.
             using var destination = OpenHandle(request.DstHandle!.Value, FileAccess.Write);
             using var converted = File.OpenRead(result);
-            converted.CopyTo(destination);
+            if (converted.Length > OutputBudget.MaxBytes)
+            {
+                error = "LIMIT_EXCEEDED";
+            }
+            else
+            {
+                using var bounded = new OutputBudgetStream(destination);
+                try
+                {
+                    converted.CopyTo(bounded);
+                }
+                catch (ConversionLimitException)
+                {
+                    error = "LIMIT_EXCEEDED";
+                }
+            }
         }
 
         return error is null
