@@ -59,7 +59,7 @@ internal static unsafe partial class Overlay
     private static int? _hoverSlot;
     private static int? _pulseSlot;
 
-    /// <summary>ADR-036: fatia apagada que a pessoa escolheu, na página em que estava; mostra a aba que serve.</summary>
+    /// <summary>ADR-039: fatia apagada que a pessoa escolheu, na página em que estava; mostra a aba que serve.</summary>
     private static MenuPage? _hintPage;
     private static int _hintSlot;
     private static DraggedFiles? _files;

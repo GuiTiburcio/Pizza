@@ -88,7 +88,7 @@ internal static unsafe partial class DiscRenderer
             ink = WithAlpha(ink, 0.38);
         }
 
-        // ADR-036: a fatia apagada que foi escolhida diz qual aba converte o arquivo, com a descrição legível.
+        // ADR-039: a fatia apagada que foi escolhida diz qual aba converte o arquivo, com a descrição legível.
         var captionInk = ink;
         if (frame.HintSlot == slot && frame.Hint is { } hint)
         {

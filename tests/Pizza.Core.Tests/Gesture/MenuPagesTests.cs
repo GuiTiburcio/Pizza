@@ -17,7 +17,7 @@ public class MenuPagesTests
     [InlineData("escritura.PDF", 2, 1)]
     public void Menu_abre_na_aba_do_tipo_do_arquivo(string path, int page, int tab)
     {
-        // FR-03: a aba Imagem mostra as oito fatias apagadas para o PDF (ADR-036), em duas voltas antes da aba PDF.
+        // FR-03: a aba Imagem mostra as oito fatias apagadas para o PDF (ADR-039), em duas voltas antes da aba PDF.
         Assert.Equal(page, RadialMenu.FirstPage(path));
         Assert.Equal(tab, RadialMenu.Pages(path)[page].Tab);
     }

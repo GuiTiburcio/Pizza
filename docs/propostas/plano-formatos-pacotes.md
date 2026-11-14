@@ -1,6 +1,6 @@
 # Plano: formatos por pacote e parcelas em paralelo
 
-- **Status:** aprovado pelo mantenedor em 13/11/2026. Decisões registradas no [ADR-036](../adr/036-formatos-por-pacote-e-fatias-incompativeis.md) e na SPECS (§2.1 e §5.3).
+- **Status:** aprovado pelo mantenedor em 13/11/2026. Decisões registradas no [ADR-039](../adr/039-formatos-por-pacote-e-fatias-incompativeis.md) e na SPECS (§2.1 e §5.3).
 - **Base:** ADR-026 (Vídeo), ADR-033 (PDFium e QPDF), ADR-034 (Brotinho e Jumbo), ADR-035 (Áudio) e a lista de formatos colada pelo mantenedor.
 
 ## 1. Decisões desta rodada
@@ -117,7 +117,7 @@ Residente (Pizza.App)                         Sandboxes (AppContainer, sem rede)
 
 ### Etapa 0 — fundação (esta sessão, um PR, antes das demais)
 
-1. ADR-036 + emendas na SPECS §2.1 e §5.3 + itens em `ideias-descartadas` → verificar: revisão do mantenedor.
+1. ADR-039 + emendas na SPECS §2.1 e §5.3 + itens em `ideias-descartadas` → verificar: revisão do mantenedor.
 2. Fatias por arquivo na aba dele, fatias apagadas nas outras e aviso de incompatível → verificar: testes do `RadialMenu` e teste no app pelo mantenedor.
 
 Só a Etapa 0 mexe em `RadialMenu`, `Overlay`, `TabCarousel` e no formato do `ConverterCatalog`. Depois dela, cada parcela só **acrescenta** entradas no bloco da sua aba.
@@ -178,5 +178,5 @@ Lacunas de hoje: não há teste de contrato do catálogo nem teste que impeça f
 ## 6. Pendências antes do código
 
 - ~~Mantenedor aprova este plano e as premissas A1 e A2~~ (13/11/2026).
-- ADR-036 mesclado.
+- ADR-039 mesclado.
 - ~~Pizza — VII criado~~ (13/11/2026).

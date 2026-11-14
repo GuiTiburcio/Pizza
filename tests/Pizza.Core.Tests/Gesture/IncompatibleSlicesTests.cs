@@ -4,7 +4,7 @@ using Pizza.Core.Gesture;
 namespace Pizza.Core.Tests.Gesture;
 
 /// <summary>
-/// ADR-036: na aba do arquivo, só as fatias que servem a ele; nas outras, as fatias aparecem apagadas e
+/// ADR-039: na aba do arquivo, só as fatias que servem a ele; nas outras, as fatias aparecem apagadas e
 /// apontam para a aba que converte o arquivo. No Brotinho, as fatias do motor de documentos não aparecem.
 /// </summary>
 [Collection(DocumentEngineSwitch.Name)]
