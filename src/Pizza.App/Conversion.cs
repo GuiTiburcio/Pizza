@@ -19,6 +19,7 @@ internal static class Conversion
     private static readonly Lock Gate = new();
     private static ConversionRunner _runner = null!;
     private static DocumentEngine? _documents;
+    private static WorkerSpare? _spare;
 
     // Adendo do ADR-035: espera do "info" do Worker; sem resposta nesse prazo, o painel mostra "—".
     private static readonly TimeSpan ProbeWait = TimeSpan.FromSeconds(2);
@@ -50,7 +51,10 @@ internal static class Conversion
             // Pasta protegida (instalada pelo administrador): o instalador já deu o acesso.
         }
 
-        _runner = new ConversionRunner(Path.Combine(AppContext.BaseDirectory, "Pizza.Worker.exe"), Profile, journal, Timeout);
+        // NFR-05 (adendo da ADR-033): a conversão usa o Worker de reserva aberto com o menu, se houver um.
+        var worker = Path.Combine(AppContext.BaseDirectory, "Pizza.Worker.exe");
+        _spare = new WorkerSpare(() => SandboxedProcess.Start(worker, Profile), TimeSpan.FromSeconds(60));
+        _runner = new ConversionRunner(worker, Profile, journal, Timeout, start: _spare.Take);
 
         // ADR-034: o Pizza Jumbo traz o motor de documentos na pasta "motor"; o Brotinho, não.
         var engine = Path.Combine(AppContext.BaseDirectory, "motor");
@@ -89,6 +93,22 @@ internal static class Conversion
                 catch (Exception)
                 {
                     // Sem reserva, a conversão inicia o motor na hora, como antes.
+                }
+            });
+        }
+
+        // NFR-05: o mesmo para o Worker, quando o arquivo tem alguma conversão que passa por ele.
+        if (_spare is { } spare && ConverterCatalog.All.Any(converter => !converter.DocumentEngine && converter.InputExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase)))
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    spare.WarmUp();
+                }
+                catch (Exception)
+                {
+                    // Sem reserva, a conversão abre o Worker na hora, como antes.
                 }
             });
         }
@@ -166,11 +186,12 @@ internal static class Conversion
         }
     }
 
-    /// <summary>Ao sair: o motor de reserva encerra e leva a letra e a área oculta junto.</summary>
+    /// <summary>Ao sair: o motor de reserva encerra e leva a letra e a área oculta junto; o Worker de reserva também.</summary>
     public static void Shutdown()
     {
         DiscardProbe();
         _documents?.Dispose();
+        _spare?.Dispose();
     }
 
     /// <param name="moreSources">Juntar (ADR-033): os outros arquivos, na ordem do arraste; vazio nas demais.</param>

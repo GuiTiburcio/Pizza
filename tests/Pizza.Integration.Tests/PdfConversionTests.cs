@@ -131,6 +131,65 @@ public sealed class PdfConversionTests(SandboxFixture fixture) : IDisposable
         Assert.Single(Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }));
     }
 
+    [Fact]
+    public void Worker_de_reserva_converte_um_unico_arquivo()
+    {
+        // NFR-05 (adendo da ADR-033): o Worker abre com o menu; cada Worker continua servindo um só arquivo (SEC-29).
+        var source = Path.Combine(_folder, "escritura.pdf");
+        File.WriteAllBytes(source, Pages(3));
+        var started = 0;
+        using var spare = new WorkerSpare(() => { started++; return SandboxedProcess.Start(fixture.WorkerPath, SandboxFixture.Profile); }, TimeSpan.FromSeconds(60));
+        var runner = new ConversionRunner(fixture.WorkerPath, SandboxFixture.Profile, new TempJournal(_folder + ".journal"), TimeSpan.FromSeconds(60), start: spare.Take);
+
+        spare.WarmUp();
+        spare.WarmUp(); // o menu abriu de novo: a reserva que já existe serve
+        Assert.True(spare.IsWarm);
+        Assert.Equal(1, started);
+
+        var first = runner.Run(source, "pdf.split", "pdf", new Dictionary<string, string> { ["mode"] = "half" }, parts: (part, count) => OutputNaming.PartSuffix("half", part, count));
+        Assert.Null(first.ErrorCode);
+        Assert.False(spare.IsWarm);
+        Assert.Equal(1, started);
+
+        var second = runner.Run(source, "pdf.rotate", "pdf", new Dictionary<string, string> { ["rotation"] = "90" }, suffix: " - girado");
+        Assert.Null(second.ErrorCode);
+        Assert.Equal(2, started);
+    }
+
+    [Fact]
+    public void Worker_de_reserva_sai_sozinho_apos_a_espera()
+    {
+        var id = 0;
+        using var spare = new WorkerSpare(() =>
+        {
+            var process = SandboxedProcess.Start(fixture.WorkerPath, SandboxFixture.Profile);
+            id = process.ProcessId;
+            return process;
+        }, TimeSpan.FromSeconds(1));
+
+        spare.WarmUp();
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        while (spare.IsWarm && DateTime.UtcNow < deadline)
+        {
+            Thread.Sleep(100);
+        }
+
+        Assert.False(spare.IsWarm);
+        Assert.True(Running(id) is null || Running(id)!.WaitForExit(5000));
+    }
+
+    private static System.Diagnostics.Process? Running(int id)
+    {
+        try
+        {
+            return System.Diagnostics.Process.GetProcessById(id);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
     private ConversionRunner Runner() =>
         new(fixture.WorkerPath, SandboxFixture.Profile, new TempJournal(_folder + ".journal"), TimeSpan.FromSeconds(60));
 

@@ -33,3 +33,19 @@ O "antes" do Girar (texto e digitalizado) é a segunda rodada da medição. A pr
 - O Worker isolado leva ~300 ms só para abrir. Isso pesa em toda conversão.
 - No Dividir de um PDF digitalizado pesado, o Worker processa 61 MB (~400 ms), e criar e renomear 100 arquivos, cada um conferido pelo antivírus, custa ~4 ms por arquivo.
 - Testado e descartado: tirar o ID determinístico da QPDF não mudou o tempo.
+
+### Worker de reserva (13/11/2026)
+
+O Worker agora abre quando o menu abre (adendo da ADR-033), e a conversão começa com ele pronto. A medição repete a de cima, com o diário em lote já na main (PR #77), e simula ~0,5 s entre abrir o menu e escolher a fatia, fora do cronômetro. Foram três medições completas em cada modo. A tabela mostra a menor e a maior das três medianas.
+
+| Operação | Sem reserva | Com reserva | Meta |
+| --- | --- | --- | --- |
+| Girar · texto | 247–446 ms | 156–162 ms | ok |
+| Girar · digitalizado | 712–862 ms | 642–701 ms | ok |
+| Dividir cada página · texto | 525–704 ms | 378–506 ms | ok |
+| Dividir cada página · digitalizado | 867–1.747 ms | 645–2.167 ms | oscila |
+| Dividir pela metade · digitalizado | 601–878 ms | 452–799 ms | ok |
+| Juntar 2 × 50 · digitalizado | 607–878 ms | 437–669 ms | ok |
+| Juntar 100 × 1 · texto | 289–455 ms | 206–324 ms | ok |
+
+**Leitura:** a reserva tira o custo fixo de abrir o Worker, de forma estável (Girar texto caiu para ~160 ms). O Dividir de 61 MB em 100 partes fica abaixo de 1 s com o disco calmo (645 ms), mas passa de 1 s quando o disco e o antivírus estão ocupados com as gravações anteriores, com ou sem reserva. O que sobra nesse caso é gravar 61 MB em 100 arquivos novos, cada um conferido pelo antivírus.
