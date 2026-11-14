@@ -2,6 +2,8 @@
 
 Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equivale à conclusão de todos os requisitos da v1.0.
 
+**Marco definido em 14/11/2026:** concluir e validar Imagem, PDF, Documento e Áudio, preparar distribuição verificada e então lançar o Brotinho. Ver [critérios e pendências](BROTINHO-LANCAMENTO.md). Estável/Beta foram escolhidos; o atualizador ainda não está implementado. [macOS e Linux](PORTABILIDADE.md) têm roteiro futuro separado, sem data de entrega.
+
 | Área | Estado |
 | --- | --- |
 | Ctrl + arrastar e menu radial | Implementado |
@@ -11,7 +13,7 @@ Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equival
 | Opções, metadados e histórico da sessão | Implementados |
 | Worker isolado e proteção do original | Implementados; testes de integração |
 | Vidro, temas e movimento reduzido | Implementados no disco; validação manual ampla ainda necessária |
-| PDF → outros formatos e operações em PDF | Planejados |
+| PDF | Juntar, dividir e girar implementados; aceite final do Brotinho pendente. Outros formatos seguem planejados |
 | Documento | Em andamento: Pizza Brotinho (conversões simples) e Pizza Jumbo (motor de documentos embutido e isolado), [ADR-034](adr/034-brotinho-jumbo-motor-de-documentos.md) |
 | Áudio | Antecipado da v1.x: só com o Media Foundation do Windows (MP3, WAV, M4A/AAC, FLAC); OGG/Opus e vídeo seguem na v1.x. Decidido no [ADR-035](adr/035-aba-audio-media-foundation.md) |
 | Web | Planejada para v1.x |
