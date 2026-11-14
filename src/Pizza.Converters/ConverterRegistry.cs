@@ -15,6 +15,7 @@ public static class ConverterRegistry
         "pdf.merge" => new Pdf.PdfMergeConverter(), "pdf.split" => new Pdf.PdfSplitConverter(),
         "pdf.rotate" => new Pdf.PdfRotateConverter(),
         "document.txt" => new Docs.DocxTextConverter(), "document.csv" => new Docs.XlsxCsvConverter(),
+        "document.html" => new Docs.DocxHtmlConverter(),
         "audio.mp3" or "audio.m4a" or "audio.flac" or "audio.wav" => new Audio.AudioConverter(id),
         _ => null,
     };

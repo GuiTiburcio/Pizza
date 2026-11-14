@@ -8,6 +8,39 @@ internal static class TestAudio
     public static byte[] Sine(int seconds, int channels = 2, int rate = 44100) =>
         Wav(seconds, channels, rate, (i, _) => Math.Sin(2 * Math.PI * 440 * i / rate) * 0.4);
 
+    /// <summary>Tom de 997 Hz (o da BS.1770) com a amplitude dada, de 0 a 1.</summary>
+    public static byte[] Tone(double amplitude, int seconds = 3, int channels = 2, int rate = 48000) =>
+        Wav(seconds, channels, rate, (i, _) => Math.Sin(2 * Math.PI * 997 * i / rate) * amplitude);
+
+    /// <summary>Trechos de 1 s alternando forte (0,9) e fraco (0,05), para medir a compressão.</summary>
+    public static byte[] Dynamic(int seconds = 4, int rate = 48000) =>
+        Wav(seconds, 2, rate, (i, _) => Math.Sin(2 * Math.PI * 440 * i / rate) * (i / rate % 2 == 0 ? 0.9 : 0.05));
+
+    /// <summary>Amostras PCM de 16 bits de um WAV, intercaladas, de -1 a 1.</summary>
+    public static float[] Samples(byte[] wav)
+    {
+        var position = 12;
+        while (position + 8 <= wav.Length)
+        {
+            var size = BitConverter.ToInt32(wav, position + 4);
+            if (wav.AsSpan(position, 4).SequenceEqual("data"u8))
+            {
+                var count = Math.Min(size, wav.Length - position - 8) / 2;
+                var samples = new float[count];
+                for (var i = 0; i < count; i++)
+                {
+                    samples[i] = BitConverter.ToInt16(wav, position + 8 + (2 * i)) / 32768f;
+                }
+
+                return samples;
+            }
+
+            position += 8 + size + (size & 1);
+        }
+
+        throw new InvalidDataException("WAV sem bloco de dados");
+    }
+
     public static byte[] Noise(int seconds)
     {
         var random = new Random(35);

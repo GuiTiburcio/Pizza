@@ -104,7 +104,7 @@ Aprovado nas pranchas AU-1 a AU-5 do Dossiê. O mantenedor pediu opções de som
 | Amplificar | −12 a +12 dB, de 1 em 1 | Desligado, +3 dB |
 | Comprimir | Limiar de −40 a 0 dB, de 1 em 1; razão 2:1, 4:1 ou 8:1. Ataque de 10 ms e soltura de 100 ms, fixos | Desligado, −18 dB e 4:1 |
 | Normalizar | Alvo de −23 a −9 LUFS, de 1 em 1, medido pela ITU-R BS.1770 (integrado, com portas) | Ligado, −14 LUFS |
-| Limitar | Teto de −6 a 0 dB, de 1 em 1, no pico de amostra, com 5 ms de antecipação | Ligado, −1 dB |
+| Limitar | Teto de −6 a 0 dB, de 1 em 1, no pico de amostra, com ataque instantâneo e soltura de 50 ms | Ligado, −1 dB |
 
 - Os efeitos são código próprio em C#, sem biblioteca nova. Rodam no Worker sobre o áudio em ponto flutuante, entre a decodificação e o codificador.
 - Normalizar precisa medir antes de aplicar, então o arquivo é lido duas vezes pelo mesmo handle: uma para medir e outra para gravar. O prazo da SEC-43 vale para as duas juntas.
@@ -117,13 +117,15 @@ Aprovado nas pranchas AU-1 a AU-5 do Dossiê. O mantenedor pediu opções de som
   - duração em milissegundos;
   - taxa de amostragem;
   - canais;
-  - bits por amostra.
+  - bits por amostra;
+  - a compressão sem perda medida: os primeiros 5 s do próprio arquivo viram FLAC na memória do Worker, e o tamanho dele sobre o PCM é a porcentagem usada.
 - Nenhum nome nem caminho trafega (SEC-15). O mesmo Worker converte depois (ADR-019) e é encerrado se o painel for cancelado.
 - A conta do tamanho:
   - MP3 e AAC: taxa × duração;
   - WAV: valor exato;
-  - FLAC e ALAC: estimativa de 55% do WAV, mostrada com "≈".
+  - FLAC e ALAC: a porcentagem medida aplicada ao WAV, mostrada com "≈" (55% se não deu para medir). Uma porcentagem fixa errava muito: um efeito curto chegou a 18%.
 - Se o `info` não chegar em 2 s, o painel mostra "—" e continua funcionando.
+- Profundidade "Original" de uma origem com perda (MP3, AAC, que não informam bits) é 16 bits; 24 só dobraria o arquivo sem ganho de qualidade. Vale para a conversão e para a previsão (ajuste de 14/11/2026).
 
 ### Testes do adendo
 
@@ -141,6 +143,7 @@ O áudio de teste é gerado pelo próprio teste. Passa quem cumprir:
 - **Só Normalizar:** o mantenedor escolheu o conjunto completo dos editores de áudio.
 - **Efeitos do XAudio2 (XAPO) ou de uma biblioteca de DSP:** foram feitos para tocar, não para converter, ou seriam dependência nova; as contas são curtas e testáveis.
 - **Estimar o tamanho só pelo tamanho da origem:** erra muito quando a origem já é comprimida.
+- **Limitador com 5 ms de antecipação:** atrasa o áudio e exige fabricar amostras extras no fim. O ataque instantâneo também garante que nada passe do teto, sem atraso (ajuste de 13/11/2026, na etapa 2a).
 
 ## Verificação de fidelidade de 13/11/2026: ALAC ainda pendente
 

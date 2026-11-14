@@ -345,12 +345,15 @@ Valores padrão, ajustáveis por política (POL-10).
 | ID | Limite | Padrão |
 | --- | --- | --- |
 | SEC-40 | Tamanho máximo do arquivo de origem | 2 GB |
+| SEC-40 (adendo, ADR-036) | Saída total por conversão, somando todos os arquivos finais | 2 GiB (2.147.483.648 bytes); sem reduzir qualidade para caber |
 | SEC-41 | Imagem: pixels decodificados | 100 megapixels (libvips com `access=sequential` e limite de pixels) |
 | SEC-42 | PDF: número de páginas | 2.000 |
 | SEC-43 | Tempo por arquivo | 2 minutos |
 | SEC-44 | RAM do Worker | 1,5 GB (Job Object) |
 
 Arquivo acima do limite DEVE gerar o erro `LIMIT_EXCEEDED`, com a explicação no toast. Nada de travar e nada de converter pela metade.
+
+O teto de saída é conferido também pelo residente, inclusive após o encerramento do Worker. O envelope temporário de partes não conta como conteúdo final; sua sobrecarga é limitada separadamente. A cópia das partes respeita cancelamento e o prazo ativo da conversão. `Zone.Identifier` tem leitura limitada a 64 KiB: excesso interrompe com `LIMIT_EXCEEDED`, sem remover silenciosamente a marca de origem da internet (SEC-35). Ver ADR-036 e TST-08/TST-10/TST-19.
 
 | ID | Requisito | Critério de aceite |
 | --- | --- | --- |
@@ -532,7 +535,7 @@ Todas têm `v` (versão do protocolo), `type` e `jobId` (12 hex aleatórios). Ta
 | `convert` | App → Worker | `converterId`, `srcHandle`, `moreSrcHandles?`, `dstHandle`, `options`, `password?` | `converterId` na lista do registro; `options` validadas pelo `OptionSchema`; handles são números de handles já duplicados. `moreSrcHandles` só no Juntar (ADR-033): lista de 1 a 499 handles, na ordem do arraste |
 | `cancel` | App → Worker | — | `jobId` existente |
 | `probe` | App → Worker | `converterId`, `srcHandle` | Só na aba Áudio (ADR-035): pede a duração e o formato para o tamanho previsto |
-| `info` | Worker → App | `durationMs`, `sampleRate`, `channels`, `bits` | Inteiros positivos |
+| `info` | Worker → App | `durationMs`, `sampleRate`, `channels`, `bits`, `losslessPercent` | Inteiros dentro da faixa; `losslessPercent` de 0 a 100 (0 = não medido) |
 | `progress` | Worker → App | `percent` | 0–100 |
 | `done` | Worker → App | `elapsedMs` | — |
 | `error` | Worker → App | `code` | Um dos códigos da §10.4 |

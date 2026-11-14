@@ -16,7 +16,7 @@ public sealed class QuickOptionsState
         if (converter is null || converter.Id == Converter?.Id) return;
         Converter = converter;
         _wheelDelta = 0;
-        Primary = converter.Options.FirstOrDefault(option => option.Key != ConverterCatalog.MetadataKey);
+        Primary = converter.Options.FirstOrDefault(option => option.Key != ConverterCatalog.MetadataKey && !option.Advanced);
         Selected = Primary is null ? 0 : Levels.ToList().FindIndex(choice => choice.Value == Primary.Default);
     }
 

@@ -105,7 +105,8 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          PIZZA_RELEASE_ZIP: ${{ steps.pacote.outputs.zip }}
         run: |
           $tag = $env:GITHUB_REF_NAME
           gh release create $tag --prerelease --verify-tag --title "Pizza $tag" --notes-file .github/previa-notas.md `
-            "${{ steps.pacote.outputs.zip }}" artifacts/previa/SHA256SUMS artifacts/previa/sbom.cdx.json
+            $env:PIZZA_RELEASE_ZIP artifacts/previa/SHA256SUMS artifacts/previa/sbom.cdx.json
