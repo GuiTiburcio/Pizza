@@ -10,9 +10,11 @@ public class MenuPrefsTests
     {
         var prefs = new MenuPrefs { Scale = 0.65 };
         prefs.Positions["options"] = (0.25, 0.75);
+        prefs.Bar = (-120.5, 40);
 
         var read = MenuPrefs.Parse(prefs.Serialize());
 
+        Assert.Equal((-120.5, 40.0), read.Bar);
         Assert.Equal(0.65, read.Scale, 9);
         Assert.Equal((0.25, 0.75), read.Positions["options"]);
     }
@@ -20,19 +22,27 @@ public class MenuPrefsTests
     [Fact]
     public void Arquivo_vazio_ou_estranho_volta_ao_padrao()
     {
-        Assert.Equal(MenuScale.Max, MenuPrefs.Parse("").Scale);
+        Assert.Equal(MenuScale.Default, MenuPrefs.Parse("").Scale);
         var junk = MenuPrefs.Parse("scale=abc\nposition.x=1;2\nposition.y=-4;9\n\u0000\u0001");
-        Assert.Equal(MenuScale.Max, junk.Scale);
+        Assert.Equal(MenuScale.Default, junk.Scale);
+        Assert.Equal((0.0, 0.0), junk.Bar);
         Assert.Equal((1.0, 1.0), junk.Positions["x"]);
         Assert.Equal((0.0, 1.0), junk.Positions["y"]);
         Assert.Equal(2, junk.Positions.Count);
     }
 
     [Fact]
+    public void Deslocamento_da_barra_absurdo_e_limitado()
+    {
+        Assert.Equal((-4000.0, 4000.0), MenuPrefs.Parse("bar=-99999;99999").Bar);
+        Assert.Equal((0.0, 0.0), MenuPrefs.Parse("bar=NaN;1").Bar);
+    }
+
+    [Fact]
     public void Fator_fora_da_faixa_e_limitado()
     {
         Assert.Equal(0.5, MenuPrefs.Parse("scale=0.1").Scale);
-        Assert.Equal(1.0, MenuPrefs.Parse("scale=9").Scale);
+        Assert.Equal(2.0, MenuPrefs.Parse("scale=9").Scale);
     }
 
     [Fact]
@@ -45,7 +55,7 @@ public class MenuPrefsTests
         var text = prefs.Serialize();
 
         Assert.DoesNotContain("segredo", text);
-        Assert.Matches(@"^(scale=[0-9.]+|position\.[a-z]+=[0-9.]+;[0-9.]+|\s)*$", text);
+        Assert.Matches(@"^(scale=[0-9.]+|bar=-?[0-9.]+;-?[0-9.]+|position\.[a-z]+=[0-9.]+;[0-9.]+|\s)*$", text);
     }
 
     [Fact]

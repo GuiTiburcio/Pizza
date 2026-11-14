@@ -10,7 +10,12 @@ namespace Pizza.Core.Visual;
 /// </summary>
 public sealed partial class MenuPrefs
 {
-    public double Scale { get; set; } = MenuScale.Max;
+    private const double MaxBarOffset = 4000;
+
+    public double Scale { get; set; } = MenuScale.Default;
+
+    /// <summary>Deslocamento da barra de abas e da faixa em relação ao lugar padrão, em pixels de desenho.</summary>
+    public (double X, double Y) Bar { get; set; }
 
     public Dictionary<string, (double X, double Y)> Positions { get; } = new(StringComparer.Ordinal);
 
@@ -32,6 +37,10 @@ public sealed partial class MenuPrefs
             {
                 prefs.Scale = MenuScale.Clamp(scale);
             }
+            else if (key == "bar" && value.Split(';') is [var dx, var dy] && Number(dx) is { } barX && Number(dy) is { } barY)
+            {
+                prefs.Bar = (Math.Clamp(barX, -MaxBarOffset, MaxBarOffset), Math.Clamp(barY, -MaxBarOffset, MaxBarOffset));
+            }
             else if (key.StartsWith("position.", StringComparison.Ordinal) && Key(key["position.".Length..]) is { } name)
             {
                 var parts = value.Split(';');
@@ -49,6 +58,11 @@ public sealed partial class MenuPrefs
     {
         var text = new StringBuilder();
         text.Append("scale=").Append(Format(MenuScale.Clamp(Scale))).Append('\n');
+        if (Bar != default)
+        {
+            text.Append("bar=").Append(Format(Math.Clamp(Bar.X, -MaxBarOffset, MaxBarOffset))).Append(';').Append(Format(Math.Clamp(Bar.Y, -MaxBarOffset, MaxBarOffset))).Append('\n');
+        }
+
         foreach (var (name, (x, y)) in Positions.OrderBy(entry => entry.Key, StringComparer.Ordinal))
         {
             if (Key(name) is not null)

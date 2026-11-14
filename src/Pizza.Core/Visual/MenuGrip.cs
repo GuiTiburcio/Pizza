@@ -7,6 +7,15 @@ public enum GripZone
     Resize,
 }
 
+/// <summary>Direção da seta de tamanho, apontando para fora do centro.</summary>
+public enum ResizeDirection
+{
+    Horizontal,
+    Vertical,
+    Diagonal,
+    AntiDiagonal,
+}
+
 /// <summary>
 /// ADR-037: a borda do círculo ou do retângulo redimensiona; o resto, fora dos alvos, move. Coordenadas em
 /// pixels de desenho (96 dpi), relativas à janela.
@@ -23,7 +32,24 @@ public static class MenuGrip
             return GripZone.Resize;
         }
 
-        return onTarget || y <= DiscLayout.TabBarHeight ? GripZone.Target : GripZone.Move;
+        return onTarget ? GripZone.Target : GripZone.Move;
+    }
+
+    /// <summary>Barra de abas e faixa: as abas não são botões, então a barra inteira move; o nível é alvo.</summary>
+    public static GripZone Bar(bool onLevel) => onLevel ? GripZone.Target : GripZone.Move;
+
+    /// <summary>Seta de tamanho na direção do cursor a partir do centro, em oito rumos (y para baixo).</summary>
+    public static ResizeDirection Direction(double dx, double dy)
+    {
+        var angle = Math.Atan2(dy, dx) * 180 / Math.PI;
+        var sector = (int)Math.Round((((angle % 180) + 180) % 180) / 45) % 4;
+        return sector switch
+        {
+            0 => ResizeDirection.Horizontal,
+            1 => ResizeDirection.Diagonal,
+            2 => ResizeDirection.Vertical,
+            _ => ResizeDirection.AntiDiagonal,
+        };
     }
 
     public static GripZone Rectangle(double x, double y, double width, double height, bool onTarget)
