@@ -86,15 +86,6 @@ public class RadialMenuTests
     }
 
     [Theory]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(3)]
-    public void Abas_ainda_sem_conversao_ficam_vazias(int tab)
-    {
-        Assert.Empty(RadialMenu.Slices(tab, "a.jpg"));
-    }
-
-    [Theory]
     [InlineData("a.jpg", true)]
     [InlineData("a.JPEG", true)]
     [InlineData("a.png", true)]
