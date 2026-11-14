@@ -187,6 +187,13 @@ internal static unsafe partial class DiscRenderer
             }
         }
 
+        if (state.HasSizeRow)
+        {
+            // Adendo do ADR-035: o tamanho previsto, que acompanha as opções; "—" até o Worker responder.
+            Text(g, "Tamanho previsto", _regular, 13, StyleRegular, Ink(colors.SecondaryText), padding, state.SizeTop, inner, 22, AlignNear);
+            Text(g, state.SizeText, _semibold, 13, StyleBold, Ink(colors.Text), padding, state.SizeTop, inner, 22, AlignFar);
+        }
+
         if (!state.CanKeepMetadata && state.HasMetadataRow)
         {
             DrawKeep(g, state.KeepTop, enabled: false, isChecked: false, colors);

@@ -60,6 +60,38 @@ public sealed class AudioConversionTests(SandboxFixture fixture) : IDisposable
     }
 
     [MediaFact]
+    public void Probe_informa_a_duracao_e_o_mesmo_worker_converte_depois()
+    {
+        // Adendo do ADR-035: o painel pede "probe" ao Worker do arquivo; a conversão reaproveita esse Worker (ADR-019).
+        var source = Path.Combine(_folder, "aula.wav");
+        File.WriteAllBytes(source, Wav(seconds: 2));
+
+        var probed = Runner().Probe(source, "audio.mp3", TimeSpan.FromSeconds(10));
+        Assert.NotNull(probed);
+        Assert.Equal(44100, probed.Info!.SampleRate);
+        Assert.Equal(2, probed.Info.Channels);
+        Assert.InRange(probed.Info.DurationMs, 1950, 2050);
+
+        var result = Runner().Run(source, "audio.mp3", "mp3", reuse: probed);
+
+        Assert.Null(result.ErrorCode);
+        Assert.True(new FileInfo(Path.Combine(_folder, result.OutputName!)).Length > 1000);
+    }
+
+    [MediaFact]
+    public void Probe_de_arquivo_que_nao_e_audio_nao_informa_nada_e_a_conversao_recusa()
+    {
+        var source = Path.Combine(_folder, "falso.mp3");
+        File.WriteAllText(source, "isto não é um MP3");
+
+        var probed = Runner().Probe(source, "audio.wav", TimeSpan.FromSeconds(10));
+        Assert.NotNull(probed);
+        Assert.Null(probed.Info);
+
+        Assert.Equal("UNSUPPORTED", Runner().Run(source, "audio.wav", "wav", reuse: probed).ErrorCode);
+    }
+
+    [MediaFact]
     public void Arquivo_que_nao_e_audio_e_recusado_sem_gerar_saida()
     {
         // O formato é conferido pelo conteúdo: um texto com extensão .mp3 não chega ao decodificador.

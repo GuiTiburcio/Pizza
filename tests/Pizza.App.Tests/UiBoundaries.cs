@@ -32,6 +32,7 @@ internal static class OptionsPanel
     public static void Close() { }
     public static void Show(ConverterInfo converter, string fileName, int centerX, int centerY) =>
         throw new InvalidOperationException("O teste não deve abrir um painel.");
+    public static void ProbeAudio(string path, ConverterInfo converter) { }
 }
 
 internal static class Notifications

@@ -36,6 +36,13 @@ internal static class Program
             while (IpcFraming.ReadFrame(reader) is { } frame)
             {
                 var message = IpcCodec.Parse(frame);
+                if (message.Type == IpcType.Probe)
+                {
+                    // Adendo do ADR-035: responde e fica esperando o "convert" deste mesmo arquivo (ADR-019).
+                    IpcFraming.WriteFrame(writer, IpcCodec.Serialize(Probe(message)));
+                    continue;
+                }
+
                 if (message.Type == IpcType.Convert)
                 {
                     var channel = new ProgressChannel(writer, message.JobId);
@@ -52,6 +59,29 @@ internal static class Program
         }
     }
 
+    private static IpcMessage Probe(IpcMessage request)
+    {
+        if (ConverterRegistry.Find(request.ConverterId!) is not Pizza.Converters.Audio.AudioConverter)
+        {
+            return new IpcMessage(IpcType.Error, request.JobId) { Code = "UNSUPPORTED" };
+        }
+
+        RequireMicrosoftSigned();
+        using var source = OpenHandle(request.SrcHandle!.Value, FileAccess.Read);
+        return Pizza.Converters.Audio.AudioConverter.Probe(source) is { } media
+            ? new IpcMessage(IpcType.Info, request.JobId) { Media = media }
+            : new IpcMessage(IpcType.Error, request.JobId) { Code = "UNSUPPORTED" };
+    }
+
+    /// <summary>SEC-26 (ADR-035): só codecs do próprio Windows, antes de o Media Foundation carregar qualquer um.</summary>
+    private static void RequireMicrosoftSigned()
+    {
+        if (!Pizza.Converters.Audio.SignaturePolicy.IsMicrosoftSignedOnly())
+        {
+            Pizza.Converters.Audio.SignaturePolicy.RequireMicrosoftSigned();
+        }
+    }
+
     private static IpcMessage Convert(IpcMessage request, IProgress<int> progress)
     {
         // SPECS §10.3: só o que está no registro, e só com opções dentro do esquema.
@@ -64,8 +94,7 @@ internal static class Program
 
         if (converter is Pizza.Converters.Audio.AudioConverter)
         {
-            // SEC-26 (ADR-035): só codecs do próprio Windows, antes de o Media Foundation carregar qualquer um.
-            Pizza.Converters.Audio.SignaturePolicy.RequireMicrosoftSigned();
+            RequireMicrosoftSigned();
         }
 
         var clock = Stopwatch.StartNew();

@@ -117,13 +117,15 @@ Aprovado nas pranchas AU-1 a AU-5 do Dossiê. O mantenedor pediu opções de som
   - duração em milissegundos;
   - taxa de amostragem;
   - canais;
-  - bits por amostra.
+  - bits por amostra;
+  - a compressão sem perda medida: os primeiros 5 s do próprio arquivo viram FLAC na memória do Worker, e o tamanho dele sobre o PCM é a porcentagem usada.
 - Nenhum nome nem caminho trafega (SEC-15). O mesmo Worker converte depois (ADR-019) e é encerrado se o painel for cancelado.
 - A conta do tamanho:
   - MP3 e AAC: taxa × duração;
   - WAV: valor exato;
-  - FLAC e ALAC: estimativa de 55% do WAV, mostrada com "≈".
+  - FLAC e ALAC: a porcentagem medida aplicada ao WAV, mostrada com "≈" (55% se não deu para medir). Uma porcentagem fixa errava muito: um efeito curto chegou a 18%.
 - Se o `info` não chegar em 2 s, o painel mostra "—" e continua funcionando.
+- Profundidade "Original" de uma origem com perda (MP3, AAC, que não informam bits) é 16 bits; 24 só dobraria o arquivo sem ganho de qualidade. Vale para a conversão e para a previsão (ajuste de 14/11/2026).
 
 ### Testes do adendo
 
