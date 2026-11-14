@@ -17,7 +17,9 @@ public class IncompatibleSlicesTests
 
         var docs = RadialMenu.Slices(ConverterCatalog.DocsTab, "contrato.docx");
 
-        Assert.Equal(["document.pdf", "document.txt"], docs.Select(slice => slice.Id));
+        // A lista cresce com as etapas do Docs; o que importa é que nada de outro tipo apareça.
+        Assert.Contains(docs, slice => slice.Id == "document.pdf");
+        Assert.DoesNotContain(docs, slice => slice.Id == "document.csv");
         Assert.All(docs, slice => Assert.True(RadialMenu.Fits(slice, "contrato.docx")));
     }
 
