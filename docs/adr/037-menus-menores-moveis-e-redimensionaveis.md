@@ -1,6 +1,6 @@
 # ADR-037 — Menus menores, móveis e redimensionáveis
 
-- **Status:** Proposta. Decisões do mantenedor em 13/11/2026, pelo seletor; falta a prancha no Dossiê e a aprovação. Substitui, quando aceita, o mínimo de 44 px dos alvos do ADR-026.
+- **Status:** Aceita pelo mantenedor em 13/11/2026, na prancha MOV-1 do Dossiê. Substitui o mínimo de 44 px dos alvos do ADR-026; o restante do ADR-026 continua valendo.
 - **Data:** 2026-11-13
 
 ## Contexto
