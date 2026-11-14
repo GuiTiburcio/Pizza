@@ -59,9 +59,6 @@ internal static unsafe partial class Overlay
     private static int? _hoverSlot;
     private static int? _pulseSlot;
 
-    /// <summary>ADR-039: fatia apagada que a pessoa escolheu, na página em que estava; mostra a aba que serve.</summary>
-    private static MenuPage? _hintPage;
-    private static int _hintSlot;
     private static DraggedFiles? _files;
     private static (IReadOnlyList<string> Paths, ConverterInfo Converter, IReadOnlyDictionary<string, string>? Options)? _dropped; // Options null: abrir o painel.
     private static (IReadOnlyList<string> Paths, ConverterInfo Converter)? _awaitingOptions;
@@ -209,7 +206,6 @@ internal static unsafe partial class Overlay
         Strip.Clear();
         _levelHover = null;
         _files = null;
-        _hintPage = null;
         _dropped = null;
         _pulseSlot = null;
         _clickArmed = false;
@@ -275,8 +271,6 @@ internal static unsafe partial class Overlay
             unavailable,
             order,
             merging,
-            _hintPage == page ? _hintSlot : null,
-            _files is { } hinted ? RadialMenu.Hint(hinted.First) : null,
             RimHover: _rimHover || _grip == GripZone.Resize);
         DiscRenderer.Show(Disc, _left, _top, frame);
         DiscRenderer.ShowTop(_bar, BarLeft, BarTop, frame);

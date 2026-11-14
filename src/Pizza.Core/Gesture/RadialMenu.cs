@@ -79,11 +79,11 @@ public static class RadialMenu
 
     /// <summary>Fatias de uma volta da aba, sem descartar os formatos das voltas seguintes (ADR-024).</summary>
     public static IReadOnlyList<ConverterInfo> Slices(int tab, string path, int turn = 0) =>
-        Shown(path).Where(converter => converter.Tab == tab).Skip(turn * SlotCount).Take(SlotCount).ToArray();
+        Fitting(path).Where(converter => converter.Tab == tab).Skip(turn * SlotCount).Take(SlotCount).ToArray();
 
     public static IReadOnlyList<MenuPage> Pages(string path) =>
         Enumerable.Range(0, MenuTabs.Names.Count)
-            .SelectMany(tab => Enumerable.Range(0, Math.Max(1, (Shown(path).Count(converter => converter.Tab == tab) + SlotCount - 1) / SlotCount))
+            .SelectMany(tab => Enumerable.Range(0, Math.Max(1, (Fitting(path).Count(converter => converter.Tab == tab) + SlotCount - 1) / SlotCount))
                 .Select(turn => new MenuPage(tab, turn))).ToArray();
 
     /// <summary>FR-03: o menu abre na aba do tipo do arquivo, a primeira com alguma conversão para ele.</summary>
@@ -96,8 +96,17 @@ public static class RadialMenu
     public static bool Fits(ConverterInfo converter, string path) =>
         converter.InputExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>ADR-039: o que a fatia apagada diz quando é escolhida.</summary>
-    public static string Hint(string path) => $"Experimente a aba {MenuTabs.ShortNames[HomeTab(path)]}";
+    /// <summary>Aba implementada sem conversão para o arquivo orienta o tipo de entrada; não é recurso futuro.</summary>
+    public static string EmptyMessage(int tab) => !ConverterCatalog.All.Any(converter => converter.Tab == tab)
+        ? "Em breve"
+        : tab switch
+        {
+            ConverterCatalog.ImageTab => "Use uma imagem",
+            ConverterCatalog.PdfTab => "Use um arquivo PDF",
+            ConverterCatalog.DocsTab => "Use um documento",
+            ConverterCatalog.AudioTab => "Use um arquivo de áudio",
+            _ => "Use um arquivo compatível",
+        };
 
     /// <summary>ADR-034 e ADR-039: sem o motor de documentos (Pizza Brotinho), as fatias dele não existem.</summary>
     private static IEnumerable<ConverterInfo> Installed =>
@@ -105,13 +114,4 @@ public static class RadialMenu
 
     private static IEnumerable<ConverterInfo> Fitting(string path) => Installed.Where(converter => Fits(converter, path));
 
-    /// <summary>
-    /// ADR-039: numa aba com conversão para o arquivo, só as que servem a ele; nas outras, todas as fatias, que o
-    /// menu desenha apagadas.
-    /// </summary>
-    private static IEnumerable<ConverterInfo> Shown(string path)
-    {
-        var home = Fitting(path).Select(converter => converter.Tab).ToHashSet();
-        return Installed.Where(converter => !home.Contains(converter.Tab) || Fits(converter, path));
-    }
 }

@@ -114,10 +114,9 @@ internal static unsafe partial class Overlay
             return MenuGrip.Bar(TargetLevel(x, y) is not null);
         }
 
-        var (centerX, centerY) = DiscCenter();
-        var slot = RadialMenu.SlotAt((x - centerX) / _scale, (y - centerY) / _scale, Rotation(), new double[RadialMenu.SlotCount]);
-        var onSlice = slot is { } index && index < CurrentSlices().Count;
-        return MenuGrip.Disc((x - _left) / _scale, (y - _top) / _scale, onSlice);
+        // Usa a mesma geometria do desenho, inclusive a extensão do hover sobre o começo da borda.
+        var onSlice = _files is { } file && SliceUnder(file, x, y).Converter is not null;
+        return onSlice ? GripZone.Target : MenuGrip.Disc((x - _left) / _scale, (y - _top) / _scale, false);
     }
 
     private static bool BeginGrip(nint hwnd)

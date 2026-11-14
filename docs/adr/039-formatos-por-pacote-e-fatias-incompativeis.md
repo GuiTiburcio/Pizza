@@ -32,6 +32,18 @@ Dois problemas apareceram:
 
 ## Consequências
 
+### Adendo de 14/11/2026 — orientação por aba incompatível
+
+O mantenedor mostrou um JPG selecionado na aba PDF com o aviso "Em breve" e escolheu explicitamente manter as quatro abas com orientação sobre o arquivo esperado. Este adendo substitui somente o comportamento das outras abas descrito em **Menu**, acima; as decisões de pacotes e formatos permanecem.
+
+- Mostrar fatias somente quando servem ao arquivo selecionado, mantendo a página da aba mesmo quando não há opções.
+- Em Imagem, PDF, Documento e Áudio sem conversão para a entrada, mostrar respectivamente "Use uma imagem", "Use um arquivo PDF", "Use um documento" e "Use um arquivo de áudio".
+- Não mostrar fatias incompatíveis apagadas nem exigir um clique nelas para explicar a incompatibilidade. A orientação aparece ao entrar na aba.
+- Reservar "Em breve" a uma aba sem conversores no catálogo. O estado do recurso é separado da compatibilidade com o arquivo.
+- Mouse, teclado e drop mantêm o menu aberto sem iniciar conversão na página vazia. O tamanho da fonte da orientação permanece 16 px de desenho; o espaço do texto foi ampliado para acomodar a frase de Áudio.
+
+Regressões: JPG em PDF/Documento/Áudio, PDF e DOCX em Imagem; página de cada aba preservada, mensagem correta e nenhuma seleção/drop indevido. A integração com menus móveis usa a mesma geometria visível das fatias para selecionar ou mover o menu. Validação visual no candidato integrado permanece necessária.
+
 - O Brotinho ganha Áudio e a aba Web sem crescer de forma relevante.
 - Cada leitor novo em .NET puro é código nosso diante de arquivo hostil: entra no Worker em AppContainer (SEC-20), com XML sem DTD, teto de bytes reais (SEC-40), TST-03 e TST-08.
 - O aviso de fatia incompatível é texto novo na interface e passa pela validação do mantenedor no app.

@@ -29,7 +29,7 @@ internal static unsafe partial class Overlay
     private static void PointStripAt(int slot)
     {
         var converter = CurrentSlices().ElementAtOrDefault(slot);
-        if (converter is null || converter.Id == Strip.Converter?.Id)
+        if (converter is null || _files is not { } file || !converter.Accepts(file.Paths) || converter.Id == Strip.Converter?.Id)
         {
             KillTimer(Disc, TimerStrip);
             return;
@@ -48,7 +48,8 @@ internal static unsafe partial class Overlay
     private static void OnStripTimer()
     {
         KillTimer(Disc, TimerStrip);
-        if (_hoverSlot is { } slot && CurrentSlices().ElementAtOrDefault(slot) is { } converter)
+        if (_hoverSlot is { } slot && CurrentSlices().ElementAtOrDefault(slot) is { } converter
+            && _files is { } file && converter.Accepts(file.Paths))
         {
             Strip.PointAt(converter);
             LevelGlide.Snap(Strip.Selected);

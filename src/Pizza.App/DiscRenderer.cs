@@ -32,8 +32,6 @@ internal readonly record struct DiscFrame(
     bool[]? Unavailable = null,
     IReadOnlyList<(string Number, string Name)>? Order = null,
     bool Merging = false,
-    int? HintSlot = null,
-    string? Hint = null,
     bool RimHover = false);
 
 /// <summary>

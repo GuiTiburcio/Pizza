@@ -88,17 +88,9 @@ internal static unsafe partial class DiscRenderer
             ink = WithAlpha(ink, 0.38);
         }
 
-        // ADR-039: a fatia apagada que foi escolhida diz qual aba converte o arquivo, com a descrição legível.
-        var captionInk = ink;
-        if (frame.HintSlot == slot && frame.Hint is { } hint)
-        {
-            caption = hint;
-            captionInk = _palette.SliceInk;
-        }
-
         var bold = hover >= 0.5;
         CurvedLabel(g, slice.Label, bold ? _regular : _semibold, 14 + (2 * (float)hover), bold ? StyleBold : StyleRegular, ink, angle, rest, CurvedText.NameRadius(angle, movement, rest));
-        CurvedLabel(g, caption, _regular, 10.5f, StyleRegular, captionInk, angle, rest, CurvedText.CaptionRadius(angle, movement, rest));
+        CurvedLabel(g, caption, _regular, 10.5f, StyleRegular, ink, angle, rest, CurvedText.CaptionRadius(angle, movement, rest));
     }
 
     private static void DrawCenter(nint g, DiscFrame frame)
@@ -143,7 +135,7 @@ internal static unsafe partial class DiscRenderer
 
         if (frame.Slices.Count == 0)
         {
-            Text(g, "Em breve", _semibold, 16, StyleRegular, _palette.Ink, cx - 90, cy - 132, 180, 30);
+            Text(g, RadialMenu.EmptyMessage(frame.TargetTab), _semibold, 16, StyleRegular, _palette.Ink, cx - 120, cy - 132, 240, 30);
         }
     }
 

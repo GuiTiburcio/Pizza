@@ -40,23 +40,6 @@ internal static unsafe partial class Overlay
         return (slot, RadialMenu.Slices(page.Tab, file.First, page.Turn).ElementAtOrDefault(slot ?? -1));
     }
 
-    /// <summary>
-    /// ADR-039: escolher uma fatia de outro tipo não converte; ela passa a dizer qual aba serve ao arquivo, e o
-    /// menu continua aberto.
-    /// </summary>
-    private static void HintAt(int x, int y)
-    {
-        if (_files is not { } file || !IsVisible || _pulseSlot is not null ||
-            SliceUnder(file, x, y) is not ({ } slot, { } converter) || RadialMenu.Fits(converter, file.First))
-        {
-            return;
-        }
-
-        _hintPage = _pages[Carousel.Target];
-        _hintSlot = slot;
-        Render();
-    }
-
     private static double Rotation() =>
         _motion == MotionStyle.Slide ? -TabRotation * Carousel.DistanceTo(Carousel.Target) : 0;
 

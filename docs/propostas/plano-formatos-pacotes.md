@@ -9,7 +9,7 @@
 | --- | --- |
 | Áudio | Entra também no **Brotinho**: o Media Foundation é do Windows e não aumenta o pacote |
 | Aba Docs | **Uma aba só, com voltas.** Dentro de Docs aparecem só as fatias que servem ao arquivo arrastado (DOCX não mostra CSV) |
-| Outras abas | Continuam visíveis. Fatia incompatível fica apagada; ao clicar ou soltar nela, a descrição da fatia vira "Experimente a aba Docs". A aba citada é a que tem conversões para o arquivo. O menu continua aberto para nova escolha |
+| Outras abas | Adendo de 14/11/2026: continuam visíveis, sem fatias incompatíveis, e orientam o tipo de arquivo esperado (por exemplo "Use um arquivo de áudio"). Substitui a proposta de fatias apagadas; ver ADR-039 |
 | Personalizar a pizza | Fase 8, **nos dois pacotes**: ligar e desligar abas e fatias e reordenar, em Configurações. Padrão: tudo ligado |
 | Fora do Pizza | Compactados, 3D e CAD, PSD/AI/CDR, OCR, arquivos com DRM, PAGES/KEY/NUMBERS e raster → vetor. Vão para `docs/ideias-descartadas` com o motivo |
 | Pizza — VII | Nova sessão no grupo Pizza: aba Web, dados, legendas e Markdown/HTML, em .NET puro, nos dois pacotes |
@@ -99,7 +99,7 @@ Residente (Pizza.App)                         Sandboxes (AppContainer, sem rede)
 
 - **Sem campo novo no catálogo:** o Jumbo é marcado pelo `DocumentEngine` que já existe; sem o motor (Brotinho), essas fatias não aparecem. O FFmpeg ganha a sua marca quando o Vídeo entrar.
 - **Filtro dentro de Docs:** a aba Docs lista só as fatias cujo `Inputs` contém a extensão do arquivo (conferida pelo conteúdo, como hoje).
-- **Aviso de incompatível:** usa o `Inputs` do catálogo para achar a aba que serve ao arquivo. Texto curto, some sozinho; sem janela nova.
+- **Aviso de incompatível:** aparece imediatamente numa aba sem conversão para o arquivo e informa o tipo de entrada esperado, sem janela nova. "Em breve" não representa incompatibilidade.
 - **Conversores .NET puro** ficam em `Pizza.Converters`, rodam no Worker, e seguem as regras do adendo de 13/11 do ADR-034: XML sem DTD, teto de bytes reais, `CORRUPTED` e `LIMIT_EXCEEDED`.
 - **Requisitos tocados:** SEC-15 (só handles), SEC-20 (todo parser novo no Worker), SEC-40 (limites), SEC-62/63 (LibreOffice), PRIV-16 (log sem nome nem conteúdo). Nenhuma invariante do `CLAUDE.md` muda.
 

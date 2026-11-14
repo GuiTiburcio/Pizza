@@ -171,25 +171,24 @@ public sealed class OverlayDropTests
     }
 
     [Fact]
-    public void Clique_numa_fatia_de_outro_tipo_aponta_a_aba_e_mantem_a_escolha()
+    public void Clique_na_aba_incompativel_mantem_a_escolha_sem_converter()
     {
-        // ADR-039: a imagem na aba PDF vê Juntar, Dividir e Girar apagados; escolher um não converte.
+        // Adendo do ADR-039: a imagem na aba PDF vê a orientação, sem fatias nem conversão.
         PrepareChoice();
-        var pdfPage = OpenPage("entrada.jpg", ConverterCatalog.PdfTab);
+        OpenPage("entrada.jpg", ConverterCatalog.PdfTab);
 
         Assert.False(ChooseAt(0, -130));
         Assert.Equal(GestureState.Choosing, Session.State);
         Assert.Null(Dropped);
-        Assert.Equal(pdfPage, (MenuPage?)Get("_hintPage"));
-        Assert.Equal(0, (int)Get("_hintSlot")!);
-        Assert.Equal("Experimente a aba Imagem", RadialMenu.Hint("entrada.jpg"));
+        Assert.Empty(RadialMenu.Slices(ConverterCatalog.PdfTab, "entrada.jpg"));
+        Assert.Equal("Use um arquivo PDF", RadialMenu.EmptyMessage(ConverterCatalog.PdfTab));
     }
 
     [Fact]
-    public void Soltar_numa_fatia_de_outro_tipo_deixa_o_menu_aberto_com_o_aviso()
+    public void Soltar_na_aba_incompativel_deixa_o_menu_aberto_com_a_orientacao()
     {
         Prepare();
-        var pdfPage = OpenPage("entrada.jpg", ConverterCatalog.PdfTab);
+        OpenPage("entrada.jpg", ConverterCatalog.PdfTab);
         var (x, y) = SliceCenter(1);
 
         Assert.Null(TargetAt(x - DiscLayout.CenterX, y - DiscLayout.CenterY));
@@ -197,17 +196,48 @@ public sealed class OverlayDropTests
 
         Assert.Equal(GestureState.Choosing, Session.State);
         Assert.Null(Dropped);
-        Assert.Equal(pdfPage, (MenuPage?)Get("_hintPage"));
-        Assert.Equal(1, (int)Get("_hintSlot")!);
+        Assert.Null(Get("_hoverSlot"));
     }
 
     [Fact]
-    public void Clique_numa_fatia_que_serve_nao_mostra_aviso()
+    public void Confirmar_na_aba_incompativel_nao_inicia_conversao_nem_mostra_niveis()
+    {
+        PrepareChoice();
+        OpenPage("entrada.jpg", ConverterCatalog.AudioTab);
+
+        Assert.Null(Strip.Converter);
+        var selected = (bool)typeof(Overlay).GetMethod("Select", PrivateStatic)!.Invoke(null, [Files("entrada.jpg"), 0, false])!;
+
+        Assert.False(selected);
+        Assert.Equal(GestureState.Choosing, Session.State);
+        Assert.Null(Dropped);
+        Assert.Empty(RadialMenu.Slices(ConverterCatalog.AudioTab, "entrada.jpg"));
+        Assert.Equal("Use um arquivo de áudio", RadialMenu.EmptyMessage(ConverterCatalog.AudioTab));
+    }
+
+    [Theory]
+    [InlineData(175)]
+    [InlineData(183)]
+    public void Extensao_visivel_da_fatia_em_hover_e_alvo_e_nao_arraste_ou_redimensionamento(int radius)
+    {
+        PrepareChoice();
+        Hover[0].Snap(1);
+        var x = DiscLayout.CenterX;
+        var y = DiscLayout.CenterY - radius;
+
+        Assert.Equal(0, TargetAt(0, -radius));
+        var zone = (GripZone)typeof(Overlay).GetMethod("ZoneAt", PrivateStatic)!.Invoke(null, [(nint)1, x, y])!;
+
+        Assert.Equal(GripZone.Target, zone);
+    }
+
+    [Fact]
+    public void Clique_numa_fatia_que_serve_inicia_a_escolha_normal()
     {
         PrepareChoice();
 
         Assert.True(ChooseAt(0, -130));
-        Assert.Null((MenuPage?)Get("_hintPage"));
+        Assert.NotNull(Dropped);
     }
 
     [Fact]
@@ -403,7 +433,6 @@ public sealed class OverlayDropTests
         Set("_choiceDeadline", 0L);
         Set("_clickArmed", false);
         Set("_levelHover", null);
-        Set("_hintPage", null);
         Set("_pages", RadialMenu.Pages("entrada.jpg"));
         Strip.Clear();
         LevelGlide.Snap(0);
