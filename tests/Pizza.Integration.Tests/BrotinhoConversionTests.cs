@@ -45,6 +45,31 @@ public sealed class BrotinhoConversionTests(SandboxFixture fixture) : IDisposabl
     }
 
     [Fact]
+    public void Docx_vira_html_com_a_imagem_embutida_sem_script()
+    {
+        // No Worker em AppContainer: a foto entra no HTML e o HTML sai sem script, ao lado do original.
+        var source = Path.Combine(_folder, "relatorio.docx");
+        byte[] photo = [0xFF, 0xD8, 0xFF, 0xE0, .. "foto"u8];
+        File.WriteAllBytes(source, ZipBytes(
+            ("_rels/.rels", Utf8($"<Relationships xmlns=\"{Rels}\"><Relationship Id=\"r\" Type=\"{Office}/officeDocument\" Target=\"word/document.xml\"/></Relationships>")),
+            ("word/_rels/document.xml.rels", Utf8($"<Relationships xmlns=\"{Rels}\"><Relationship Id=\"i\" Type=\"{Office}/image\" Target=\"media/foto.jpg\"/></Relationships>")),
+            ("word/document.xml", Utf8("<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:r=\"" + Office + "\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\">"
+                + "<w:body><w:p><w:r><w:t>Fachada</w:t></w:r></w:p><w:p><w:r><w:drawing><a:blip r:embed=\"i\"/></w:drawing></w:r></w:p></w:body></w:document>")),
+            ("word/media/foto.jpg", photo)));
+        var before = SHA256.HashData(File.ReadAllBytes(source));
+
+        var result = Runner().Run(source, "document.html", "html");
+
+        Assert.Null(result.ErrorCode);
+        Assert.Equal("relatorio.html", result.OutputName);
+        var html = Read(result.OutputName!);
+        Assert.Contains("<p>Fachada</p>", html);
+        Assert.Contains("<img src=\"data:image/jpeg;base64,", html);
+        Assert.DoesNotContain("<script", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
+    }
+
+    [Fact]
     public void Xlsx_vira_um_csv_por_planilha_no_formato_regional_do_windows()
     {
         // O Worker em AppContainer usa as mesmas configurações regionais da pessoa (separador e decimal).
@@ -102,6 +127,23 @@ public sealed class BrotinhoConversionTests(SandboxFixture fixture) : IDisposabl
 
     private ConversionRunner Runner() =>
         new(fixture.WorkerPath, SandboxFixture.Profile, new TempJournal(_folder + ".journal"), TimeSpan.FromSeconds(60));
+
+    private static byte[] Utf8(string text) => new UTF8Encoding(false).GetBytes(text);
+
+    private static byte[] ZipBytes(params (string Name, byte[] Content)[] entries)
+    {
+        using var stream = new MemoryStream();
+        using (var zip = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var (name, content) in entries)
+            {
+                using var entry = zip.CreateEntry(name).Open();
+                entry.Write(content);
+            }
+        }
+
+        return stream.ToArray();
+    }
 
     private static byte[] Zip(params (string Name, string Content)[] entries)
     {

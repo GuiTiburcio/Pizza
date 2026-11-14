@@ -35,6 +35,67 @@ internal static class TestOffice
         ("_rels/.rels", Relationships(("rId1", "officeDocument", documentPart))),
         (documentPart, $"<w:document xmlns:w=\"{Word}\"><w:body>{body}</w:body></w:document>"));
 
+    /// <summary>Prefixos usados nos DOCX completos: w (texto), r (relações), a e wp (desenhos), v (VML antigo).</summary>
+    public const string WordNamespaces =
+        $"xmlns:w=\"{Word}\" xmlns:r=\"{Rel}\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" "
+        + "xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" xmlns:v=\"urn:schemas-microsoft-com:vml\"";
+
+    /// <summary>
+    /// DOCX com estilos, numeração, notas de rodapé, relações do documento e mídias (bytes). As partes vazias
+    /// ficam de fora do pacote.
+    /// </summary>
+    public static byte[] RichDocx(
+        string body,
+        string styles = "",
+        string numbering = "",
+        string footnotes = "",
+        (string Id, string Type, string Target, bool External)[]? relations = null,
+        params (string Name, byte[] Content)[] media)
+    {
+        var related = (relations ?? []).ToList();
+        var entries = new List<(string, byte[])>
+        {
+            ("_rels/.rels", Utf8(Relationships(("rId1", "officeDocument", "word/document.xml")))),
+            ("word/document.xml", Utf8($"<w:document {WordNamespaces}><w:body>{body}</w:body></w:document>")),
+        };
+        foreach (var (type, name, content) in new[] { ("styles", "styles.xml", styles), ("numbering", "numbering.xml", numbering), ("footnotes", "footnotes.xml", footnotes) })
+        {
+            if (content.Length > 0)
+            {
+                related.Add(($"rId{type}", type, name, false));
+                entries.Add(($"word/{name}", Utf8($"<w:{type} {WordNamespaces}>{content}</w:{type}>")));
+            }
+        }
+
+        entries.Add(("word/_rels/document.xml.rels", Utf8(
+            "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
+            + string.Concat(related.Select(item => $"<Relationship Id=\"{item.Id}\" Type=\"{Rel}/{item.Type}\" Target=\"{item.Target.Replace("&", "&amp;")}\"{(item.External ? " TargetMode=\"External\"" : "")}/>"))
+            + "</Relationships>")));
+        entries.AddRange(media);
+        return ZipBytes([.. entries]);
+    }
+
+    public static byte[] ZipBytes(params (string Name, byte[] Content)[] entries)
+    {
+        using var stream = new MemoryStream();
+        using (var zip = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var (name, content) in entries)
+            {
+                using var entry = zip.CreateEntry(name).Open();
+                entry.Write(content);
+            }
+        }
+
+        return stream.ToArray();
+    }
+
+    private static byte[] Utf8(string text) => new UTF8Encoding(false).GetBytes(text);
+
+    /// <summary>Imagem no texto, como o Word grava: desenho com texto alternativo e a mídia pela relação.</summary>
+    public static string Drawing(string relationId, string alt = "", string attribute = "r:embed") =>
+        $"<w:r><w:drawing><wp:inline><wp:docPr id=\"1\" name=\"Imagem\" descr=\"{alt}\"/><a:graphic><a:graphicData><a:blip {attribute}=\"{relationId}\"/></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>";
+
     public static string Paragraph(params string[] runs) => "<w:p>" + string.Concat(runs.Select(run => $"<w:r><w:t xml:space=\"preserve\">{run}</w:t></w:r>")) + "</w:p>";
 
     /// <summary>XLSX com as planilhas dadas (o conteúdo de <c>sheetData</c>), as strings compartilhadas e os estilos.</summary>

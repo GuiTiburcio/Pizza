@@ -26,6 +26,7 @@ public class DocsTabTests
 
     [Theory]
     [InlineData("contrato.docx", "document.txt", "TXT")]
+    [InlineData("contrato.docx", "document.html", "HTML")]
     [InlineData("planilha.xlsx", "document.csv", "CSV")]
     public void Sem_o_motor_o_Brotinho_faz_as_conversoes_simples(string file, string id, string label)
     {
@@ -53,7 +54,7 @@ public class DocsTabTests
     public void Conversoes_simples_nao_tem_painel_e_rodam_no_Worker()
     {
         // FR-21: sem opções, começa ao soltar.
-        Assert.All(["document.txt", "document.csv"], id =>
+        Assert.All(["document.txt", "document.html", "document.csv"], id =>
         {
             var converter = ConverterCatalog.Find(id)!;
             Assert.False(converter.HasPanel);
