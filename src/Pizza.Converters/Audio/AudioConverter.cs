@@ -65,7 +65,38 @@ public sealed class AudioConverter(string id) : IConverter
             (writer, var stream) = opened;
 
             MediaFoundation.BeginWriting(writer);
-            if (Copy(reader, writer, stream, progress) is { } error)
+            var format = new Pcm((int)rate, (int)channels, (int)bits);
+            var volume = new VolumeChain(options, format.Rate);
+            var half = ProgressSteps / 2;
+            if (volume.Target is { } target)
+            {
+                // Normalizar (adendo do ADR-035): mede o volume já amplificado e comprimido, volta ao começo e aplica.
+                var meter = new Loudness(format.Channels, format.Rate);
+                var measuring = volume;
+                if (Pass(reader, progress, 0, half, sample => Edit(sample, format, samples =>
+                {
+                    measuring.Before(samples, format.Channels);
+                    meter.Add(samples);
+                }, write: false)) is { } measureError)
+                {
+                    return measureError;
+                }
+
+                MediaFoundation.Rewind(reader.Handle);
+                var measured = meter.Result;
+                volume = new VolumeChain(options, format.Rate) { Normalize = double.IsFinite(measured) ? Math.Pow(10, (target - measured) / 20) : 1 };
+            }
+
+            var applying = volume;
+            if (Pass(reader, progress, volume.Target is null ? 0 : half, ProgressSteps - 1, sample =>
+            {
+                if (applying.Active)
+                {
+                    Edit(sample, format, samples => applying.Apply(samples, format.Channels), write: true);
+                }
+
+                MediaFoundation.WriteSample(writer, stream, sample);
+            }) is { } error)
             {
                 return error;
             }
@@ -205,8 +236,11 @@ public sealed class AudioConverter(string id) : IConverter
         return all.Where(value => value <= asked).OrderDescending();
     }
 
-    /// <summary>Lê e grava amostra por amostra; a porcentagem vem da posição sobre a duração (ADR-029).</summary>
-    private static string? Copy(AudioReader reader, nint writer, uint stream, IProgress<int>? progress)
+    /// <summary>
+    /// Uma passada pelo arquivo, amostra por amostra; a porcentagem vai de <paramref name="from"/> a
+    /// <paramref name="to"/> pela posição sobre a duração (ADR-029).
+    /// </summary>
+    private static string? Pass(AudioReader reader, IProgress<int>? progress, int from, int to, Action<nint> handle)
     {
         var duration = reader.Info.DurationMs * 10_000;
         while (true)
@@ -222,7 +256,7 @@ public sealed class AudioConverter(string id) : IConverter
             {
                 try
                 {
-                    MediaFoundation.WriteSample(writer, stream, sample);
+                    handle(sample);
                 }
                 finally
                 {
@@ -231,7 +265,7 @@ public sealed class AudioConverter(string id) : IConverter
 
                 if (duration > 0)
                 {
-                    progress?.Report((int)Math.Clamp(time * (ProgressSteps - 1) / duration, 0, ProgressSteps - 1));
+                    progress?.Report(from + (int)Math.Clamp(time * (to - from) / duration, 0, to - from));
                 }
             }
 
@@ -239,6 +273,67 @@ public sealed class AudioConverter(string id) : IConverter
             {
                 return null;
             }
+        }
+    }
+
+    private readonly record struct Pcm(int Rate, int Channels, int Bits);
+
+    private delegate void SampleWork(Span<float> samples);
+
+    /// <summary>Converte o PCM inteiro do buffer da amostra para -1 a 1, aplica o trabalho e, se pedido, grava de volta.</summary>
+    private static void Edit(nint sample, Pcm format, SampleWork work, bool write)
+    {
+        var buffer = MediaFoundation.ContiguousBuffer(sample);
+        try
+        {
+            var bytes = MediaFoundation.Lock(buffer);
+            try
+            {
+                var size = format.Bits / 8;
+                var count = bytes.Length / size;
+                var samples = System.Buffers.ArrayPool<float>.Shared.Rent(count);
+                try
+                {
+                    for (var i = 0; i < count; i++)
+                    {
+                        samples[i] = size == 2
+                            ? System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(bytes[(2 * i)..]) / 32768f
+                            : ((bytes[(3 * i) + 2] << 24) | (bytes[(3 * i) + 1] << 16) | (bytes[3 * i] << 8)) / 2147483648f;
+                    }
+
+                    work(samples.AsSpan(0, count));
+                    if (write)
+                    {
+                        for (var i = 0; i < count; i++)
+                        {
+                            var value = Math.Clamp(samples[i], -1f, 1f);
+                            if (size == 2)
+                            {
+                                System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(bytes[(2 * i)..], (short)Math.Clamp(MathF.Round(value * 32768f), short.MinValue, short.MaxValue));
+                            }
+                            else
+                            {
+                                var integer = (int)Math.Clamp(MathF.Round(value * 8388608f), -8388608, 8388607);
+                                bytes[3 * i] = (byte)integer;
+                                bytes[(3 * i) + 1] = (byte)(integer >> 8);
+                                bytes[(3 * i) + 2] = (byte)(integer >> 16);
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    System.Buffers.ArrayPool<float>.Shared.Return(samples);
+                }
+            }
+            finally
+            {
+                MediaFoundation.Unlock(buffer);
+            }
+        }
+        finally
+        {
+            MediaFoundation.Release(buffer);
         }
     }
 

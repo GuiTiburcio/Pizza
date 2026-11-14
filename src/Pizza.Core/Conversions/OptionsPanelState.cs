@@ -72,6 +72,7 @@ public sealed class OptionsPanelState
     private const int BoxRaise = 6;
 
     private readonly int[] _selected;
+    private readonly Dictionary<string, string> _advanced;
     private readonly int[] _percent;
     private string? _typed;
     private bool _editing;
@@ -82,7 +83,8 @@ public sealed class OptionsPanelState
     public OptionsPanelState(ConverterInfo converter)
     {
         Converter = converter;
-        Rows = converter.Options.Where(option => option.Key != ConverterCatalog.MetadataKey).ToArray();
+        Rows = converter.Options.Where(option => option.Key != ConverterCatalog.MetadataKey && !option.Advanced).ToArray();
+        _advanced = converter.Options.Where(option => option.Advanced).ToDictionary(option => option.Key, option => option.Default);
         CanKeepMetadata = converter.Options.Any(option => option.Key == ConverterCatalog.MetadataKey);
         _selected = Rows.Select(option => option.Choices.ToList().FindIndex(choice => choice.Value == option.Default)).ToArray();
 
@@ -388,6 +390,11 @@ public sealed class OptionsPanelState
             options[Rows[row].Key] = !IsSlider(row) || Rows[row].Steps ? Rows[row].Choices[StepAt(row)].Value
                 : Percent(row) == Full ? ConverterOption.Original
                 : Percent(row).ToString(CultureInfo.InvariantCulture);
+        }
+
+        foreach (var (key, value) in _advanced)
+        {
+            options[key] = value;
         }
 
         if (CanKeepMetadata)
