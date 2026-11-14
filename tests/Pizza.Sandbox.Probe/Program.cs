@@ -28,6 +28,17 @@ if (act >= 0)
     var jobId = Regex.Match(request, "\"jobId\":\"([0-9a-f]{12})\"").Groups[1].Value;
     switch (args[act + 1])
     {
+        case "valid-bundle":
+            using (var destination = OpenHandle(Regex.Match(request, "\"dstHandle\":(\\d+)").Groups[1].Value, FileAccess.Write))
+            {
+                var bundle = new Pizza.Core.Output.OutputBundle.Writer(destination, 2);
+                bundle.Add("%PDF-primeiro"u8);
+                bundle.Add("%PDF-segundo"u8);
+                bundle.Finish();
+            }
+
+            writer.Write(Done(jobId));
+            return 0;
         case "oversized-output":
         case "oversized-bundle":
         case "oversized-after-done":
