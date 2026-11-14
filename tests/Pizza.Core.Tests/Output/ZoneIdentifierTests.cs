@@ -4,6 +4,70 @@ namespace Pizza.Core.Tests.Output;
 
 public class ZoneIdentifierTests
 {
+    [Theory]
+    [InlineData("utf-8")]
+    [InlineData("utf-16")]
+    [InlineData("utf-32")]
+    public void Leitura_limitada_preserva_os_boms(string name)
+    {
+        var encoding = System.Text.Encoding.GetEncoding(name);
+        using var source = new MemoryStream([.. encoding.GetPreamble(), .. encoding.GetBytes("[ZoneTransfer]\r\nZoneId=3\r\n")]);
+        Assert.Equal(3, ZoneIdentifier.Read(source));
+    }
+
+    [Fact]
+    public void Zona_no_inicio_nao_esconde_cauda_acima_do_teto()
+    {
+        var data = new byte[ZoneIdentifier.MaxBytes + 1000];
+        "ZoneId=3\n"u8.CopyTo(data);
+        using var source = new MemoryStream(data);
+        Assert.Throws<ConversionLimitException>(() => ZoneIdentifier.Read(source));
+        Assert.Equal(ZoneIdentifier.MaxBytes + 1, source.Position);
+    }
+
+    [Fact]
+    public void Aceita_o_teto_exato_sem_confiar_em_length()
+    {
+        using var source = new ChunkedZoneStream(ZoneIdentifier.MaxBytes);
+        Assert.Equal(3, ZoneIdentifier.Read(source));
+    }
+
+    [Fact]
+    public void Stream_que_entrega_mais_bytes_durante_a_leitura_e_limitado()
+    {
+        using var source = new ChunkedZoneStream(ZoneIdentifier.MaxBytes + 1000);
+        Assert.Throws<ConversionLimitException>(() => ZoneIdentifier.Read(source));
+        Assert.Equal(ZoneIdentifier.MaxBytes + 1, source.BytesRead);
+    }
+
+    private sealed class ChunkedZoneStream(int size) : Stream
+    {
+        public int BytesRead { get; private set; }
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
+        public override int Read(Span<byte> buffer)
+        {
+            var count = Math.Min(17, Math.Min(buffer.Length, size - BytesRead));
+            for (var index = 0; index < count; index++)
+            {
+                var position = BytesRead + index;
+                buffer[index] = position < 9 ? "ZoneId=3\n"u8[position] : (byte)' ';
+            }
+
+            BytesRead += count;
+            return count;
+        }
+
+        public override void Flush() => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
     [Fact]
     public void Le_a_zona_e_ignora_as_urls()
     {
