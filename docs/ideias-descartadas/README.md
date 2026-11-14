@@ -55,13 +55,13 @@ Para reabrir uma ideia, crie um ADR novo que substitui o anterior (veja [`docs/a
 
 | Ideia | Por que saiu | Onde |
 | --- | --- | --- |
-| Compactados (ZIP, RAR, 7Z, TAR, ISO) | Trocam a embalagem, não o conteúdo; o Windows já abre ZIP, e criar RAR exige programa proprietário | [ADR-036](../adr/036-formatos-por-pacote-e-fatias-incompativeis.md) |
-| 3D e CAD (OBJ, STL, FBX, DWG, STEP) | Público pequeno para o Pizza; DWG é proprietário; leitores grandes diante de arquivo hostil | [ADR-036](../adr/036-formatos-por-pacote-e-fatias-incompativeis.md) |
-| PSD, AI e CDR | Formatos proprietários; achatar camadas exige leitores que o Pizza não tem | [ADR-036](../adr/036-formatos-por-pacote-e-fatias-incompativeis.md) |
-| OCR de PDF escaneado e imagem | Modelo grande e erros em manuscrito; é reconhecimento, não conversão | [ADR-036](../adr/036-formatos-por-pacote-e-fatias-incompativeis.md) |
-| Arquivos com DRM (Kindle, Kobo, M4P, streaming) | Contornar DRM não é papel do Pizza | [ADR-036](../adr/036-formatos-por-pacote-e-fatias-incompativeis.md) |
-| PAGES, KEY e NUMBERS | Só exportam bem pelos próprios programas da Apple | [ADR-036](../adr/036-formatos-por-pacote-e-fatias-incompativeis.md) |
-| Raster → vetor (vetorização) | Sempre aproximação; vai mal com fotos | [ADR-036](../adr/036-formatos-por-pacote-e-fatias-incompativeis.md) |
-| Abas separadas para Texto, Planilha e Apresentação | A aba Docs fica única e mostra só as fatias que servem ao arquivo | [ADR-036](../adr/036-formatos-por-pacote-e-fatias-incompativeis.md) |
-| Fatias do Jumbo apagadas no Brotinho ("Disponível no Pizza Jumbo") | Poluiria o menu do pacote leve; no Brotinho elas não aparecem | [ADR-036](../adr/036-formatos-por-pacote-e-fatias-incompativeis.md) |
-| Áudio só no Pizza Jumbo | O Media Foundation é do Windows e não aumenta o Brotinho | [ADR-036](../adr/036-formatos-por-pacote-e-fatias-incompativeis.md) |
+| Compactados (ZIP, RAR, 7Z, TAR, ISO) | Trocam a embalagem, não o conteúdo; o Windows já abre ZIP, e criar RAR exige programa proprietário | [ADR-039](../adr/039-formatos-por-pacote-e-fatias-incompativeis.md) |
+| 3D e CAD (OBJ, STL, FBX, DWG, STEP) | Público pequeno para o Pizza; DWG é proprietário; leitores grandes diante de arquivo hostil | [ADR-039](../adr/039-formatos-por-pacote-e-fatias-incompativeis.md) |
+| PSD, AI e CDR | Formatos proprietários; achatar camadas exige leitores que o Pizza não tem | [ADR-039](../adr/039-formatos-por-pacote-e-fatias-incompativeis.md) |
+| OCR de PDF escaneado e imagem | Modelo grande e erros em manuscrito; é reconhecimento, não conversão | [ADR-039](../adr/039-formatos-por-pacote-e-fatias-incompativeis.md) |
+| Arquivos com DRM (Kindle, Kobo, M4P, streaming) | Contornar DRM não é papel do Pizza | [ADR-039](../adr/039-formatos-por-pacote-e-fatias-incompativeis.md) |
+| PAGES, KEY e NUMBERS | Só exportam bem pelos próprios programas da Apple | [ADR-039](../adr/039-formatos-por-pacote-e-fatias-incompativeis.md) |
+| Raster → vetor (vetorização) | Sempre aproximação; vai mal com fotos | [ADR-039](../adr/039-formatos-por-pacote-e-fatias-incompativeis.md) |
+| Abas separadas para Texto, Planilha e Apresentação | A aba Docs fica única e mostra só as fatias que servem ao arquivo | [ADR-039](../adr/039-formatos-por-pacote-e-fatias-incompativeis.md) |
+| Fatias do Jumbo apagadas no Brotinho ("Disponível no Pizza Jumbo") | Poluiria o menu do pacote leve; no Brotinho elas não aparecem | [ADR-039](../adr/039-formatos-por-pacote-e-fatias-incompativeis.md) |
+| Áudio só no Pizza Jumbo | O Media Foundation é do Windows e não aumenta o Brotinho | [ADR-039](../adr/039-formatos-por-pacote-e-fatias-incompativeis.md) |

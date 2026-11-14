@@ -96,17 +96,17 @@ public static class RadialMenu
     public static bool Fits(ConverterInfo converter, string path) =>
         converter.InputExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>ADR-036: o que a fatia apagada diz quando é escolhida.</summary>
+    /// <summary>ADR-039: o que a fatia apagada diz quando é escolhida.</summary>
     public static string Hint(string path) => $"Experimente a aba {MenuTabs.ShortNames[HomeTab(path)]}";
 
-    /// <summary>ADR-034 e ADR-036: sem o motor de documentos (Pizza Brotinho), as fatias dele não existem.</summary>
+    /// <summary>ADR-034 e ADR-039: sem o motor de documentos (Pizza Brotinho), as fatias dele não existem.</summary>
     private static IEnumerable<ConverterInfo> Installed =>
         ConverterCatalog.All.Where(converter => !converter.DocumentEngine || ConverterCatalog.DocumentEngineAvailable);
 
     private static IEnumerable<ConverterInfo> Fitting(string path) => Installed.Where(converter => Fits(converter, path));
 
     /// <summary>
-    /// ADR-036: numa aba com conversão para o arquivo, só as que servem a ele; nas outras, todas as fatias, que o
+    /// ADR-039: numa aba com conversão para o arquivo, só as que servem a ele; nas outras, todas as fatias, que o
     /// menu desenha apagadas.
     /// </summary>
     private static IEnumerable<ConverterInfo> Shown(string path)

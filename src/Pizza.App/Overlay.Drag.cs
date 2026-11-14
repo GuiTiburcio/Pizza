@@ -91,7 +91,7 @@ internal static unsafe partial class Overlay
             return Select(file, selected);
         }
 
-        // ADR-036: soltar numa fatia de outro tipo deixa o menu aberto e aponta a aba que serve.
+        // ADR-039: soltar numa fatia de outro tipo deixa o menu aberto e aponta a aba que serve.
         if (selectSlice)
         {
             HintAt(x, y);

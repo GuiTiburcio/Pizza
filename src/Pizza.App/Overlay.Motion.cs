@@ -41,7 +41,7 @@ internal static unsafe partial class Overlay
     }
 
     /// <summary>
-    /// ADR-036: escolher uma fatia de outro tipo não converte; ela passa a dizer qual aba serve ao arquivo, e o
+    /// ADR-039: escolher uma fatia de outro tipo não converte; ela passa a dizer qual aba serve ao arquivo, e o
     /// menu continua aberto.
     /// </summary>
     private static void HintAt(int x, int y)

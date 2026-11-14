@@ -173,7 +173,7 @@ public sealed class OverlayDropTests
     [Fact]
     public void Clique_numa_fatia_de_outro_tipo_aponta_a_aba_e_mantem_a_escolha()
     {
-        // ADR-036: a imagem na aba PDF vê Juntar, Dividir e Girar apagados; escolher um não converte.
+        // ADR-039: a imagem na aba PDF vê Juntar, Dividir e Girar apagados; escolher um não converte.
         PrepareChoice();
         var pdfPage = OpenPage("entrada.jpg", ConverterCatalog.PdfTab);
 

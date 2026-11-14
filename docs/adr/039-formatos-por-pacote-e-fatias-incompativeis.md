@@ -1,4 +1,4 @@
-# ADR-036 — Formatos por pacote e fatias incompatíveis
+# ADR-039 — Formatos por pacote e fatias incompatíveis
 
 - **Status:** Aceita pelo mantenedor em 13/11/2026. Complementa o ADR-034 (Brotinho e Jumbo) e substitui o pedido de 13/11/2026 de mostrar todas as fatias desabilitadas. Plano completo em [`propostas/plano-formatos-pacotes.md`](../propostas/plano-formatos-pacotes.md).
 - **Data:** 2026-11-13
