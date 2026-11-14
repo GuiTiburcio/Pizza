@@ -39,6 +39,24 @@ Medido no sandbox: um motor novo fica pronto em ~9–10 s; com o motor pronto, a
 - **Opção futura (Fase 8):** "Converter documentos mais rápido (usa ~200 MB)", que deixa um motor sempre pronto (~2 s em toda conversão).
 - **Enxugar o motor** (dicionários, 455 MB) fica para a etapa do pacote, mantendo a hifenização, que muda a quebra de linha, e com teste de fidelidade.
 
+### Adendo de 13/11/2026: Brotinho sem dependência nova
+
+Decisão do mantenedor na etapa 3: o Brotinho lê DOCX e XLSX só com o .NET (`ZipArchive` e `XmlReader`), sem o OpenXML SDK. Para extrair texto e células não é preciso o modelo de objetos inteiro, e cada dependência nova é superfície de ataque. Nada entra no SBOM.
+
+- **Conversões desta etapa:** DOCX → TXT e XLSX → CSV. HTML e Markdown ficam para a etapa seguinte.
+- **Leitura segura:** XML sem DTD (sem entidades externas nem expansão em cascata). Cada parte descompactada e a saída têm teto de 2 GB, contado nos bytes de verdade e não no tamanho declarado no zip (SEC-40, TST-08). Fora disso: `LIMIT_EXCEEDED`; zip ou XML fora do formato: `CORRUPTED`.
+- **TXT:** só o corpo, um parágrafo por linha e as células de tabela separadas por tab; UTF-8 com BOM e CRLF.
+- **CSV:** um arquivo por planilha (gráficos ficam de fora), com separador, decimal e datas das configurações regionais do Windows, como o Excel faz. Texto que começa com `=`, `+`, `-`, `@`, tab ou CR ganha um apóstrofo na frente, para não virar fórmula ao abrir (injeção de fórmula em CSV). Os nomes são do residente, numerados (`- planilha 1`); com uma planilha só, o nome é o do original. O nome da planilha nunca vira nome de arquivo, porque é texto do arquivo não confiável.
+
+### Adendo de 13/11/2026: DOCX → HTML
+
+Decisões do mantenedor para o HTML, que o Markdown seguirá:
+
+- **Estrutura:** títulos, negrito, itálico, tachado, sublinhado, realce, sobrescrito e subscrito, listas aninhadas, tabelas (com as mesclas), links, notas de rodapé, citações, código e linha horizontal. Equações saem como texto até o PR das equações (LaTeX).
+- **Imagens:** PNG, JPEG, GIF e WEBP embutidas no próprio HTML (`data:`). TIFF vira PNG pelo conversor de imagens, com a mesma lista de decodificadores e os mesmos limites (SEC-41, SEC-45). EMF, WMF, BMP e formatos desconhecidos viram um aviso no lugar, pedindo para salvar como PNG no editor. O formato é conferido pelo conteúdo, não pela extensão. Imagem vinculada de fora do arquivo nunca é buscada (SEC-50).
+- **Links:** só `http`, `https` e `mailto`; o resto vira texto.
+- **Sem script:** a página leva a política de conteúdo `default-src 'none'; img-src data:; style-src 'unsafe-inline'`. O texto do documento é sempre escapado.
+
 ## Consequências
 
 Ninguém precisa instalar Office para converter documentos: quem quer só imagens baixa o Brotinho (cerca de 10 MB); quem quer DOCX/XLSX/PPTX → PDF baixa o Jumbo (cerca de 300 MB a mais). O isolamento é o mesmo do Worker de imagens: AppContainer, job, sem rede.

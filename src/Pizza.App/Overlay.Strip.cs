@@ -58,8 +58,8 @@ internal static unsafe partial class Overlay
 
     /// <summary>Nível sob o cursor, se a faixa estiver na tela.</summary>
     private static int? TargetLevel(int x, int y) =>
-        _files is { Count: 1 } && IsVisible && _pulseSlot is null && Strip.Primary is { } primary
-            ? DiscLayout.LevelAt((x - _left) / _scale, (y - _top) / _scale, primary.Choices.Count)
+        _files is { Count: 1 } && IsVisible && _pulseSlot is null && Strip.Primary is not null
+            ? DiscLayout.LevelAt((x - _left) / _scale, (y - _top) / _scale, Strip.Levels.Count)
             : null;
 
     /// <summary>Soltar ou clicar num nível converte com ele, pela fatia dona da faixa.</summary>

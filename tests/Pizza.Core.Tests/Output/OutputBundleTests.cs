@@ -15,11 +15,11 @@ public sealed class OutputBundleTests : IDisposable
 
     private static byte[] Pdf(string text) => System.Text.Encoding.ASCII.GetBytes("%PDF-" + text);
 
-    private IReadOnlyList<OutputBundle.Part> Read(byte[] data, int maxParts = 10)
+    private IReadOnlyList<OutputBundle.Part> Read(byte[] data, int maxParts = 10, string extension = "pdf")
     {
         File.WriteAllBytes(_file, data);
         using var handle = File.OpenHandle(_file);
-        return OutputBundle.Read(handle, maxParts);
+        return OutputBundle.Read(handle, maxParts, extension);
     }
 
     private static byte[] Written(params byte[][] parts)
@@ -96,5 +96,23 @@ public sealed class OutputBundleTests : IDisposable
     public void Parte_que_nao_comeca_como_pdf_e_recusada()
     {
         Assert.Throws<InvalidDataException>(() => Read(Written(Pdf("um"), "MZ executavel"u8.ToArray())));
+    }
+
+    [Fact]
+    public void Partes_de_csv_comecam_pelo_bom_do_utf8()
+    {
+        // Brotinho (ADR-034): cada planilha vira um CSV em UTF-8 com BOM; uma planilha vazia é só o BOM.
+        byte[] bom = [0xEF, 0xBB, 0xBF];
+        Assert.Equal(2, Read(Written([.. bom, .. "a;b\r\n"u8], bom), extension: "csv").Count);
+
+        Assert.Throws<InvalidDataException>(() => Read(Written("a;b\r\n"u8.ToArray()), extension: "csv"));
+        Assert.Throws<InvalidDataException>(() => Read(Written(Pdf("um")), extension: "csv"));
+        Assert.Throws<InvalidDataException>(() => Read(Written([.. bom, .. "x"u8]), extension: "pdf"));
+    }
+
+    [Fact]
+    public void Extensao_sem_pacote_conhecido_e_recusada()
+    {
+        Assert.Throws<InvalidDataException>(() => Read(Written(Pdf("um")), extension: "exe"));
     }
 }

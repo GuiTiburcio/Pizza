@@ -14,12 +14,19 @@ internal static unsafe class OptionsPanel
 {
     private const string ClassName = "PizzaPanel";
     private const nuint TimerBubble = 1;
+
+    // Adendo do ADR-035: o "info" do probe chegou (Conversion.Probe).
+    private const uint WmProbeInfo = WM_APP + 1;
     private const uint AnimationMs = 10;
 
     private static PanelPalette _palette = PanelPalette.Light;
 
     private static nint _window;
     private static OptionsPanelState? _state;
+
+    // Painel principal enquanto a página Volume está aberta (prancha AU-5); Voltar e Aplicar voltam para ele.
+    private static OptionsPanelState? _main;
+    private static RECT _work;
     private static PanelViewport? _viewport;
     private static GlideSpring[] _bubbles = [];
     private static MotionStyle _motion = MotionStyle.Slide;
@@ -55,21 +62,18 @@ internal static unsafe class OptionsPanel
     public static void Show(ConverterInfo converter, string fileName, int centerX, int centerY)
     {
         _state = new OptionsPanelState(converter);
+        _main = null;
         _fileName = fileName;
         _palette = DarkTheme() ? PanelPalette.Dark : PanelPalette.Light;
         _motion = Overlay.ResolveMotion();
-        _bubbles = Enumerable.Range(0, _state.Rows.Count).Select(row =>
-        {
-            var glide = new GlideSpring();
-            glide.Snap(_state.Selected(row));
-            return glide;
-        }).ToArray();
+        SnapBubbles();
 
         var monitor = MonitorFromPoint(new POINT { X = centerX, Y = centerY }, MONITOR_DEFAULTTONEAREST);
         uint dpiX, dpiY;
         _dpi = GetDpiForMonitor(monitor, 0, &dpiX, &dpiY) == S_OK ? (int)dpiX : 96;
         var info = new MONITORINFO { CbSize = (uint)sizeof(MONITORINFO) };
         GetMonitorInfoW(monitor, &info);
+        _work = info.RcWork;
         _viewport = new PanelViewport(_state.Height, (info.RcWork.Bottom - info.RcWork.Top) * 96 / _dpi);
         _wheelRemainder = 0;
 
@@ -86,6 +90,8 @@ internal static unsafe class OptionsPanel
         TakeFocus(_window);
     }
 
+    public static void ProbeAudio(string path, ConverterInfo converter) => Conversion.Probe(path, converter, _window, WmProbeInfo);
+
     /// <summary>Fecha sem avisar o overlay: é ele quem está pedindo. A cópia da tela é zerada aqui (ADR-023).</summary>
     public static void Close()
     {
@@ -93,6 +99,7 @@ internal static unsafe class OptionsPanel
         {
             EndDrag();
             _state = null;
+            _main = null;
             _viewport = null;
             KillTimer(_window, TimerBubble);
             _lastFrame = 0;
@@ -177,6 +184,15 @@ internal static unsafe class OptionsPanel
                 else
                 {
                     Scroll(-notches * 44);
+                }
+
+                return 0;
+
+            case WmProbeInfo:
+                if ((_main ?? _state) is { } owner && Conversion.ProbeInfo() is { } info)
+                {
+                    owner.SetInfo(info);
+                    Render();
                 }
 
                 return 0;
@@ -299,7 +315,37 @@ internal static unsafe class OptionsPanel
             return;
         }
 
+        if (action == PanelAction.OpenVolume && _state is { Page: PanelPage.Main } main)
+        {
+            _main = main;
+            SwitchTo(main.VolumePage());
+            return;
+        }
+
+        if (_state is { Page: PanelPage.Volume } volume && _main is { } owner)
+        {
+            // Na página Volume, Enter aplica e Esc volta; a conversão só sai do painel principal.
+            if (action == PanelAction.Convert)
+            {
+                owner.ApplyVolume(volume);
+            }
+            else
+            {
+                owner.CancelVolume();
+            }
+
+            _main = null;
+            SwitchTo(owner);
+            return;
+        }
+
         var options = action == PanelAction.Convert ? _state!.Options() : null;
+        if (options is null)
+        {
+            // Cancelou: o Worker que respondeu ao probe não vai converter.
+            Conversion.DiscardProbe();
+        }
+
         Close();
         Overlay.OnPanelClosed(options);
     }
@@ -368,6 +414,37 @@ internal static unsafe class OptionsPanel
     }
 
     private static int Scale(int value) => value * _dpi / 96;
+
+    private static void SnapBubbles()
+    {
+        _bubbles = Enumerable.Range(0, _state!.Rows.Count).Select(row =>
+        {
+            var glide = new GlideSpring();
+            glide.Snap(_state.Selected(row));
+            return glide;
+        }).ToArray();
+    }
+
+    /// <summary>Troca de página na mesma janela: nova altura, nova cópia do vidro atrás e a bolha já no lugar.</summary>
+    private static void SwitchTo(OptionsPanelState state)
+    {
+        EndDrag();
+        KillTimer(_window, TimerBubble);
+        _lastFrame = 0;
+        _state = state;
+        SnapBubbles();
+        _viewport = new PanelViewport(state.Height, (_work.Bottom - _work.Top) * 96 / _dpi);
+        _wheelRemainder = 0;
+
+        var width = Scale(state.Width);
+        var height = Scale(_viewport.Height);
+        _top = Math.Max(_work.Top, Math.Min(_top, _work.Bottom - height));
+
+        // Sem CAPTUREBLT, a própria janela (em camadas) fica fora da cópia do vidro (ADR-023).
+        DiscRenderer.Prepare(_left, _top, width, height, _dpi);
+        Render();
+        SetWindowPos(_window, HWND_TOPMOST, _left, _top, width, height, SWP_SHOWWINDOW);
+    }
 
     private static bool DarkTheme()
     {

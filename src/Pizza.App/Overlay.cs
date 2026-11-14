@@ -228,7 +228,7 @@ internal static unsafe partial class Overlay
         var page = _pages[Carousel.Target];
         var slices = CurrentSlices();
         var rotation = Rotation();
-        var levels = Strip.Primary?.Choices.Select((choice, level) => (choice.Label, Strip.Detail(level))).ToArray();
+        var levels = Strip.Primary is null ? null : Strip.Levels.Select((choice, level) => (choice.Label, Strip.Detail(level))).ToArray();
 
         // FR-30 com a emenda da ADR-033: fatias que não valem para o que foi arrastado ficam esmaecidas; com vários
         // PDFs e o Juntar na faixa, ela mostra a ordem em que vão ficar (prancha 6A-1).

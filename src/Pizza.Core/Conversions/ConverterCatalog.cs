@@ -5,7 +5,20 @@ public sealed record OptionChoice(string Value, string Label);
 
 /// <summary>Uma opção do painel. O padrão é sempre uma das escolhas.</summary>
 /// <summary><c>Minimum</c>: a opção é uma régua de porcentagem (ADR-030), de Minimum a 100; 100 é "original".</summary>
-public sealed record ConverterOption(string Key, string Label, string Default, IReadOnlyList<OptionChoice> Choices, int? Minimum = null)
+/// <summary>
+/// <c>Steps</c>: régua em degraus sobre as escolhas, na ordem delas (ADR-035). <c>Quick</c>: os atalhos da faixa de
+/// níveis, quando não são todas as escolhas (prancha AU-2). <c>Advanced</c>: fica fora das linhas do painel, num
+/// painel próprio, como o Volume (adendo do ADR-035, prancha AU-5).
+/// </summary>
+public sealed record ConverterOption(
+    string Key,
+    string Label,
+    string Default,
+    IReadOnlyList<OptionChoice> Choices,
+    int? Minimum = null,
+    bool Steps = false,
+    IReadOnlyList<OptionChoice>? Quick = null,
+    bool Advanced = false)
 {
     public const string Original = "original";
 
@@ -50,9 +63,12 @@ public sealed record ConverterInfo(
     /// <summary>Legenda da fatia quando ela não vale para o que foi arrastado (prancha 6A-1).</summary>
     public string UnavailableCaption => Merges ? "2 ou mais PDFs" : "um por vez";
 
-    /// <summary>Com várias saídas (Dividir), o sufixo de cada parte; null quando há uma saída só.</summary>
+    /// <summary>
+    /// Com várias saídas, o sufixo de cada parte; null quando há uma saída só. O Dividir escolhe pelo modo; o
+    /// CSV, que não tem painel, numera as planilhas.
+    /// </summary>
     public Func<int, int, string>? PartSuffix(IReadOnlyDictionary<string, string> options) =>
-        Splits ? (part, count) => Output.OutputNaming.PartSuffix(options.GetValueOrDefault("mode", Options[0].Default), part, count) : null;
+        Splits ? (part, count) => Output.OutputNaming.PartSuffix(Options.Count == 0 ? "sheets" : options.GetValueOrDefault("mode", Options[0].Default), part, count) : null;
 }
 
 /// <summary>Lista das conversões. O menu e o painel se montam daqui; a ordem é a das fatias (ADR-012).</summary>
@@ -65,6 +81,7 @@ public static class ConverterCatalog
     public const int ImageTab = 0;
     public const int PdfTab = 1;
     public const int DocsTab = 2;
+    public const int AudioTab = 3;
 
     // ADR-034: o que o motor de documentos do Pizza Jumbo abre (Writer, Calc e Impress, formatos atuais e antigos).
     private static readonly string[] DocumentInputs = [".docx", ".doc", ".odt", ".rtf", ".xlsx", ".xls", ".ods", ".pptx", ".ppt", ".odp"];
@@ -77,6 +94,36 @@ public static class ConverterCatalog
 
     // FR-23 e PRIV-30: desmarcado por padrão. Só nos formatos em que o Pizza consegue guardar os metadados.
     private static readonly ConverterOption Metadata = new(MetadataKey, "Manter metadados", MetadataStrip, [new(MetadataStrip, "Não"), new(MetadataKeep, "Sim")]);
+
+    // ADR-035: o que o Media Foundation do Windows lê; o formato real é conferido pelo conteúdo no Worker.
+    private static readonly string[] AudioInputs = [".mp3", ".m4a", ".aac", ".flac", ".wav"];
+
+    // Valores que os codificadores do Windows aceitam (prova de 12/11/2026, ADR-035).
+    private static readonly ConverterOption Mp3Bitrate = new(
+        "bitrate", "Qualidade", "192", Kbps(96, 112, 128, 160, 192, 224, 256, 320), Steps: true,
+        Quick: [new("320", "Alta"), new("192", "Equilibrada"), new("128", "Compacta")]);
+
+    private static readonly ConverterOption M4aBitrate = new(
+        "bitrate", "Qualidade", "160", [.. Kbps(64, 96, 128, 160, 192, 256, 320), new("lossless", "Sem perda")], Steps: true,
+        Quick: [new("256", "Alta"), new("160", "Equilibrada"), new("96", "Compacta")]);
+
+    private static readonly ConverterOption Depth = new("depth", "Profundidade", "original", [new("original", "Original"), new("16", "16 bits"), new("24", "24 bits")]);
+
+    private static readonly ConverterOption Channels = new("channels", "Canais", "original", [new("original", "Original"), new("stereo", "Estéreo"), new("mono", "Mono")]);
+
+    private static readonly ConverterOption Rate = new("rate", "Taxa de amostragem", "original", [new("original", "Original"), new("48000", "48 kHz"), new("44100", "44,1 kHz")]);
+
+    // Adendo do ADR-035: Volume, aplicado nesta ordem no Worker. "off" é o Original (nada é aplicado).
+    public const string Off = "off";
+
+    private static readonly ConverterOption[] Volume =
+    [
+        new("gain", "Amplificar", Off, Range(-12, 12, "dB"), Steps: true, Advanced: true),
+        new("compress", "Comprimir · limiar", Off, Range(-40, 0, "dB"), Steps: true, Advanced: true),
+        new("ratio", "Razão", "4", [new("2", "2:1"), new("4", "4:1"), new("8", "8:1")], Advanced: true),
+        new("normalize", "Normalizar", Off, Range(-23, -9, "LUFS"), Steps: true, Advanced: true),
+        new("limit", "Limitar · teto", Off, Range(-6, 0, "dB"), Steps: true, Advanced: true),
+    ];
 
     private static readonly ConverterOption[] Quality =
     [
@@ -143,9 +190,34 @@ public static class ConverterCatalog
 
         // ADR-034: pelo motor de documentos isolado, só no Pizza Jumbo.
         new("document.pdf", DocsTab, "PDF", "Para enviar", "pdf", DocumentInputs, [], DocumentEngine: true),
+
+        // ADR-034, Pizza Brotinho: sem diagramação, no Worker de sempre; cada planilha vira um CSV.
+        new("document.txt", DocsTab, "TXT", "Só o texto", "txt", [".docx"], []),
+        new("document.html", DocsTab, "HTML", "Para a web", "html", [".docx"], []),
+        new("document.csv", DocsTab, "CSV", "Tabela simples", "csv", [".xlsx"], [], Splits: true),
+
+        // ADR-035: pelo Media Foundation, no Worker isolado. A fatia do próprio formato não aparece.
+        new("audio.mp3", AudioTab, "MP3", "Toca em tudo", "mp3", AudioExcept(".mp3"), [Mp3Bitrate, Channels, Rate, .. Volume]),
+        new("audio.m4a", AudioTab, "M4A", "Leve", "m4a", AudioExcept(".m4a"), [M4aBitrate, Channels, Rate, .. Volume]),
+        new("audio.flac", AudioTab, "FLAC", "Sem perda", "flac", AudioExcept(".flac"), [Depth, Channels, Rate, .. Volume]),
+        new("audio.wav", AudioTab, "WAV", "Sem compressão", "wav", AudioExcept(".wav"), [Depth, Channels, Rate, .. Volume]),
     ];
 
     private static string[] ImagesExcept(params string[] own) => ImageInputs.Except(own).ToArray();
+
+    private static string[] AudioExcept(string own) => AudioInputs.Except([own]).ToArray();
+
+    /// <summary>"Desligado" e os inteiros de <paramref name="from"/> a <paramref name="to"/>, com sinal e sinal de menos tipográfico no rótulo.</summary>
+    private static OptionChoice[] Range(int from, int to, string unit) =>
+    [
+        new(Off, "Desligado"),
+        .. Enumerable.Range(from, to - from + 1).Select(value => new OptionChoice(
+            value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            $"{(value > 0 ? "+" : value < 0 ? "−" : "")}{Math.Abs(value)} {unit}")),
+    ];
+
+    private static OptionChoice[] Kbps(params int[] values) =>
+        values.Select(value => new OptionChoice(value.ToString(System.Globalization.CultureInfo.InvariantCulture), $"{value} kbps")).ToArray();
 
     public static ConverterInfo? Find(string id) => All.FirstOrDefault(converter => converter.Id == id);
 

@@ -96,12 +96,26 @@ internal static unsafe partial class DiscRenderer
         const float padding = OptionsPanelState.Padding;
         var inner = state.Width - (2 * padding);
 
-        Text(g, $"{frame.FileName} → {state.Converter.Label}", _semibold, 18, StyleBold, Ink(colors.Text), padding, 22, inner, 30, AlignNear);
-        Text(g, "Escolha como quer o arquivo", _regular, 13, StyleRegular, Ink(colors.SecondaryText), padding, 54, inner, 22, AlignNear);
+        // Página Volume (prancha AU-5): mesmo vidro e mesma geometria; o título diz a página e a ordem dos efeitos.
+        var volumePage = state.Page == PanelPage.Volume;
+        Text(g, volumePage ? "Volume" : $"{frame.FileName} → {state.Converter.Label}", _semibold, 18, StyleBold, Ink(colors.Text), padding, 22, inner, 30, AlignNear);
+        Text(g, volumePage ? "Aplicados nesta ordem, de cima para baixo" : "Escolha como quer o arquivo", _regular, 13, StyleRegular, Ink(colors.SecondaryText), padding, 54, inner, 22, AlignNear);
 
         for (var row = 0; row < state.Rows.Count; row++)
         {
-            Text(g, state.Rows[row].Label, _semibold, 13, StyleRegular, Ink(colors.Text), padding, OptionsPanelState.RowLabelTop(row), inner, OptionsPanelState.LabelHeight, AlignNear);
+            var labelTop = OptionsPanelState.RowLabelTop(row);
+            var labelLeft = padding;
+            if (state.IsToggle(row))
+            {
+                CheckBox(g, padding + 1, labelTop + ((OptionsPanelState.LabelHeight - KeepBoxSize) / 2), state.IsEnabled(row), colors);
+                labelLeft += KeepBoxSize + 10;
+            }
+
+            Text(g, state.Rows[row].Label, _semibold, 13, StyleRegular, Ink(state.IsEnabled(row) ? colors.Text : colors.SecondaryText), labelLeft, labelTop, inner - (labelLeft - padding), OptionsPanelState.LabelHeight, AlignNear);
+            if (state.RowNote(row) is { } note)
+            {
+                Text(g, note, _regular, 12, StyleRegular, Ink(colors.SecondaryText), padding, labelTop, inner, OptionsPanelState.LabelHeight, AlignFar);
+            }
         }
 
         // Opções em vidro claro; depois, uma bolha por grupo, deslizando até a escolhida; o texto por cima.
@@ -155,17 +169,32 @@ internal static unsafe partial class DiscRenderer
 
                     break;
 
+                case PanelTargetKind.Toggle when state.Focus == (PanelTargetKind.Toggle, target.Row):
+                    // O foco contorna só a caixinha, como em "Manter metadados".
+                    var toggleTop = OptionsPanelState.RowLabelTop(target.Row) + ((OptionsPanelState.LabelHeight - KeepBoxSize) / 2) - 4;
+                    var toggleRing = RoundedRect(padding + 1 - 4, toggleTop, KeepBoxSize + 8, KeepBoxSize + 8, 7);
+                    Stroke(g, Ink(colors.Text), 2, toggleRing);
+                    GdipDeletePath(toggleRing);
+                    break;
+
                 case PanelTargetKind.Cancel:
-                    PanelButton(g, bounds, "Cancelar  Esc", accent: false, state.Focus.Kind == PanelTargetKind.Cancel, colors);
+                    PanelButton(g, bounds, volumePage ? "Voltar  Esc" : "Cancelar  Esc", accent: false, state.Focus.Kind == PanelTargetKind.Cancel, colors);
                     break;
 
                 case PanelTargetKind.Convert:
-                    PanelButton(g, bounds, "Converter  Enter", accent: true, state.Focus.Kind == PanelTargetKind.Convert, colors);
+                    PanelButton(g, bounds, volumePage ? "Aplicar  Enter" : "Converter  Enter", accent: true, state.Focus.Kind == PanelTargetKind.Convert, colors);
                     break;
             }
         }
 
-        if (!state.CanKeepMetadata)
+        if (state.HasSizeRow)
+        {
+            // Adendo do ADR-035: o tamanho previsto, que acompanha as opções; "—" até o Worker responder.
+            Text(g, "Tamanho previsto", _regular, 13, StyleRegular, Ink(colors.SecondaryText), padding, state.SizeTop, inner, 22, AlignNear);
+            Text(g, state.SizeText, _semibold, 13, StyleBold, Ink(colors.Text), padding, state.SizeTop, inner, 22, AlignFar);
+        }
+
+        if (!state.CanKeepMetadata && state.HasMetadataRow)
         {
             DrawKeep(g, state.KeepTop, enabled: false, isChecked: false, colors);
             Text(g, MetadataNotice, _regular, 12, StyleRegular, Ink(colors.SecondaryText), padding, state.KeepTop + OptionsPanelState.KeepRowHeight, inner, 20, AlignNear);
@@ -200,8 +229,10 @@ internal static unsafe partial class DiscRenderer
         var text = state.ValueText(row);
         var editing = state.IsEditing(row);
         var typing = state.IsTyping(row);
-        const float numberWidth = 30;
+        // Régua em degraus (ADR-035): "192 kbps"; sem número, como "Sem perda", o texto ocupa a caixa toda.
+        var unit = typing ? (state.Rows[row].Steps ? "kbps" : "%") : state.ValueUnit(row);
         const float numberLeft = 8;
+        var numberWidth = unit.Length == 0 ? boxWidth - (2 * numberLeft) : 30f;
         if (editing && !typing)
         {
             // Valor selecionado: o primeiro dígito o substitui.
@@ -211,7 +242,10 @@ internal static unsafe partial class DiscRenderer
         }
 
         Text(g, text, _semibold, 13, StyleBold, editing && !typing ? Ink(colors.OnAccent) : Ink(colors.Text), boxLeft + numberLeft, boxTop, numberWidth, boxHeight, typing ? AlignFar : AlignCenter);
-        Text(g, "%", _semibold, 13, StyleBold, Ink(colors.Text), boxLeft + numberLeft + numberWidth, boxTop, boxWidth - numberLeft - numberWidth - 4, boxHeight);
+        if (unit.Length > 0)
+        {
+            Text(g, unit, _semibold, 13, StyleBold, Ink(colors.Text), boxLeft + numberLeft + numberWidth, boxTop, boxWidth - numberLeft - numberWidth - 4, boxHeight);
+        }
         if (typing)
         {
             // Cursor logo depois do que foi digitado.
@@ -225,6 +259,23 @@ internal static unsafe partial class DiscRenderer
             var ring = RoundedRect(boxLeft + 1, boxTop + 1, boxWidth - 2, boxHeight - 2, 8);
             Stroke(g, Ink(colors.Accent), 2, ring);
             GdipDeletePath(ring);
+        }
+    }
+
+    /// <summary>Caixinha no estilo do Windows 11 (prancha AU-5): marcada, cheia no azul com o visto branco.</summary>
+    private static void CheckBox(nint g, float left, float top, bool isChecked, PanelPalette colors)
+    {
+        var box = RoundedRect(left, top, KeepBoxSize, KeepBoxSize, 4);
+        if (isChecked)
+        {
+            Fill(g, Ink(colors.Accent), box);
+        }
+
+        Stroke(g, Ink(isChecked ? colors.Accent : colors.SecondaryText), 1.5f, box);
+        GdipDeletePath(box);
+        if (isChecked)
+        {
+            Text(g, "✓", _semibold, 13, StyleBold, Ink(colors.OnAccent), left, top, KeepBoxSize, KeepBoxSize);
         }
     }
 

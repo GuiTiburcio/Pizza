@@ -56,6 +56,14 @@ jobs:
           Rename-Item $exe.FullName $tool
           "PIZZA_EXIFTOOL=$tool" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
 
+      # ADR-034: o motor de documentos do Pizza Jumbo, para os testes do Docs (MSI oficial, hash fixo, sem instalar).
+      - name: Baixar motor de documentos
+        shell: pwsh
+        run: |
+          $motor = Join-Path $env:RUNNER_TEMP 'motor'
+          ./tools/baixar-motor.ps1 -Destino $motor
+          "PIZZA_MOTOR=$motor" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
       - name: Testar
         run: dotnet test Pizza.slnx -c Release --no-build --logger "trx" --results-directory TestResults
 
