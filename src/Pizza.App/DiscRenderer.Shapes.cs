@@ -18,6 +18,11 @@ internal static unsafe partial class DiscRenderer
             GdipScaleWorldTransform(g, (float)ScaleOf(), (float)ScaleOf(), 0);
             Fill(g, WithAlpha(_palette.Veil, fill), path);
         }
+        else if (_live)
+        {
+            // ADR-037: movendo, o fundo real aparece pela própria transparência da janela.
+            Fill(g, WithAlpha(_palette.Veil, _palette == Dark ? 0.72 : 0.55), path);
+        }
         else
         {
             // Transparência desligada: sólido 92%, a mesma forma.

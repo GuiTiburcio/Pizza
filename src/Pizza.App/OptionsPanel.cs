@@ -69,10 +69,9 @@ internal static unsafe class OptionsPanel
         SnapBubbles();
 
         var monitor = MonitorFromPoint(new POINT { X = centerX, Y = centerY }, MONITOR_DEFAULTTONEAREST);
-        uint dpiX, dpiY;
-        _dpi = GetDpiForMonitor(monitor, 0, &dpiX, &dpiY) == S_OK ? (int)dpiX : 96;
         var info = new MONITORINFO { CbSize = (uint)sizeof(MONITORINFO) };
         GetMonitorInfoW(monitor, &info);
+        _dpi = MenuSettings.Dpi(info.RcWork); // ADR-037: 1/15 da tela, como o disco.
         _work = info.RcWork;
         _viewport = new PanelViewport(_state.Height, (info.RcWork.Bottom - info.RcWork.Top) * 96 / _dpi);
         _wheelRemainder = 0;
