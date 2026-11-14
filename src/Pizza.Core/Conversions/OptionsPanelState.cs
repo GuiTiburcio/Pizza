@@ -24,12 +24,25 @@ public enum PanelAction
     None,
     Convert,
     Cancel,
+
+    /// <summary>"Ajustar…" na linha Volume: a janela troca para a página Volume (prancha AU-5).</summary>
+    OpenVolume,
+}
+
+/// <summary>A página principal do painel, ou a página Volume do áudio (adendo do ADR-035).</summary>
+public enum PanelPage
+{
+    Main,
+    Volume,
 }
 
 public enum PanelTargetKind
 {
     Choice,
     Slider,
+
+    /// <summary>Caixinha que liga e desliga um efeito na página Volume.</summary>
+    Toggle,
     Keep,
     Cancel,
     Convert,
@@ -72,6 +85,7 @@ public sealed class OptionsPanelState
     private const int BoxRaise = 6;
 
     private readonly int[] _selected;
+    private readonly Dictionary<string, string> _advanced;
     private readonly int[] _percent;
     private string? _typed;
     private bool _editing;
@@ -79,18 +93,55 @@ public sealed class OptionsPanelState
     private readonly List<PanelTarget> _targets = [];
     private int _focus;
 
+    public const string VolumeKey = "volume";
+
+    // Linha Volume do painel principal (prancha AU-3): não vai para o Worker; o que vale são as opções avançadas.
+    private static readonly ConverterOption VolumeRow = new(VolumeKey, "Volume", "original", [new("original", "Original"), new("adjust", "Ajustar…")]);
+
+    // Valor de cada efeito quando ele é ligado pela primeira vez (adendo do ADR-035).
+    private static readonly Dictionary<string, string> EffectDefaults = new() { ["gain"] = "3", ["compress"] = "-18", ["normalize"] = "-14", ["limit"] = "-1" };
+
+    private static readonly Dictionary<string, string> EffectNames = new() { ["gain"] = "Amplificar", ["compress"] = "Comprimir", ["normalize"] = "Normalizar", ["limit"] = "Limitar" };
+
+    private readonly bool[] _enabled;
+
     public OptionsPanelState(ConverterInfo converter)
+        : this(
+            converter,
+            PanelPage.Main,
+            [
+                .. converter.Options.Where(option => option.Key != ConverterCatalog.MetadataKey && !option.Advanced),
+                .. converter.Options.Any(option => option.Advanced) ? [VolumeRow] : Array.Empty<ConverterOption>(),
+            ],
+            converter.Options.Where(option => option.Advanced).ToDictionary(option => option.Key, option => option.Default),
+            null)
+    {
+    }
+
+    private OptionsPanelState(ConverterInfo converter, PanelPage page, IReadOnlyList<ConverterOption> rows, Dictionary<string, string> advanced, bool[]? enabled)
     {
         Converter = converter;
-        Rows = converter.Options.Where(option => option.Key != ConverterCatalog.MetadataKey).ToArray();
-        CanKeepMetadata = converter.Options.Any(option => option.Key == ConverterCatalog.MetadataKey);
+        Page = page;
+        Rows = rows;
+        _advanced = advanced;
+        _enabled = enabled ?? new bool[rows.Count];
+        CanKeepMetadata = page == PanelPage.Main && converter.Options.Any(option => option.Key == ConverterCatalog.MetadataKey);
         _selected = Rows.Select(option => option.Choices.ToList().FindIndex(choice => choice.Value == option.Default)).ToArray();
+        SyncVolumeRow();
 
         _percent = Rows.Select(option => option.Minimum is null || option.Default == ConverterOption.Original ? Full : int.Parse(option.Default, CultureInfo.InvariantCulture)).ToArray();
 
         var top = FirstRowTop;
         for (var row = 0; row < Rows.Count; row++)
         {
+            if (IsToggle(row))
+            {
+                // Prancha AU-5: a caixinha fica na linha do título, à esquerda da caixa do valor.
+                var labelTop = RowLabelTop(row);
+                _stops.Add((PanelTargetKind.Toggle, row));
+                _targets.Add(new PanelTarget(PanelTargetKind.Toggle, row, 0, new PanelRect(Padding, labelTop - 6, PanelWidth - Padding - StepsBoxWidth - 8, labelTop + LabelHeight + 6)));
+            }
+
             if (IsSlider(row))
             {
                 // ADR-030: a régua ocupa a altura da linha de botões que substitui.
@@ -125,12 +176,82 @@ public sealed class OptionsPanelState
 
     public ConverterInfo Converter { get; }
 
+    public PanelPage Page { get; }
+
+    /// <summary>Caixinha de efeito: na página Volume, as linhas que têm "Desligado" no catálogo.</summary>
+    public bool IsToggle(int row) => Page == PanelPage.Volume && EffectDefaults.ContainsKey(Rows[row].Key);
+
+    /// <summary>Efeito ligado; linhas sem caixinha contam como ligadas.</summary>
+    public bool IsEnabled(int row) => !IsToggle(row) || _enabled[row];
+
+    /// <summary>Resumo ao lado do título da linha Volume, como "Normalizar · Limitar"; null em Original.</summary>
+    public string? RowNote(int row)
+    {
+        if (Page != PanelPage.Main || Rows[row].Key != VolumeKey || !AnyEffect)
+        {
+            return null;
+        }
+
+        return string.Join(" · ", EffectNames.Where(effect => _advanced[effect.Key] != ConverterCatalog.Off).Select(effect => effect.Value));
+    }
+
+    /// <summary>
+    /// A página Volume, a partir do que já foi aplicado. Na primeira vez, Normalizar (-14 LUFS) e Limitar (-1 dB) vêm
+    /// ligados (adendo do ADR-035).
+    /// </summary>
+    public OptionsPanelState VolumePage()
+    {
+        var first = !AnyEffect;
+        var rows = new List<ConverterOption>();
+        var enabled = new List<bool>();
+        foreach (var option in Converter.Options.Where(option => option.Advanced))
+        {
+            var value = _advanced[option.Key];
+            if (EffectDefaults.TryGetValue(option.Key, out var fallback))
+            {
+                rows.Add(option with { Choices = option.Choices.Where(choice => choice.Value != ConverterCatalog.Off).ToArray(), Default = value == ConverterCatalog.Off ? fallback : value });
+                enabled.Add(value != ConverterCatalog.Off || (first && option.Key is "normalize" or "limit"));
+            }
+            else
+            {
+                rows.Add(option with { Default = value });
+                enabled.Add(true);
+            }
+        }
+
+        return new OptionsPanelState(Converter, PanelPage.Volume, rows, new Dictionary<string, string>(), enabled.ToArray());
+    }
+
+    /// <summary>Aplicar na página Volume: os efeitos passam a valer e a linha Volume mostra "Ajustar…".</summary>
+    public void ApplyVolume(OptionsPanelState volume)
+    {
+        foreach (var (key, value) in volume.Options())
+        {
+            _advanced[key] = value;
+        }
+
+        SyncVolumeRow();
+    }
+
+    /// <summary>Voltar sem aplicar: a linha Volume reflete de novo o que já valia.</summary>
+    public void CancelVolume() => SyncVolumeRow();
+
+    private bool AnyEffect => _advanced.Any(option => EffectDefaults.ContainsKey(option.Key) && option.Value != ConverterCatalog.Off);
+
+    private void SyncVolumeRow()
+    {
+        if (Page == PanelPage.Main && Rows.ToList().FindIndex(row => row.Key == VolumeKey) is var volume and >= 0)
+        {
+            _selected[volume] = AnyEffect ? 1 : 0;
+        }
+    }
+
     public IReadOnlyList<ConverterOption> Rows { get; }
 
     public bool CanKeepMetadata { get; }
 
     /// <summary>ADR-035: no áudio a saída sai sem etiquetas e a linha "Manter metadados" não aparece.</summary>
-    public bool HasMetadataRow => Converter.Tab != ConverterCatalog.AudioTab;
+    public bool HasMetadataRow => Page == PanelPage.Main && Converter.Tab != ConverterCatalog.AudioTab;
 
     public bool KeepMetadata { get; private set; }
 
@@ -157,7 +278,7 @@ public sealed class OptionsPanelState
     /// <summary>O que a caixa ao lado do título mostra: o que está sendo digitado, ou o valor.</summary>
     public string ValueText(int row) =>
         IsTyping(row) ? _typed!
-        : Rows[row].Steps ? (IsNumber(Rows[row].Choices[_selected[row]].Value) ? Rows[row].Choices[_selected[row]].Value : Rows[row].Choices[_selected[row]].Label)
+        : Rows[row].Steps ? (ValueUnit(row).Length > 0 ? Rows[row].Choices[_selected[row]].Value : Rows[row].Choices[_selected[row]].Label)
         : _percent[row].ToString(CultureInfo.InvariantCulture);
 
     /// <summary>Unidade depois do número na caixa: "%" na régua de porcentagem; na de degraus, a do rótulo ("kbps").</summary>
@@ -222,6 +343,7 @@ public sealed class OptionsPanelState
         _focus = _stops.IndexOf((PanelTargetKind.Slider, row));
         var track = SliderTrack(row);
         var amount = Math.Clamp((x - track.Left) / (double)(track.Right - track.Left), 0, 1);
+        TurnOn(row);
         if (Rows[row].Steps)
         {
             // ADR-035: o pino para no degrau mais próximo; o codificador só aceita esses valores.
@@ -239,6 +361,7 @@ public sealed class OptionsPanelState
         Commit();
         if (Rows[row].Steps)
         {
+            TurnOn(row);
             _selected[row] = StepClamp(row, _selected[row] + steps);
             return;
         }
@@ -249,7 +372,8 @@ public sealed class OptionsPanelState
     /// <summary>Dígito na caixa da régua em foco; outro caractere é ignorado.</summary>
     public void Type(char key)
     {
-        if (Focus.Kind != PanelTargetKind.Slider || !char.IsAsciiDigit(key))
+        if (Focus.Kind != PanelTargetKind.Slider || !char.IsAsciiDigit(key)
+            || (Rows[Focus.Row].Steps && !Rows[Focus.Row].Choices.Any(choice => IsNumber(choice.Value))))
         {
             return;
         }
@@ -321,10 +445,12 @@ public sealed class OptionsPanelState
                 return PanelAction.None;
 
             case PanelKey.Left or PanelKey.Right or PanelKey.ShiftLeft or PanelKey.ShiftRight when Focus.Kind == PanelTargetKind.Slider && Rows[Focus.Row].Steps:
+                TurnOn(Focus.Row);
                 _selected[Focus.Row] = StepClamp(Focus.Row, _selected[Focus.Row] + (key is PanelKey.Left or PanelKey.ShiftLeft ? -1 : 1));
                 return PanelAction.None;
 
             case PanelKey.Home or PanelKey.End when Focus.Kind == PanelTargetKind.Slider && Rows[Focus.Row].Steps:
+                TurnOn(Focus.Row);
                 _selected[Focus.Row] = key == PanelKey.Home ? 0 : Rows[Focus.Row].Choices.Count - 1;
                 return PanelAction.None;
 
@@ -339,7 +465,10 @@ public sealed class OptionsPanelState
 
             case PanelKey.Left or PanelKey.Right when Focus.Kind == PanelTargetKind.Choice:
                 var last = Rows[Focus.Row].Choices.Count - 1;
-                _selected[Focus.Row] = Math.Clamp(_selected[Focus.Row] + (key == PanelKey.Right ? 1 : -1), 0, last);
+                return Choose(Focus.Row, Math.Clamp(_selected[Focus.Row] + (key == PanelKey.Right ? 1 : -1), 0, last));
+
+            case PanelKey.Space when Focus.Kind == PanelTargetKind.Toggle:
+                _enabled[Focus.Row] = !_enabled[Focus.Row];
                 return PanelAction.None;
 
             case PanelKey.Space when Focus.Kind == PanelTargetKind.Keep:
@@ -364,7 +493,10 @@ public sealed class OptionsPanelState
         switch (target.Kind)
         {
             case PanelTargetKind.Choice:
-                _selected[target.Row] = target.Choice;
+                return Choose(target.Row, target.Choice);
+
+            case PanelTargetKind.Toggle:
+                _enabled[target.Row] = !_enabled[target.Row];
                 return PanelAction.None;
 
             case PanelTargetKind.Keep:
@@ -385,9 +517,25 @@ public sealed class OptionsPanelState
         var options = new Dictionary<string, string>();
         for (var row = 0; row < Rows.Count; row++)
         {
+            if (Rows[row].Key == VolumeKey)
+            {
+                continue;
+            }
+
+            if (!IsEnabled(row))
+            {
+                options[Rows[row].Key] = ConverterCatalog.Off;
+                continue;
+            }
+
             options[Rows[row].Key] = !IsSlider(row) || Rows[row].Steps ? Rows[row].Choices[StepAt(row)].Value
                 : Percent(row) == Full ? ConverterOption.Original
                 : Percent(row).ToString(CultureInfo.InvariantCulture);
+        }
+
+        foreach (var (key, value) in _advanced)
+        {
+            options[key] = value;
         }
 
         if (CanKeepMetadata)
@@ -436,6 +584,36 @@ public sealed class OptionsPanelState
     }
 
     private int StepClamp(int row, int index) => Math.Clamp(index, 0, Rows[row].Choices.Count - 1);
+
+    private void TurnOn(int row)
+    {
+        if (IsToggle(row))
+        {
+            _enabled[row] = true;
+        }
+    }
+
+    /// <summary>Escolha num grupo de botões. Na linha Volume, "Ajustar…" abre a página e "Original" desliga os efeitos.</summary>
+    private PanelAction Choose(int row, int choice)
+    {
+        _selected[row] = choice;
+        if (Rows[row].Key != VolumeKey)
+        {
+            return PanelAction.None;
+        }
+
+        if (choice == 1)
+        {
+            return PanelAction.OpenVolume;
+        }
+
+        foreach (var key in EffectDefaults.Keys)
+        {
+            _advanced[key] = ConverterCatalog.Off;
+        }
+
+        return PanelAction.None;
+    }
 
     private static bool IsNumber(string value) => value.Length > 0 && value.All(char.IsAsciiDigit);
 

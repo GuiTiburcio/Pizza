@@ -87,6 +87,21 @@ public class AudioOptionsTests
         Assert.DoesNotContain(ConverterCatalog.MetadataKey, panel.Options().Keys);
     }
 
+    [Theory]
+    [InlineData("audio.mp3")]
+    [InlineData("audio.wav")]
+    public void Volume_fica_desligado_por_padrao_e_fora_das_linhas_do_painel(string id)
+    {
+        // Adendo do ADR-035: o Volume tem painel próprio (prancha AU-5); "off" é o Original.
+        var panel = Panel(id);
+        var options = ConverterCatalog.ResolveOptions(panel.Converter, new Dictionary<string, string>())!;
+
+        Assert.DoesNotContain(panel.Rows, row => row.Advanced);
+        Assert.All(new[] { "gain", "compress", "normalize", "limit" }, key => Assert.Equal("off", options[key]));
+        Assert.Equal("4", options["ratio"]);
+        Assert.Equal("off", panel.Options()["normalize"]);
+    }
+
     [Fact]
     public void Faixa_do_MP3_mostra_tres_atalhos_com_os_kbps()
     {

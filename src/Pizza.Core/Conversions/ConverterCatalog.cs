@@ -7,7 +7,8 @@ public sealed record OptionChoice(string Value, string Label);
 /// <summary><c>Minimum</c>: a opção é uma régua de porcentagem (ADR-030), de Minimum a 100; 100 é "original".</summary>
 /// <summary>
 /// <c>Steps</c>: régua em degraus sobre as escolhas, na ordem delas (ADR-035). <c>Quick</c>: os atalhos da faixa de
-/// níveis, quando não são todas as escolhas (prancha AU-2).
+/// níveis, quando não são todas as escolhas (prancha AU-2). <c>Advanced</c>: fica fora das linhas do painel, num
+/// painel próprio, como o Volume (adendo do ADR-035, prancha AU-5).
 /// </summary>
 public sealed record ConverterOption(
     string Key,
@@ -16,7 +17,8 @@ public sealed record ConverterOption(
     IReadOnlyList<OptionChoice> Choices,
     int? Minimum = null,
     bool Steps = false,
-    IReadOnlyList<OptionChoice>? Quick = null)
+    IReadOnlyList<OptionChoice>? Quick = null,
+    bool Advanced = false)
 {
     public const string Original = "original";
 
@@ -111,6 +113,18 @@ public static class ConverterCatalog
 
     private static readonly ConverterOption Rate = new("rate", "Taxa de amostragem", "original", [new("original", "Original"), new("48000", "48 kHz"), new("44100", "44,1 kHz")]);
 
+    // Adendo do ADR-035: Volume, aplicado nesta ordem no Worker. "off" é o Original (nada é aplicado).
+    public const string Off = "off";
+
+    private static readonly ConverterOption[] Volume =
+    [
+        new("gain", "Amplificar", Off, Range(-12, 12, "dB"), Steps: true, Advanced: true),
+        new("compress", "Comprimir · limiar", Off, Range(-40, 0, "dB"), Steps: true, Advanced: true),
+        new("ratio", "Razão", "4", [new("2", "2:1"), new("4", "4:1"), new("8", "8:1")], Advanced: true),
+        new("normalize", "Normalizar", Off, Range(-23, -9, "LUFS"), Steps: true, Advanced: true),
+        new("limit", "Limitar · teto", Off, Range(-6, 0, "dB"), Steps: true, Advanced: true),
+    ];
+
     private static readonly ConverterOption[] Quality =
     [
         new("quality", "Qualidade", "75", [new("95", "Máxima"), new("85", "Alta"), new("75", "Equilibrada"), new("60", "Compacta")]),
@@ -183,15 +197,24 @@ public static class ConverterCatalog
         new("document.csv", DocsTab, "CSV", "Tabela simples", "csv", [".xlsx"], [], Splits: true),
 
         // ADR-035: pelo Media Foundation, no Worker isolado. A fatia do próprio formato não aparece.
-        new("audio.mp3", AudioTab, "MP3", "Toca em tudo", "mp3", AudioExcept(".mp3"), [Mp3Bitrate, Channels, Rate]),
-        new("audio.m4a", AudioTab, "M4A", "Leve", "m4a", AudioExcept(".m4a"), [M4aBitrate, Channels, Rate]),
-        new("audio.flac", AudioTab, "FLAC", "Sem perda", "flac", AudioExcept(".flac"), [Depth, Channels, Rate]),
-        new("audio.wav", AudioTab, "WAV", "Sem compressão", "wav", AudioExcept(".wav"), [Depth, Channels, Rate]),
+        new("audio.mp3", AudioTab, "MP3", "Toca em tudo", "mp3", AudioExcept(".mp3"), [Mp3Bitrate, Channels, Rate, .. Volume]),
+        new("audio.m4a", AudioTab, "M4A", "Leve", "m4a", AudioExcept(".m4a"), [M4aBitrate, Channels, Rate, .. Volume]),
+        new("audio.flac", AudioTab, "FLAC", "Sem perda", "flac", AudioExcept(".flac"), [Depth, Channels, Rate, .. Volume]),
+        new("audio.wav", AudioTab, "WAV", "Sem compressão", "wav", AudioExcept(".wav"), [Depth, Channels, Rate, .. Volume]),
     ];
 
     private static string[] ImagesExcept(params string[] own) => ImageInputs.Except(own).ToArray();
 
     private static string[] AudioExcept(string own) => AudioInputs.Except([own]).ToArray();
+
+    /// <summary>"Desligado" e os inteiros de <paramref name="from"/> a <paramref name="to"/>, com sinal e sinal de menos tipográfico no rótulo.</summary>
+    private static OptionChoice[] Range(int from, int to, string unit) =>
+    [
+        new(Off, "Desligado"),
+        .. Enumerable.Range(from, to - from + 1).Select(value => new OptionChoice(
+            value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            $"{(value > 0 ? "+" : value < 0 ? "−" : "")}{Math.Abs(value)} {unit}")),
+    ];
 
     private static OptionChoice[] Kbps(params int[] values) =>
         values.Select(value => new OptionChoice(value.ToString(System.Globalization.CultureInfo.InvariantCulture), $"{value} kbps")).ToArray();

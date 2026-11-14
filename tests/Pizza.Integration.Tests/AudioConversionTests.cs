@@ -46,6 +46,20 @@ public sealed class AudioConversionTests(SandboxFixture fixture) : IDisposable
     }
 
     [MediaFact]
+    public void Volume_com_normalizar_le_duas_vezes_pelo_mesmo_handle_no_worker()
+    {
+        // Adendo do ADR-035: a medição e a gravação voltam ao começo da origem pelo handle (SEC-22), dentro do prazo.
+        var source = Path.Combine(_folder, "aula.wav");
+        File.WriteAllBytes(source, Wav(seconds: 2));
+        var options = new Dictionary<string, string> { ["gain"] = "3", ["compress"] = "-20", ["ratio"] = "4", ["normalize"] = "-14", ["limit"] = "-1" };
+
+        var result = Runner().Run(source, "audio.mp3", "mp3", options);
+
+        Assert.Null(result.ErrorCode);
+        Assert.True(new FileInfo(Path.Combine(_folder, result.OutputName!)).Length > 1000);
+    }
+
+    [MediaFact]
     public void Arquivo_que_nao_e_audio_e_recusado_sem_gerar_saida()
     {
         // O formato é conferido pelo conteúdo: um texto com extensão .mp3 não chega ao decodificador.
