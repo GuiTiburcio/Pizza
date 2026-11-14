@@ -70,6 +70,51 @@ public sealed class BrotinhoConversionTests(SandboxFixture fixture) : IDisposabl
     }
 
     [Fact]
+    public void Docx_vira_markdown_com_as_imagens_ao_lado_e_os_nomes_do_residente()
+    {
+        // ADR-038: o residente escolhe os nomes (sem [ ] # que o Obsidian não aceita), desvia de quem já existe e
+        // troca no .md só os marcadores; o original não muda.
+        var source = Path.Combine(_folder, "ata [final] #2.docx");
+        byte[] png = [0x89, (byte)'P', (byte)'N', (byte)'G', 1];
+        byte[] jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 2];
+        File.WriteAllBytes(source, ZipBytes(
+            ("_rels/.rels", Utf8($"<Relationships xmlns=\"{Rels}\"><Relationship Id=\"r\" Type=\"{Office}/officeDocument\" Target=\"word/document.xml\"/></Relationships>")),
+            ("word/_rels/document.xml.rels", Utf8($"<Relationships xmlns=\"{Rels}\"><Relationship Id=\"a\" Type=\"{Office}/image\" Target=\"media/a.png\"/><Relationship Id=\"b\" Type=\"{Office}/image\" Target=\"media/b.jpg\"/></Relationships>")),
+            ("word/document.xml", Utf8("<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:r=\"" + Office + "\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\">"
+                + "<w:body><w:p><w:r><w:t>Ata</w:t></w:r></w:p><w:p><w:r><w:drawing><a:blip r:embed=\"a\"/></w:drawing></w:r><w:r><w:drawing><a:blip r:embed=\"b\"/></w:drawing></w:r></w:p></w:body></w:document>")),
+            ("word/media/a.png", png),
+            ("word/media/b.jpg", jpeg)));
+        File.WriteAllText(Path.Combine(_folder, "ata _final_ _2 - imagem 1.png"), "já existia");
+        var before = SHA256.HashData(File.ReadAllBytes(source));
+
+        var result = Runner().Run(source, "document.md", "md");
+
+        Assert.Null(result.ErrorCode);
+        Assert.Equal("ata [final] #2.md", result.OutputName);
+        Assert.Equal(3, result.Count);
+        Assert.Equal("Ata\n\n![[ata _final_ _2 - imagem 1 (1).png]]![[ata _final_ _2 - imagem 2.jpg]]\n", Read("ata [final] #2.md"));
+        Assert.Equal(png, File.ReadAllBytes(Path.Combine(_folder, "ata _final_ _2 - imagem 1 (1).png")));
+        Assert.Equal(jpeg, File.ReadAllBytes(Path.Combine(_folder, "ata _final_ _2 - imagem 2.jpg")));
+        Assert.Equal("já existia", File.ReadAllText(Path.Combine(_folder, "ata _final_ _2 - imagem 1.png")));
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
+        Assert.Empty(Directory.GetFiles(_folder, ".~pizza-*", new EnumerationOptions { AttributesToSkip = 0 }));
+    }
+
+    [Fact]
+    public void Markdown_com_marcador_invalido_de_um_worker_hostil_nao_deixa_nenhuma_parte()
+    {
+        // ADR-038, "ou saem todas, ou nenhuma": a imagem já tinha nome quando o marcador falhou, e é apagada.
+        var source = Path.Combine(_folder, "ata.docx");
+        File.WriteAllText(source, "qualquer coisa");
+
+        var result = new ConversionRunner(fixture.ProbePath, SandboxFixture.Profile, new TempJournal(_folder + ".journal"), TimeSpan.FromSeconds(60), "--act bad-markdown")
+            .Run(source, "document.md", "md");
+
+        Assert.Equal("WORKER_CRASHED", result.ErrorCode);
+        Assert.Equal([source], Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }));
+    }
+
+    [Fact]
     public void Xlsx_vira_um_csv_por_planilha_no_formato_regional_do_windows()
     {
         // O Worker em AppContainer usa as mesmas configurações regionais da pessoa (separador e decimal).

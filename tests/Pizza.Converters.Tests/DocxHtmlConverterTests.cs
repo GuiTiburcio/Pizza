@@ -12,7 +12,7 @@ namespace Pizza.Converters.Tests;
 public sealed class DocxHtmlConverterTests
 {
     // PNG de 1×1 pixel.
-    private const string Png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+    internal const string Png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 
     private static readonly byte[] Emf = [1, 0, 0, 0, .. new byte[36], 0x20, 0x45, 0x4D, 0x46, .. new byte[20]];
 
@@ -56,42 +56,45 @@ public sealed class DocxHtmlConverterTests
         return html[start..html.IndexOf("</body>", StringComparison.Ordinal)];
     }
 
+    /// <summary>Arquivo-ouro: a estrutura inteira que o Brotinho leva para HTML e Markdown.</summary>
+    internal static byte[] Golden() => RichDocx(
+        Styled("Title", "Relatório &amp; \"Plano\"")
+        + Styled("Ttulo1", "Introdução")
+        + "<w:p><w:r><w:t xml:space=\"preserve\">Texto </w:t></w:r>" + Run("<w:b/>", "negrito") + "<w:r><w:t xml:space=\"preserve\"> e </w:t></w:r>"
+        + Run("<w:i/>", "itálico") + "<w:r><w:t xml:space=\"preserve\"> </w:t></w:r>" + Run("<w:strike/>", "tachado") + "<w:r><w:t xml:space=\"preserve\"> </w:t></w:r>"
+        + Run("<w:u w:val=\"single\"/>", "sub") + Run("<w:u w:val=\"single\"/>", "linhado") + "<w:r><w:t xml:space=\"preserve\"> </w:t></w:r>"
+        + Run("<w:highlight w:val=\"yellow\"/>", "realce") + "<w:r><w:t xml:space=\"preserve\"> H</w:t></w:r>" + Run("<w:vertAlign w:val=\"subscript\"/>", "2")
+        + "<w:r><w:t xml:space=\"preserve\">O e x</w:t></w:r>" + Run("<w:vertAlign w:val=\"superscript\"/>", "2") + "<w:r><w:t xml:space=\"preserve\"> </w:t></w:r>"
+        + Run("<w:rStyle w:val=\"Forte\"/>", "forte") + Run("<w:b w:val=\"0\"/>", " &lt;script&gt;") + "</w:p>"
+        + Styled("Ttulo2", "Links")
+        + "<w:p><w:hyperlink r:id=\"rIdL1\"><w:r><w:t>site</w:t></w:r></w:hyperlink><w:r><w:t xml:space=\"preserve\"> </w:t></w:r>"
+        + "<w:hyperlink r:id=\"rIdL2\"><w:r><w:t>perigo</w:t></w:r></w:hyperlink><w:r><w:t xml:space=\"preserve\"> </w:t></w:r>"
+        + "<w:hyperlink w:anchor=\"_Toc1\"><w:r><w:t>interno</w:t></w:r></w:hyperlink><w:r><w:footnoteReference w:id=\"2\"/></w:r></w:p>"
+        + Item(0, "um") + Item(1, "um.a") + Item(1, "um.b") + Item(0, "dois")
+        + Styled("Citao", "Citação")
+        + Styled("Codigo", "linha 1") + Styled("Codigo", "  linha 2")
+        + "<w:p><w:pPr><w:pBdr><w:bottom w:val=\"single\"/></w:pBdr></w:pPr></w:p>"
+        + "<w:tbl><w:tblPr/><w:tr>" + Cell("<w:gridSpan w:val=\"2\"/>", "A") + Cell("<w:vMerge w:val=\"restart\"/>", "B") + "</w:tr>"
+        + "<w:tr>" + Cell("", "C") + Cell("", "D") + "<w:tc><w:tcPr><w:vMerge/></w:tcPr><w:p/></w:tc></w:tr></w:tbl>"
+        + "<w:p>" + Drawing("rIdI1", "logo &quot;x&quot;") + "</w:p>"
+        + "<w:p>" + Drawing("rIdI2") + "</w:p>"
+        + "<w:p/>",
+        Styles,
+        Numbering,
+        Footnotes,
+        [
+            ("rIdL1", "hyperlink", "https://exemplo.com/a?b=1&c=2", true),
+            ("rIdL2", "hyperlink", "javascript:alert(1)", true),
+            ("rIdI1", "image", "media/image1.png", false),
+            ("rIdI2", "image", "media/image2.emf", false),
+        ],
+        ("word/media/image1.png", System.Convert.FromBase64String(Png)),
+        ("word/media/image2.emf", Emf));
+
     [Fact]
     public void Arquivo_ouro_com_a_estrutura_do_documento()
     {
-        var docx = RichDocx(
-            Styled("Title", "Relatório &amp; \"Plano\"")
-            + Styled("Ttulo1", "Introdução")
-            + "<w:p><w:r><w:t xml:space=\"preserve\">Texto </w:t></w:r>" + Run("<w:b/>", "negrito") + "<w:r><w:t xml:space=\"preserve\"> e </w:t></w:r>"
-            + Run("<w:i/>", "itálico") + "<w:r><w:t xml:space=\"preserve\"> </w:t></w:r>" + Run("<w:strike/>", "tachado") + "<w:r><w:t xml:space=\"preserve\"> </w:t></w:r>"
-            + Run("<w:u w:val=\"single\"/>", "sub") + Run("<w:u w:val=\"single\"/>", "linhado") + "<w:r><w:t xml:space=\"preserve\"> </w:t></w:r>"
-            + Run("<w:highlight w:val=\"yellow\"/>", "realce") + "<w:r><w:t xml:space=\"preserve\"> H</w:t></w:r>" + Run("<w:vertAlign w:val=\"subscript\"/>", "2")
-            + "<w:r><w:t xml:space=\"preserve\">O e x</w:t></w:r>" + Run("<w:vertAlign w:val=\"superscript\"/>", "2") + "<w:r><w:t xml:space=\"preserve\"> </w:t></w:r>"
-            + Run("<w:rStyle w:val=\"Forte\"/>", "forte") + Run("<w:b w:val=\"0\"/>", " &lt;script&gt;") + "</w:p>"
-            + Styled("Ttulo2", "Links")
-            + "<w:p><w:hyperlink r:id=\"rIdL1\"><w:r><w:t>site</w:t></w:r></w:hyperlink><w:r><w:t xml:space=\"preserve\"> </w:t></w:r>"
-            + "<w:hyperlink r:id=\"rIdL2\"><w:r><w:t>perigo</w:t></w:r></w:hyperlink><w:r><w:t xml:space=\"preserve\"> </w:t></w:r>"
-            + "<w:hyperlink w:anchor=\"_Toc1\"><w:r><w:t>interno</w:t></w:r></w:hyperlink><w:r><w:footnoteReference w:id=\"2\"/></w:r></w:p>"
-            + Item(0, "um") + Item(1, "um.a") + Item(1, "um.b") + Item(0, "dois")
-            + Styled("Citao", "Citação")
-            + Styled("Codigo", "linha 1") + Styled("Codigo", "  linha 2")
-            + "<w:p><w:pPr><w:pBdr><w:bottom w:val=\"single\"/></w:pBdr></w:pPr></w:p>"
-            + "<w:tbl><w:tblPr/><w:tr>" + Cell("<w:gridSpan w:val=\"2\"/>", "A") + Cell("<w:vMerge w:val=\"restart\"/>", "B") + "</w:tr>"
-            + "<w:tr>" + Cell("", "C") + Cell("", "D") + "<w:tc><w:tcPr><w:vMerge/></w:tcPr><w:p/></w:tc></w:tr></w:tbl>"
-            + "<w:p>" + Drawing("rIdI1", "logo &quot;x&quot;") + "</w:p>"
-            + "<w:p>" + Drawing("rIdI2") + "</w:p>"
-            + "<w:p/>",
-            Styles,
-            Numbering,
-            Footnotes,
-            [
-                ("rIdL1", "hyperlink", "https://exemplo.com/a?b=1&c=2", true),
-                ("rIdL2", "hyperlink", "javascript:alert(1)", true),
-                ("rIdI1", "image", "media/image1.png", false),
-                ("rIdI2", "image", "media/image2.emf", false),
-            ],
-            ("word/media/image1.png", System.Convert.FromBase64String(Png)),
-            ("word/media/image2.emf", Emf));
+        var docx = Golden();
 
         var html = Html(docx);
 

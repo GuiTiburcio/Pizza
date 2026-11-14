@@ -64,9 +64,9 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
                 return ConversionResult.Failed(error);
             }
 
-            return parts is null
-                ? new ConversionResult(output.Commit(OutputNaming.Candidates(sourcePath, extension, suffix)), null)
-                : CommitParts(sourcePath, source, output.Handle, extension, parts);
+            return parts is not null ? CommitParts(sourcePath, source, output.Handle, extension, parts)
+                : extension == "md" ? CommitMarkdown(sourcePath, source, output.Handle)
+                : new ConversionResult(output.Commit(OutputNaming.Candidates(sourcePath, extension, suffix)), null);
         }
         catch (InvalidDataException)
         {
@@ -148,6 +148,112 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         {
             pending.ForEach(output => output.Dispose());
         }
+    }
+
+    /// <summary>
+    /// ADR-038: Markdown com as imagens ao lado. As imagens ganham primeiro os nomes do residente
+    /// ("relatorio - imagem 1.png"); o Markdown é copiado trocando só os marcadores por esses nomes e ganha o nome
+    /// por último. Se algo falhar, as partes já nomeadas são apagadas: ou saem todas, ou nenhuma.
+    /// </summary>
+    private ConversionResult CommitMarkdown(string sourcePath, SafeFileHandle source, SafeFileHandle bundle)
+    {
+        var directory = Path.GetDirectoryName(Path.GetFullPath(sourcePath))!;
+        var list = OutputBundle.ReadFormatted(bundle, ConversionResult.MaxParts, "md");
+        var pending = new List<PendingOutput>(list.Count);
+        var committed = new List<string>(list.Count);
+        try
+        {
+            pending.AddRange(PendingOutput.CreateMany(source, directory, journal, list.Count));
+            var zone = PendingOutput.ZoneOf(sourcePath);
+            pending.ForEach(output => output.WriteZone(zone));
+            for (var index = 1; index < list.Count; index++)
+            {
+                using var part = new BundlePartStream(bundle, list[index].Offset, list[index].Length);
+                using var image = Borrowed(pending[index].Handle);
+                part.CopyTo(image);
+            }
+
+            var images = pending.Skip(1).ToList();
+            var linkSafe = OutputNaming.LinkSafe(sourcePath);
+            PendingOutput.CommitAll(images, index => OutputNaming.Candidates(linkSafe, OutputBundle.Extension(list[index + 1].Format), $" - imagem {index + 1}"), committed);
+
+            using (var markdown = new BundlePartStream(bundle, list[0].Offset, list[0].Length))
+            using (var text = Borrowed(pending[0].Handle))
+            {
+                MarkdownMarkers.Replace(markdown, text, committed);
+            }
+
+            var name = pending[0].Commit(OutputNaming.Candidates(sourcePath, "md"));
+            committed.Insert(0, name);
+            return new ConversionResult(name, null, committed.Count);
+        }
+        catch
+        {
+            foreach (var name in committed)
+            {
+                File.Delete(Path.Combine(directory, name));
+            }
+
+            throw;
+        }
+        finally
+        {
+            pending.ForEach(output => output.Dispose());
+        }
+    }
+
+    /// <summary>Escrita no temporário sem tomar posse do handle, que o PendingOutput usa depois para dar o nome.</summary>
+    private static FileStream Borrowed(SafeFileHandle handle) =>
+        new(new SafeFileHandle(handle.DangerousGetHandle(), ownsHandle: false), FileAccess.Write, 1, isAsync: false);
+
+    /// <summary>Uma parte do pacote, lida direto do temporário do Worker.</summary>
+    private sealed class BundlePartStream(SafeFileHandle handle, long offset, long length) : Stream
+    {
+        private long _position;
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => length;
+
+        public override long Position
+        {
+            get => _position;
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset1, int count) => Read(buffer.AsSpan(offset1, count));
+
+        public override int Read(Span<byte> buffer)
+        {
+            var wanted = (int)Math.Min(buffer.Length, length - _position);
+            if (wanted <= 0)
+            {
+                return 0;
+            }
+
+            var read = RandomAccess.Read(handle, buffer[..wanted], offset + _position);
+            if (read <= 0)
+            {
+                throw new InvalidDataException("Pacote de saída cortado.");
+            }
+
+            _position += read;
+            return read;
+        }
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset1, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset1, int count) => throw new NotSupportedException();
     }
 
     private string? RunWorker(SafeFileHandle source, IReadOnlyList<SafeFileHandle> others, SafeFileHandle destination, string converterId, IReadOnlyDictionary<string, string> options, CancellationToken cancellation, ConversionControl? control)

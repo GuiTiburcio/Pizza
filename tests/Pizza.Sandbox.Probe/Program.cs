@@ -40,6 +40,23 @@ if (act >= 0)
 
             writer.Write(Done(jobId));
             return 0;
+        case "bad-markdown":
+            // Worker comprometido no Markdown (ADR-038): imagem válida, mas o texto cita a imagem 2, que não existe.
+            using (var destination = OpenHandle(Regex.Match(request, "\"dstHandle\":(\\d+)").Groups[1].Value, FileAccess.Write))
+            {
+                var markdown = System.Text.Encoding.UTF8.GetBytes("![[2]]");
+                destination.Write("PZB2"u8);
+                destination.Write(BitConverter.GetBytes(2));
+                destination.WriteByte(1);
+                destination.Write(BitConverter.GetBytes((long)markdown.Length));
+                destination.Write(markdown);
+                destination.WriteByte(2);
+                destination.Write(BitConverter.GetBytes(5L));
+                destination.Write([0x89, (byte)'P', (byte)'N', (byte)'G', 1]);
+            }
+
+            writer.Write(Done(jobId));
+            return 0;
         case "exit":
             return 1;
         case "crash":
