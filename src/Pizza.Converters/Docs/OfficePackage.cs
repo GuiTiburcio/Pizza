@@ -64,12 +64,38 @@ internal sealed class OfficePackage : IDisposable
         ?? throw new InvalidDataException("Pacote sem parte principal.");
 
     /// <summary>As relações internas de uma parte: Id, tipo e o nome da parte de destino já resolvido.</summary>
-    public IReadOnlyList<(string Id, string Type, string Target)> Relationships(string part)
+    public IReadOnlyList<(string Id, string Type, string Target)> Relationships(string part) =>
+        AllRelationships(part).Where(relation => !relation.External).Select(relation => (relation.Id, relation.Type, relation.Target)).ToList();
+
+    /// <summary>
+    /// As relações externas de uma parte (links e imagens vinculadas), pelo Id, com o destino como está no
+    /// arquivo. O Pizza nunca busca nada delas (SEC-50); quem decide o que vira link é o conversor.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> ExternalTargets(string part) =>
+        AllRelationships(part).Where(relation => relation.External).DistinctBy(relation => relation.Id).ToDictionary(relation => relation.Id, relation => relation.Target);
+
+    public bool Contains(string part) => _entries.ContainsKey(part);
+
+    /// <summary>Os bytes de uma parte (uma imagem, por exemplo), com o mesmo teto do XML.</summary>
+    public byte[] ReadBytes(string part)
+    {
+        if (!_entries.TryGetValue(part, out var entry))
+        {
+            throw new InvalidDataException("Parte ausente.");
+        }
+
+        using var stream = new CappedStream(entry.Open(), _maxPartBytes);
+        using var copy = new MemoryStream();
+        stream.CopyTo(copy);
+        return copy.ToArray();
+    }
+
+    private List<(string Id, string Type, string Target, bool External)> AllRelationships(string part)
     {
         var slash = part.LastIndexOf('/');
         var folder = slash < 0 ? "" : part[..(slash + 1)];
         var name = folder + "_rels/" + part[(slash + 1)..] + ".rels";
-        var list = new List<(string, string, string)>();
+        var list = new List<(string, string, string, bool)>();
         if (!_entries.ContainsKey(name))
         {
             return list;
@@ -79,11 +105,16 @@ internal sealed class OfficePackage : IDisposable
         while (reader.Read())
         {
             if (reader.NodeType == XmlNodeType.Element && reader.LocalName == "Relationship"
-                && reader.GetAttribute("TargetMode") != "External"
-                && reader.GetAttribute("Id") is { } id && reader.GetAttribute("Type") is { } type && reader.GetAttribute("Target") is { } target
-                && Resolve(folder, target) is { } resolved)
+                && reader.GetAttribute("Id") is { } id && reader.GetAttribute("Type") is { } type && reader.GetAttribute("Target") is { } target)
             {
-                list.Add((id, type, resolved));
+                if (reader.GetAttribute("TargetMode") == "External")
+                {
+                    list.Add((id, type, target, true));
+                }
+                else if (Resolve(folder, target) is { } resolved)
+                {
+                    list.Add((id, type, resolved, false));
+                }
             }
         }
 
