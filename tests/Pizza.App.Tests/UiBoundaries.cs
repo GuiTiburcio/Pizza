@@ -12,13 +12,21 @@ internal readonly record struct DiscFrame(
     MotionStyle Motion, int? PulseSlot, int Turn = 0, int TurnCount = 1, bool Choosing = false,
     string? StripTitle = null, (string Label, string? Detail)[]? Levels = null, int Level = 0, int? LevelHover = null,
     double SliceGlide = 0, double SliceSwell = 0, double LevelGlide = 0, double LevelSwell = 0,
-    bool[]? Unavailable = null, IReadOnlyList<(string Number, string Name)>? Order = null, bool Merging = false);
+    bool[]? Unavailable = null, IReadOnlyList<(string Number, string Name)>? Order = null, bool Merging = false,
+    bool RimHover = false);
 
 internal static class DiscRenderer
 {
-    public static void Prepare(int left, int top, int width, int height, int dpi) { }
+    public static void Prepare(int left, int top, int width, int height, int dpi, bool live = false) { }
     public static void Release() { }
     public static void Show(nint hwnd, int left, int top, DiscFrame frame) { }
+}
+
+internal static class MenuSettings
+{
+    public static double Scale { get; set; } = 1;
+    public static int Dpi(Pizza.App.Interop.Native.RECT work) => 96;
+    public static void Save() { }
 }
 
 internal static class Log

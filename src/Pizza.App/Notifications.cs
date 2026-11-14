@@ -399,11 +399,10 @@ internal static unsafe class Notifications
     public static void ReadWorkArea()
     {
         var monitor = MonitorFromPoint(default, MONITOR_DEFAULTTOPRIMARY);
-        uint dpiX, dpiY;
-        _dpi = GetDpiForMonitor(monitor, 0, &dpiX, &dpiY) == S_OK ? (int)dpiX : 96;
         var info = new MONITORINFO { CbSize = (uint)sizeof(MONITORINFO) };
         GetMonitorInfoW(monitor, &info);
         _area = info.RcWork;
+        _dpi = MenuSettings.Dpi(_area); // ADR-037: 1/15 da tela, como o disco.
     }
 
     [System.Runtime.InteropServices.UnmanagedCallersOnly]
