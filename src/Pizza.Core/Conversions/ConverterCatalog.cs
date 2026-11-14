@@ -193,6 +193,7 @@ public static class ConverterCatalog
 
         // ADR-034, Pizza Brotinho: sem diagramação, no Worker de sempre; cada planilha vira um CSV.
         new("document.txt", DocsTab, "TXT", "Só o texto", "txt", [".docx"], []),
+        new("document.html", DocsTab, "HTML", "Para a web", "html", [".docx"], []),
         new("document.csv", DocsTab, "CSV", "Tabela simples", "csv", [".xlsx"], [], Splits: true),
 
         // ADR-035: pelo Media Foundation, no Worker isolado. A fatia do próprio formato não aparece.
