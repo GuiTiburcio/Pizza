@@ -14,14 +14,8 @@ Passo a passo para quem vai usar o Pizza no próprio PC. Para implantar em vári
 
 1. Abra o [GitHub Actions do Pizza](https://github.com/GuiTiburcio/Pizza/actions/workflows/ci.yml), entre num build com ✓ verde e baixe o artefato **pizza-win-x64**. O GitHub pode pedir login.
 2. Crie uma pasta só para o Pizza, por exemplo `%LOCALAPPDATA%\Programs\Pizza`, e extraia **todo** o conteúdo nela. O `Pizza.exe` precisa ficar junto do Worker, das bibliotecas e dos sons.
-3. Abra o PowerShell **nessa pasta** e rode o comando abaixo. Ele deixa o Worker, que roda isolado (AppContainer), ler os próprios arquivos. Só concede leitura e execução, e só nessa pasta. Não rode na pasta Documentos nem na raiz de um disco.
-
-   ```powershell
-   icacls . /grant '*S-1-15-2-1:(OI)(CI)(RX)' /T /Q
-   ```
-
-4. Abra o `Pizza.exe`. O ícone aparece na bandeja, perto do relógio (às vezes em "Mostrar ícones ocultos").
-5. Teste: segure **Ctrl** e comece a arrastar uma imagem. Quando o menu aparecer, solte numa fatia ou num nível da faixa. O arquivo convertido aparece na mesma pasta do original.
+3. Abra o `Pizza.exe`. A inicialização concede leitura e execução da pasta do produto somente ao perfil AppContainer específico do Worker; não é necessário executar um comando que libere a pasta para todos os pacotes de aplicativos. O ícone aparece na bandeja, perto do relógio (às vezes em "Mostrar ícones ocultos").
+4. Teste: segure **Ctrl** e comece a arrastar uma imagem. Quando o menu aparecer, solte onde estiver, escolha o formato e confirme. O arquivo convertido aparece na mesma pasta do original.
 
 O uso completo (abas, roda, faixa de níveis, botão direito, teclado) está em [Como usar](USO.md).
 
@@ -36,7 +30,7 @@ A tela de Configuração chega na Fase 8. Por enquanto:
 | Animações | Seguem "Efeitos de animação" do Windows (Configurações › Acessibilidade › Efeitos visuais). Para forçar, crie a variável de ambiente do usuário `PIZZA_ANIMATIONS` com `always`, `windows` (padrão) ou `never`, e reabra o Pizza. |
 | Abrir com o Windows | Ainda não é automático. Crie um atalho para o `Pizza.exe` na pasta que abre com **Win + R** › `shell:startup`. |
 
-Os dados do Pizza ficam em `%LOCALAPPDATA%\Pizza`: só registros técnicos em `logs`, sem nome nem conteúdo de arquivo, guardados por até 30 dias.
+Em `%LOCALAPPDATA%\Pizza`, o Pizza mantém registros técnicos em `logs`, sem nome nem conteúdo de arquivo, guardados por até 30 dias, e o diário protegido dos temporários usados para limpeza segura. O histórico de conversões existe apenas durante a sessão. O motor opcional do Pizza Jumbo também usa seu diretório de AppContainer para arquivos de trabalho, perfis e um perfil-modelo; esse estado não deve ser confundido com os logs do Brotinho.
 
 ## Desinstalar a prévia
 
