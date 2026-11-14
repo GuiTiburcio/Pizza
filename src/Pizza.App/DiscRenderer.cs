@@ -264,11 +264,11 @@ internal static unsafe partial class DiscRenderer
 
         var hint = RoundedRect(DiscLayout.HintLeft, DiscLayout.HintTop, DiscLayout.HintWidth, DiscLayout.HintHeight, DiscLayout.HintHeight / 2f);
         Glass(g, hint, Math.Max(0.40, _glassAlpha), _palette.Border + 0.05);
-        var hint = frame.Slices.Count == 0
+        var hintText = frame.Slices.Count == 0
             ? "Role para trocar de aba · Esc cancela"
             : frame.Choosing ? "Clique no nível ou na fatia · Direito: opções · Esc cancela"
             : "Solte no nível ou na fatia · Role sobre a faixa para trocar o nível";
-        Text(g, hint, _regular, 12, StyleRegular, _palette.Ink, DiscLayout.HintLeft + 10, DiscLayout.HintTop, DiscLayout.HintWidth - 20, DiscLayout.HintHeight);
+        Text(g, hintText, _regular, 12, StyleRegular, _palette.Ink, DiscLayout.HintLeft + 10, DiscLayout.HintTop, DiscLayout.HintWidth - 20, DiscLayout.HintHeight);
     }
 
     private static double ScaleOf() => _scale;
