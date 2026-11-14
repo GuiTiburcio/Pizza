@@ -53,6 +53,7 @@ Decisão do mantenedor na etapa 3: o Brotinho lê DOCX e XLSX só com o .NET (`Z
 Decisões do mantenedor para o HTML, que o Markdown seguirá:
 
 - **Estrutura:** títulos, negrito, itálico, tachado, sublinhado, realce, sobrescrito e subscrito, listas aninhadas, tabelas (com as mesclas), links, notas de rodapé, citações, código e linha horizontal. Equações saem como texto até o PR das equações (LaTeX).
+- **Fidelidade estrutural (TST-02):** alternar marcadores e números no mesmo nível abre uma lista do tipo correspondente, inclusive em sublistas. Níveis sem item correspondente não criam itens vazios: a sublista fica dentro do último item pai existente. Quebras de linha e tabulações dentro de um parágrafo de código são preservadas, além das quebras entre parágrafos de código.
 - **Imagens:** PNG, JPEG, GIF e WEBP embutidas no próprio HTML (`data:`). TIFF vira PNG pelo conversor de imagens, com a mesma lista de decodificadores e os mesmos limites (SEC-41, SEC-45). EMF, WMF, BMP e formatos desconhecidos viram um aviso no lugar, pedindo para salvar como PNG no editor. O formato é conferido pelo conteúdo, não pela extensão. Imagem vinculada de fora do arquivo nunca é buscada (SEC-50).
 - **Links:** só `http`, `https` e `mailto`; o resto vira texto.
 - **Sem script:** a página leva a política de conteúdo `default-src 'none'; img-src data:; style-src 'unsafe-inline'`. O texto do documento é sempre escapado.

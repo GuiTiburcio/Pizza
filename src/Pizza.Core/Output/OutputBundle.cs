@@ -41,7 +41,7 @@ public static class OutputBundle
     /// Lê a lista de partes e recusa qualquer coisa fora do formato exato. Cada parte precisa começar como o
     /// formato da extensão: PDF (Dividir) ou CSV em UTF-8 com BOM (Brotinho, ADR-034).
     /// </summary>
-    public static IReadOnlyList<Part> Read(SafeFileHandle handle, int maxParts, string extension)
+    public static IReadOnlyList<Part> Read(SafeFileHandle handle, int maxParts, string extension, long maxOutputBytes = OutputBudget.MaxBytes)
     {
         ReadOnlySpan<byte> expected = extension switch
         {
@@ -51,17 +51,21 @@ public static class OutputBundle
         };
 
         var size = RandomAccess.GetLength(handle);
+        OutputBudget.Check(size, maxOutputBytes + HeaderBytes + ((long)LengthBytes * maxParts));
         var count = Header(handle, size, Magic, maxParts);
         var parts = new List<Part>(count);
         Span<byte> length = stackalloc byte[LengthBytes];
         Span<byte> start = stackalloc byte[expected.Length];
         long position = HeaderBytes;
+        long total = 0;
         for (var index = 0; index < count; index++)
         {
             Require(size - position >= LengthBytes && RandomAccess.Read(handle, length, position) == LengthBytes);
             position += LengthBytes;
             var partLength = BinaryPrimitives.ReadInt64LittleEndian(length);
             Require(partLength >= expected.Length && partLength <= size - position);
+            OutputBudget.Check(partLength, maxOutputBytes - total);
+            total += partLength;
             Require(RandomAccess.Read(handle, start, position) == expected.Length && start.SequenceEqual(expected));
             parts.Add(new Part(position, partLength));
             position += partLength;
@@ -73,16 +77,19 @@ public static class OutputBundle
 
     /// <summary>
     /// Lê um pacote com formatos (ADR-038). Para <c>md</c>: exatamente um Markdown em UTF-8 válido, o primeiro,
-    /// e depois só imagens que comecem pela assinatura do seu formato. Fora disso, nada é aceito.
+    /// e depois só imagens que comecem pela assinatura do seu formato. Fora disso, nada é aceito. O total passa
+    /// pelo mesmo orçamento de saída do PZB1.
     /// </summary>
-    public static IReadOnlyList<FormattedPart> ReadFormatted(SafeFileHandle handle, int maxParts, string extension)
+    public static IReadOnlyList<FormattedPart> ReadFormatted(SafeFileHandle handle, int maxParts, string extension, long maxOutputBytes = OutputBudget.MaxBytes)
     {
         Require(extension == "md");
         var size = RandomAccess.GetLength(handle);
+        OutputBudget.Check(size, maxOutputBytes + HeaderBytes + ((long)(1 + LengthBytes) * maxParts));
         var count = Header(handle, size, FormattedMagic, maxParts);
         var parts = new List<FormattedPart>(count);
         Span<byte> head = stackalloc byte[1 + LengthBytes];
         long position = HeaderBytes;
+        long total = 0;
         for (var index = 0; index < count; index++)
         {
             Require(size - position >= head.Length && RandomAccess.Read(handle, head, position) == head.Length);
@@ -90,6 +97,8 @@ public static class OutputBundle
             var format = (PartFormat)head[0];
             var partLength = BinaryPrimitives.ReadInt64LittleEndian(head[1..]);
             Require(partLength >= 0 && partLength <= size - position);
+            OutputBudget.Check(partLength, maxOutputBytes - total);
+            total += partLength;
             Require(index == 0 ? format == PartFormat.Markdown : format is PartFormat.Png or PartFormat.Jpeg or PartFormat.Gif or PartFormat.Webp);
             Require(format == PartFormat.Markdown ? IsUtf8(handle, position, partLength) : HasSignature(handle, position, partLength, format));
             parts.Add(new FormattedPart(position, partLength, format));
@@ -170,6 +179,25 @@ public static class OutputBundle
         }
     }
 
+    /// <summary>Cópia residente por blocos, com cancelamento e prazo conferidos pelo chamador.</summary>
+    internal static void CopyPart(SafeFileHandle source, Part part, SafeFileHandle destination, byte[] buffer, Action check)
+    {
+        for (long copied = 0; copied < part.Length;)
+        {
+            check();
+            var read = RandomAccess.Read(source, buffer.AsSpan(0, (int)Math.Min(buffer.Length, part.Length - copied)), part.Offset + copied);
+            if (read <= 0)
+            {
+                throw new InvalidDataException("Pacote de saída cortado.");
+            }
+
+            RandomAccess.Write(destination, buffer.AsSpan(0, read), copied);
+            copied += read;
+        }
+
+        check();
+    }
+
     /// <summary>Escreve as partes no destino do Worker, na quantidade anunciada; com formatos, no PZB2.</summary>
     public sealed class Writer
     {
@@ -177,6 +205,7 @@ public static class OutputBundle
         private readonly int _count;
         private readonly bool _formatted;
         private int _written;
+        private long _payload;
 
         public Writer(Stream destination, int count, bool formatted = false)
         {
@@ -192,22 +221,14 @@ public static class OutputBundle
         public void Add(ReadOnlySpan<byte> part)
         {
             Start(formatted: false);
-            Span<byte> length = stackalloc byte[LengthBytes];
-            BinaryPrimitives.WriteInt64LittleEndian(length, part.Length);
-            _destination.Write(length);
-            _destination.Write(part);
-            _written++;
+            Whole(part);
         }
 
         public void Add(PartFormat format, ReadOnlySpan<byte> part)
         {
             Start(formatted: true);
             _destination.WriteByte((byte)format);
-            Span<byte> length = stackalloc byte[LengthBytes];
-            BinaryPrimitives.WriteInt64LittleEndian(length, part.Length);
-            _destination.Write(length);
-            _destination.Write(part);
-            _written++;
+            Whole(part);
         }
 
         /// <summary>
@@ -248,6 +269,17 @@ public static class OutputBundle
             }
         }
 
+        private void Whole(ReadOnlySpan<byte> part)
+        {
+            OutputBudget.Check(part.Length, OutputBudget.MaxBytes - _payload);
+            Span<byte> length = stackalloc byte[LengthBytes];
+            BinaryPrimitives.WriteInt64LittleEndian(length, part.Length);
+            _destination.Write(length);
+            _destination.Write(part);
+            _payload += part.Length;
+            _written++;
+        }
+
         private void Streamed(Action writePart)
         {
             var start = _destination.Position;
@@ -255,6 +287,8 @@ public static class OutputBundle
             _destination.Write(length);
             writePart();
             var end = _destination.Position;
+            OutputBudget.Check(end - start - LengthBytes, OutputBudget.MaxBytes - _payload);
+            _payload += end - start - LengthBytes;
             BinaryPrimitives.WriteInt64LittleEndian(length, end - start - LengthBytes);
             _destination.Position = start;
             _destination.Write(length);

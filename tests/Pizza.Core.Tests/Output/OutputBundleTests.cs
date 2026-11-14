@@ -115,4 +115,74 @@ public sealed class OutputBundleTests : IDisposable
     {
         Assert.Throws<InvalidDataException>(() => Read(Written(Pdf("um")), extension: "exe"));
     }
+
+    [Fact]
+    public void Teto_soma_as_partes_sem_cobrar_o_envelope()
+    {
+        File.WriteAllBytes(_file, Written(Pdf("um"), Pdf("dois")));
+        using var handle = File.OpenHandle(_file);
+
+        Assert.Equal(2, OutputBundle.Read(handle, 10, "pdf", maxOutputBytes: 16).Count);
+        Assert.Throws<ConversionLimitException>(() => OutputBundle.Read(handle, 10, "pdf", maxOutputBytes: 15));
+    }
+
+    [Fact]
+    public void Comprimento_logico_real_acima_do_teto_e_recusado()
+    {
+        // O arquivo realmente tem esse comprimento: não é só um número inválido no cabeçalho.
+        File.WriteAllBytes(_file, Written(Pdf("um")));
+        using (var file = File.OpenWrite(_file))
+        {
+            file.SetLength(1024);
+        }
+
+        using var handle = File.OpenHandle(_file);
+        Assert.Throws<ConversionLimitException>(() => OutputBundle.Read(handle, 10, "pdf", maxOutputBytes: 16));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Copia_para_entre_blocos_quando_cancelada_ou_fora_do_prazo(bool timeout)
+    {
+        File.WriteAllBytes(_file, new byte[128]);
+        var target = _file + ".copy";
+        try
+        {
+            using var source = File.OpenHandle(_file);
+            using var destination = File.OpenHandle(target, FileMode.CreateNew, FileAccess.Write);
+            using var cancellation = new CancellationTokenSource();
+            var checks = 0;
+            void Check()
+            {
+                if (++checks == 2)
+                {
+                    if (timeout)
+                    {
+                        throw new TimeoutException();
+                    }
+
+                    cancellation.Cancel();
+                }
+
+                cancellation.Token.ThrowIfCancellationRequested();
+            }
+
+            var exception = Record.Exception(() => OutputBundle.CopyPart(source, new OutputBundle.Part(0, 128), destination, new byte[16], Check));
+            if (timeout)
+            {
+                Assert.IsType<TimeoutException>(exception);
+            }
+            else
+            {
+                Assert.IsType<OperationCanceledException>(exception);
+            }
+
+            Assert.Equal(16, RandomAccess.GetLength(destination));
+        }
+        finally
+        {
+            File.Delete(target);
+        }
+    }
 }

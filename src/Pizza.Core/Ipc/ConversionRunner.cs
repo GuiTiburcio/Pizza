@@ -22,6 +22,22 @@ public sealed record ConversionResult(string? OutputName, string? ErrorCode, int
 /// Conduz uma conversão de ponta a ponta. O residente abre os arquivos e entrega só os handles ao
 /// Worker (SEC-22); a saída só vira definitiva depois que o Worker encerrou (SEC-29).
 /// </summary>
+/// <summary>
+/// Worker que já respondeu ao "probe" do painel de áudio e espera o "convert" (adendo do ADR-035). Quem recebe é dono:
+/// passa para <see cref="ConversionRunner.Run"/> ou descarta, o que encerra o Worker.
+/// </summary>
+public sealed class ProbedWorker(SandboxedProcess worker, MediaInfo? info) : IDisposable
+{
+    private SandboxedProcess? _worker = worker;
+
+    /// <summary>Null quando o Worker recusou o arquivo; a conversão vai dizer o motivo.</summary>
+    public MediaInfo? Info { get; } = info;
+
+    internal SandboxedProcess? Take() => Interlocked.Exchange(ref _worker, null);
+
+    public void Dispose() => Take()?.Dispose();
+}
+
 public sealed class ConversionRunner(string workerPath, string profile, TempJournal journal, TimeSpan timeout, string workerArguments = "", string? desktop = null, Func<SandboxedProcess>? start = null)
 {
     /// <summary>Não é erro do Worker nem vai ao usuário: o cartão só some.</summary>
@@ -41,7 +57,72 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     /// <paramref name="moreSources"/>: Juntar (ADR-033), os outros arquivos na ordem do arraste. Também abertos só
     /// para leitura pelo residente e entregues como handles (SEC-15, SEC-31); a saída fica ao lado do primeiro.
     /// </summary>
-    public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null, CancellationToken cancellation = default, ConversionControl? control = null, string suffix = "", Func<int, int, string>? parts = null, IReadOnlyList<string>? moreSources = null)
+    /// <summary>
+    /// Adendo do ADR-035: abre a origem só para leitura, entrega o handle a um Worker novo e pede duração e formato.
+    /// O Worker fica esperando o "convert". Null se não deu para iniciar; sem resposta a tempo, o Worker é encerrado
+    /// e volta só o "—" (Info null, sem Worker).
+    /// </summary>
+    public ProbedWorker? Probe(string sourcePath, string converterId, TimeSpan wait)
+    {
+        SandboxedProcess? worker = null;
+        try
+        {
+            using var source = PendingOutput.OpenSource(sourcePath);
+            worker = start?.Invoke() ?? SandboxedProcess.Start(workerPath, profile, workerArguments, desktop);
+            var jobId = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(6));
+            IpcFraming.WriteFrame(worker.Input, IpcCodec.Serialize(new IpcMessage(IpcType.Probe, jobId)
+            {
+                ConverterId = converterId,
+                SrcHandle = worker.DuplicateIntoProcess(source, SandboxedProcess.GenericRead),
+            }));
+
+            var output = worker.Output;
+            var reply = Task.Run(() => ReadInfo(output, jobId));
+            if (!reply.Wait(wait) || reply.Result is not (true, var info))
+            {
+                // Sem resposta, ou resposta fora do contrato: este Worker não serve para converter.
+                worker.Dispose();
+                return null;
+            }
+
+            var probed = new ProbedWorker(worker, info);
+            worker = null;
+            return probed;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Win32Exception)
+        {
+            return null;
+        }
+        finally
+        {
+            worker?.Dispose();
+        }
+    }
+
+    /// <summary>Lê só a resposta ao probe: "info", ou "error" (o Worker continua vivo). Qualquer outra coisa reprova.</summary>
+    private static (bool Valid, MediaInfo? Info) ReadInfo(Stream output, string jobId)
+    {
+        try
+        {
+            if (IpcFraming.ReadFrame(output) is not { } frame || IpcCodec.Parse(frame) is not { } message || message.JobId != jobId)
+            {
+                return (false, null);
+            }
+
+            return message.Type switch
+            {
+                IpcType.Info => (true, message.Media),
+                IpcType.Error => (true, null),
+                _ => (false, null),
+            };
+        }
+        catch (Exception ex) when (ex is IpcProtocolException or IOException)
+        {
+            return (false, null);
+        }
+    }
+
+    public ConversionResult Run(string sourcePath, string converterId, string extension, IReadOnlyDictionary<string, string>? options = null, CancellationToken cancellation = default, ConversionControl? control = null, string suffix = "", Func<int, int, string>? parts = null, IReadOnlyList<string>? moreSources = null, ProbedWorker? reuse = null)
     {
         if (cancellation.IsCancellationRequested)
         {
@@ -58,15 +139,31 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
             // SEC-35: no Juntar, a saída leva a zona mais restritiva entre todos os arquivos.
             output.CopyZoneFrom([sourcePath, .. moreSources ?? []]);
 
-            var error = RunWorker(source, others, output.Handle, converterId, options ?? new Dictionary<string, string>(), cancellation, control);
+            var active = new Stopwatch();
+            var limit = OutputBudget.ContainerBytes(parts is not null);
+            var error = RunWorker(source, others, output.Handle, converterId, options ?? new Dictionary<string, string>(), cancellation, control, limit, active, reuse?.Take());
             if (error is not null)
             {
                 return ConversionResult.Failed(error);
             }
 
-            return parts is not null ? CommitParts(sourcePath, source, output.Handle, extension, parts)
-                : extension == "md" ? CommitMarkdown(sourcePath, source, output.Handle)
+            OutputBudget.Check(RandomAccess.GetLength(output.Handle), limit);
+            CheckFinalization(cancellation, active, control);
+            return parts is not null ? CommitParts(sourcePath, source, output.Handle, extension, parts, cancellation, active, control)
+                : extension == "md" ? CommitMarkdown(sourcePath, source, output.Handle, cancellation, active, control)
                 : new ConversionResult(output.Commit(OutputNaming.Candidates(sourcePath, extension, suffix)), null);
+        }
+        catch (ConversionLimitException)
+        {
+            return ConversionResult.Failed("LIMIT_EXCEEDED");
+        }
+        catch (OperationCanceledException)
+        {
+            return ConversionResult.Failed(Cancelled);
+        }
+        catch (TimeoutException)
+        {
+            return ConversionResult.Failed("TIMEOUT");
         }
         catch (InvalidDataException)
         {
@@ -96,6 +193,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         finally
         {
             others.ForEach(handle => handle.Dispose());
+            reuse?.Dispose();
         }
     }
 
@@ -103,7 +201,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     /// Copia cada parte do pacote para o seu próprio temporário e só então dá os nomes. Se um nome falhar, as
     /// partes já nomeadas são apagadas: ou saem todas, ou nenhuma (SEC-40, "nada pela metade").
     /// </summary>
-    private ConversionResult CommitParts(string sourcePath, SafeFileHandle source, SafeFileHandle bundle, string extension, Func<int, int, string> suffix)
+    private ConversionResult CommitParts(string sourcePath, SafeFileHandle source, SafeFileHandle bundle, string extension, Func<int, int, string> suffix, CancellationToken cancellation, Stopwatch active, ConversionControl? control)
     {
         var directory = Path.GetDirectoryName(Path.GetFullPath(sourcePath))!;
         var list = OutputBundle.Read(bundle, ConversionResult.MaxParts, extension);
@@ -117,22 +215,17 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
             var buffer = new byte[1024 * 1024];
             for (var index = 0; index < list.Count; index++)
             {
+                CheckFinalization(cancellation, active, control);
                 var (part, output) = (list[index], pending[index]);
                 output.WriteZone(zone);
-                for (long copied = 0; copied < part.Length;)
-                {
-                    var read = RandomAccess.Read(bundle, buffer.AsSpan(0, (int)Math.Min(buffer.Length, part.Length - copied)), part.Offset + copied);
-                    if (read <= 0)
-                    {
-                        throw new InvalidDataException("Pacote de saída cortado.");
-                    }
-
-                    RandomAccess.Write(output.Handle, buffer.AsSpan(0, read), copied);
-                    copied += read;
-                }
+                OutputBundle.CopyPart(bundle, part, output.Handle, buffer, () => CheckFinalization(cancellation, active, control));
             }
 
-            PendingOutput.CommitAll(pending, index => OutputNaming.Candidates(sourcePath, extension, suffix(index + 1, pending.Count)), committed);
+            PendingOutput.CommitAll(pending, index =>
+            {
+                CheckFinalization(cancellation, active, control);
+                return OutputNaming.Candidates(sourcePath, extension, suffix(index + 1, pending.Count));
+            }, committed);
             return new ConversionResult(committed[0], null, committed.Count);
         }
         catch
@@ -155,7 +248,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     /// ("relatorio - imagem 1.png"); o Markdown é copiado trocando só os marcadores por esses nomes e ganha o nome
     /// por último. Se algo falhar, as partes já nomeadas são apagadas: ou saem todas, ou nenhuma.
     /// </summary>
-    private ConversionResult CommitMarkdown(string sourcePath, SafeFileHandle source, SafeFileHandle bundle)
+    private ConversionResult CommitMarkdown(string sourcePath, SafeFileHandle source, SafeFileHandle bundle, CancellationToken cancellation, Stopwatch active, ConversionControl? control)
     {
         var directory = Path.GetDirectoryName(Path.GetFullPath(sourcePath))!;
         var list = OutputBundle.ReadFormatted(bundle, ConversionResult.MaxParts, "md");
@@ -166,16 +259,22 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
             pending.AddRange(PendingOutput.CreateMany(source, directory, journal, list.Count));
             var zone = PendingOutput.ZoneOf(sourcePath);
             pending.ForEach(output => output.WriteZone(zone));
+            var buffer = new byte[1024 * 1024];
             for (var index = 1; index < list.Count; index++)
             {
-                using var part = new BundlePartStream(bundle, list[index].Offset, list[index].Length);
-                using var image = Borrowed(pending[index].Handle);
-                part.CopyTo(image);
+                CheckFinalization(cancellation, active, control);
+                OutputBundle.CopyPart(bundle, new OutputBundle.Part(list[index].Offset, list[index].Length), pending[index].Handle, buffer, () => CheckFinalization(cancellation, active, control));
             }
 
             var images = pending.Skip(1).ToList();
             var linkSafe = OutputNaming.LinkSafe(sourcePath);
-            PendingOutput.CommitAll(images, index => OutputNaming.Candidates(linkSafe, OutputBundle.Extension(list[index + 1].Format), $" - imagem {index + 1}"), committed);
+            PendingOutput.CommitAll(images, index =>
+            {
+                CheckFinalization(cancellation, active, control);
+                return OutputNaming.Candidates(linkSafe, OutputBundle.Extension(list[index + 1].Format), $" - imagem {index + 1}");
+            }, committed);
+
+            CheckFinalization(cancellation, active, control);
 
             using (var markdown = new BundlePartStream(bundle, list[0].Offset, list[0].Length))
             using (var text = Borrowed(pending[0].Handle))
@@ -183,6 +282,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
                 MarkdownMarkers.Replace(markdown, text, committed);
             }
 
+            CheckFinalization(cancellation, active, control);
             var name = pending[0].Commit(OutputNaming.Candidates(sourcePath, "md"));
             committed.Insert(0, name);
             return new ConversionResult(name, null, committed.Count);
@@ -256,10 +356,39 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         public override void Write(byte[] buffer, int offset1, int count) => throw new NotSupportedException();
     }
 
-    private string? RunWorker(SafeFileHandle source, IReadOnlyList<SafeFileHandle> others, SafeFileHandle destination, string converterId, IReadOnlyDictionary<string, string> options, CancellationToken cancellation, ConversionControl? control)
+    internal void CheckFinalization(CancellationToken cancellation, Stopwatch active, ConversionControl? control)
+    {
+        cancellation.ThrowIfCancellationRequested();
+        if (active.Elapsed >= timeout)
+        {
+            throw new TimeoutException();
+        }
+
+        if (control?.Paused == true)
+        {
+            active.Stop();
+            try
+            {
+                while (control.Paused)
+                {
+                    cancellation.ThrowIfCancellationRequested();
+                    cancellation.WaitHandle.WaitOne(PauseCheckMs);
+                }
+            }
+            finally
+            {
+                active.Start();
+            }
+        }
+
+        cancellation.ThrowIfCancellationRequested();
+    }
+
+    private string? RunWorker(SafeFileHandle source, IReadOnlyList<SafeFileHandle> others, SafeFileHandle destination, string converterId, IReadOnlyDictionary<string, string> options, CancellationToken cancellation, ConversionControl? control, long limit, Stopwatch active, SandboxedProcess? probed)
     {
         // ADR-034: o motor de documentos pode chegar já aquecido; nenhum outro arquivo passou por ele.
-        using var worker = start?.Invoke() ?? SandboxedProcess.Start(workerPath, profile, workerArguments, desktop);
+        // Adendo do ADR-035: no áudio, o Worker que respondeu ao probe deste mesmo arquivo.
+        using var worker = probed ?? start?.Invoke() ?? SandboxedProcess.Start(workerPath, profile, workerArguments, desktop);
         var jobId = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(6));
 
         IpcFraming.WriteFrame(worker.Input, IpcCodec.Serialize(new IpcMessage(IpcType.Convert, jobId)
@@ -274,12 +403,18 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         // A leitura bloqueia; encerrar o Worker fecha o canal e a libera.
         var reply = Task.Run(() => ReadOutcome(worker.Output, jobId, control?.Progress));
         // ADR-029: pausar congela o Worker, e o prazo do SEC-43 conta só o tempo ativo.
-        var active = Stopwatch.StartNew();
+        active.Start();
         var suspended = false;
         try
         {
             while (!reply.Wait(PauseCheckMs, cancellation))
             {
+                if (RandomAccess.GetLength(destination) > limit)
+                {
+                    worker.Kill();
+                    return "LIMIT_EXCEEDED";
+                }
+
                 var paused = control?.Paused == true;
                 if (paused != suspended)
                 {
@@ -308,6 +443,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
             {
                 // A resposta já tinha saído quando a pausa chegou: o Worker precisa terminar.
                 worker.Resume();
+                active.Start();
             }
         }
         catch (OperationCanceledException)
@@ -320,18 +456,24 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         if (reply.Result is { } error)
         {
             worker.Kill();
-            return error;
+            return RandomAccess.GetLength(destination) > limit ? "LIMIT_EXCEEDED" : error;
         }
 
-        return AwaitExit(worker, cancellation);
+        return AwaitExit(worker, cancellation, destination, limit);
     }
 
     /// <summary>A saída só é confirmada com o Worker encerrado (SEC-29), e cancelar vale até esse instante (FR-29).</summary>
-    private static string? AwaitExit(SandboxedProcess worker, CancellationToken cancellation)
+    private static string? AwaitExit(SandboxedProcess worker, CancellationToken cancellation, SafeFileHandle destination, long limit)
     {
         var clock = Stopwatch.StartNew();
         while (!worker.WaitForExit(ExitPollMs))
         {
+            if (RandomAccess.GetLength(destination) > limit)
+            {
+                worker.Kill();
+                return "LIMIT_EXCEEDED";
+            }
+
             if (cancellation.IsCancellationRequested)
             {
                 worker.Kill();
@@ -345,7 +487,8 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
             }
         }
 
-        return cancellation.IsCancellationRequested ? Cancelled : null;
+        return RandomAccess.GetLength(destination) > limit ? "LIMIT_EXCEEDED"
+            : cancellation.IsCancellationRequested ? Cancelled : null;
     }
 
     /// <summary>Lê até o resultado. Tudo que vem do Worker é não confiável (SEC-13, SEC-24).</summary>

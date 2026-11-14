@@ -7,6 +7,22 @@ public static class ZoneIdentifier
 {
     private const string Prefix = "ZoneId=";
     private const int MaxZone = 4;
+    internal const int MaxBytes = 64 * 1024;
+
+    /// <summary>SEC-35/40: conta bytes durante a leitura, inclusive se o ADS crescer depois de aberto.</summary>
+    internal static int? Read(Stream source)
+    {
+        var bytes = new byte[MaxBytes + 1];
+        var count = source.ReadAtLeast(bytes, bytes.Length, throwOnEndOfStream: false);
+        if (count > MaxBytes)
+        {
+            throw new ConversionLimitException();
+        }
+
+        // Mantém UTF-8 e a detecção de BOM de ReadAllText, com texto de tamanho já limitado.
+        using var reader = new StreamReader(new MemoryStream(bytes, 0, count), detectEncodingFromByteOrderMarks: true);
+        return ParseZone(reader.ReadToEnd());
+    }
 
     public static int? ParseZone(string content)
     {

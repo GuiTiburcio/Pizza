@@ -121,7 +121,13 @@ public sealed class DocxMarkdownConverter(long maxPartBytes = OfficePackage.MaxP
                     var lines = new List<string>();
                     for (; index < blocks.Count && blocks[index] is ParagraphBlock { Kind: BlockKind.Code, List: null } line; index++)
                     {
-                        lines.Add(Clean(string.Concat(line.Inlines.OfType<TextRun>().Select(run => run.Text))));
+                        // Quebra de linha dentro do parágrafo de código também é linha nova do código.
+                        lines.Add(Clean(string.Concat(line.Inlines.Select(inline => inline switch
+                        {
+                            TextRun run => run.Text,
+                            LineBreak => "\n",
+                            _ => "",
+                        }))));
                     }
 
                     // A cerca precisa ser maior que qualquer sequência de crases do código.

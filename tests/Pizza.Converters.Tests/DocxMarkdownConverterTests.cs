@@ -155,6 +155,16 @@ public sealed class DocxMarkdownConverterTests : IDisposable
     }
 
     [Fact]
+    public void Quebra_dentro_do_codigo_vira_linha_nova()
+    {
+        var markdown = Markdown(RichDocx(
+            "<w:p><w:pPr><w:pStyle w:val=\"C\"/></w:pPr><w:r><w:t>if (a)</w:t><w:br/><w:t xml:space=\"preserve\">  b();</w:t></w:r></w:p>",
+            styles: "<w:style w:type=\"paragraph\" w:styleId=\"C\"><w:name w:val=\"Code\"/></w:style>"));
+
+        Assert.Equal("```\nif (a)\n  b();\n```\n", markdown);
+    }
+
+    [Fact]
     public void Quebra_de_linha_e_tabela_com_barra()
     {
         var markdown = Markdown(RichDocx(

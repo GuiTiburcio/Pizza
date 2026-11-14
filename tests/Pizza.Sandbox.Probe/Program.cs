@@ -28,6 +28,54 @@ if (act >= 0)
     var jobId = Regex.Match(request, "\"jobId\":\"([0-9a-f]{12})\"").Groups[1].Value;
     switch (args[act + 1])
     {
+        case "valid-bundle":
+            using (var destination = OpenHandle(Regex.Match(request, "\"dstHandle\":(\\d+)").Groups[1].Value, FileAccess.Write))
+            {
+                var bundle = new Pizza.Core.Output.OutputBundle.Writer(destination, 2);
+                bundle.Add("%PDF-primeiro"u8);
+                bundle.Add("%PDF-segundo"u8);
+                bundle.Finish();
+            }
+
+            writer.Write(Done(jobId));
+            return 0;
+        case "oversized-output":
+        case "oversized-bundle":
+        case "oversized-after-done":
+            var mode = args[act + 1];
+            if (mode == "oversized-after-done")
+            {
+                writer.Write(Done(jobId));
+            }
+
+            using (var destination = OpenHandle(Regex.Match(request, "\"dstHandle\":(\\d+)").Groups[1].Value, FileAccess.Write))
+            {
+                // Comprimento lógico grande, com poucos bytes físicos: o teste nunca grava 2 GiB.
+                if (!DeviceIoControl(destination.SafeFileHandle, 0x000900C4 /* FSCTL_SET_SPARSE */, 0, 0, 0, 0, out _, 0))
+                {
+                    throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+                }
+
+                var length = Pizza.Core.Output.OutputBudget.MaxBytes + 1;
+                if (mode == "oversized-bundle")
+                {
+                    destination.Write("PZB1"u8);
+                    destination.Write(BitConverter.GetBytes(1));
+                    destination.Write(BitConverter.GetBytes(length));
+                    destination.Write("%PDF-"u8);
+                    length += 16;
+                }
+
+                destination.SetLength(length);
+            }
+
+            if (mode == "oversized-after-done")
+            {
+                break;
+            }
+
+            writer.Write(Done(jobId));
+            return 0;
         case "bad-bundle":
             // Worker comprometido no Dividir: anuncia duas partes e entrega uma, que nem é PDF.
             using (var destination = OpenHandle(Regex.Match(request, "\"dstHandle\":(\\d+)").Groups[1].Value, FileAccess.Write))
@@ -147,6 +195,9 @@ static extern nint GetCurrentProcess();
 
 [DllImport("kernel32.dll")]
 static extern uint GetErrorMode();
+
+[DllImport("kernel32.dll", SetLastError = true)]
+static extern bool DeviceIoControl(SafeFileHandle file, uint code, nint input, uint inputSize, nint output, uint outputSize, out uint returned, nint overlapped);
 
 [DllImport("advapi32.dll")]
 static extern bool OpenProcessToken(nint process, uint access, out nint token);

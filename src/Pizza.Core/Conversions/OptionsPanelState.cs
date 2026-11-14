@@ -1,4 +1,5 @@
 using System.Globalization;
+using Pizza.Core.Ipc;
 
 namespace Pizza.Core.Conversions;
 
@@ -81,6 +82,7 @@ public sealed class OptionsPanelState
     private const int MaxDigits = 3;
     private const int BoxWidth = 64;
     private const int StepsBoxWidth = 96;
+    private const int SizeRowHeight = 28;
     private const int BoxHeight = 28;
     private const int BoxRaise = 6;
 
@@ -165,6 +167,12 @@ public sealed class OptionsPanelState
 
         // O espaço do aviso "Este formato não guarda metadados" só existe quando ele aparece (prancha 4d-1).
         top += (HasMetadataRow ? KeepRowHeight + (CanKeepMetadata ? 0 : NoticeHeight) : 0) + ButtonsGap;
+        SizeTop = top - ButtonsGap;
+        if (HasSizeRow)
+        {
+            // Adendo do ADR-035: o tamanho previsto fica numa linha logo acima dos botões.
+            top += SizeRowHeight;
+        }
         var cancelLeft = PanelWidth - Padding - (2 * ButtonWidth) - Gap;
         _stops.Add((PanelTargetKind.Cancel, 0));
         _targets.Add(new PanelTarget(PanelTargetKind.Cancel, 0, 0, new PanelRect(cancelLeft, top, cancelLeft + ButtonWidth, top + ButtonHeight)));
@@ -177,6 +185,20 @@ public sealed class OptionsPanelState
     public ConverterInfo Converter { get; }
 
     public PanelPage Page { get; }
+
+    /// <summary>Linha "Tamanho previsto" no painel principal do áudio.</summary>
+    public bool HasSizeRow => Page == PanelPage.Main && Converter.Tab == ConverterCatalog.AudioTab;
+
+    /// <summary>Topo da linha do tamanho previsto.</summary>
+    public int SizeTop { get; }
+
+    private MediaInfo? _info;
+
+    /// <summary>O "info" do Worker chegou; o tamanho passa a acompanhar as opções.</summary>
+    public void SetInfo(MediaInfo info) => _info = info;
+
+    /// <summary>Tamanho previsto com as opções de agora; "—" enquanto o Worker não respondeu (ou se não respondeu).</summary>
+    public string SizeText => _info is { } info && HasSizeRow ? AudioPlan.Estimate(Converter.Id, Options(), info).Text : "—";
 
     /// <summary>Caixinha de efeito: na página Volume, as linhas que têm "Desligado" no catálogo.</summary>
     public bool IsToggle(int row) => Page == PanelPage.Volume && EffectDefaults.ContainsKey(Rows[row].Key);
