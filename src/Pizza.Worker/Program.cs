@@ -5,6 +5,7 @@ using Pizza.Converters;
 using Pizza.Core.Conversions;
 using Pizza.Core.Diagnostics;
 using Pizza.Core.Ipc;
+using Pizza.Core.Output;
 
 namespace Pizza.Worker;
 
@@ -73,29 +74,47 @@ internal static class Program
 
         // O destino é fechado antes da resposta: depois de "done", o Worker não tem como escrever.
         using (var source = OpenHandle(request.SrcHandle!.Value, FileAccess.Read))
-        using (var destination = OpenHandle(request.DstHandle!.Value, FileAccess.Write, DestinationBufferBytes))
+        using (var file = OpenHandle(request.DstHandle!.Value, FileAccess.Write, DestinationBufferBytes))
+        using (var destination = new OutputBudgetStream(file, OutputBudget.ContainerBytes(info.PartSuffix(options) is not null)))
         {
-            if (request.MoreSrcHandles is not { } more)
+            try
             {
-                error = converter.Convert(source, destination, options, progress);
-            }
-            else if (converter is IMergeConverter merger)
-            {
-                // Juntar (ADR-033): as outras entradas também chegam só como handles, na ordem do arraste.
-                var sources = new List<Stream> { source };
-                try
+                if (request.MoreSrcHandles is not { } more)
                 {
-                    sources.AddRange(more.Select(handle => (Stream)OpenHandle(handle, FileAccess.Read)));
-                    error = merger.Convert(sources, destination, options, progress);
+                    error = converter.Convert(source, destination, options, progress);
                 }
-                finally
+                else if (converter is IMergeConverter merger)
                 {
-                    sources.Skip(1).ToList().ForEach(stream => stream.Dispose());
+                    // Juntar (ADR-033): as outras entradas também chegam só como handles, na ordem do arraste.
+                    var sources = new List<Stream> { source };
+                    try
+                    {
+                        sources.AddRange(more.Select(handle => (Stream)OpenHandle(handle, FileAccess.Read)));
+                        error = merger.Convert(sources, destination, options, progress);
+                    }
+                    finally
+                    {
+                        sources.Skip(1).ToList().ForEach(stream => stream.Dispose());
+                    }
+                }
+                else
+                {
+                    error = "UNSUPPORTED";
                 }
             }
-            else
+            catch (Exception) when (destination.Exceeded)
             {
-                error = "UNSUPPORTED";
+                error = "LIMIT_EXCEEDED";
+            }
+            catch (ConversionLimitException)
+            {
+                error = "LIMIT_EXCEEDED";
+            }
+
+            // NetVips e COM podem transformar a exceção de escrita em erro genérico.
+            if (destination.Exceeded)
+            {
+                error = "LIMIT_EXCEEDED";
             }
         }
 
