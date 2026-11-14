@@ -12,6 +12,7 @@ Não foi possível ler uma janela controlável da conversa do Claude; a conferê
 
 - Imagem, PDF, Documento e Áudio permanecem visíveis, com um único catálogo e filtragem por entrada.
 - Arquivo compatível abre a aba certa e mostra suas conversões. Arquivo incompatível numa outra aba mostra orientação imediatamente, sem fatias falsas nem conversão por clique/drop/teclado.
+- Numa aba vazia, o rodapé orienta a usar a roda para trocar de aba ou Esc para cancelar; não pede clique em fatias ou níveis inexistentes.
 - A faixa de níveis não adota um conversor que não aceite os arquivos selecionados.
 - Seleção usa a mesma geometria desenhada, inclusive hover, antes de interpretar a borda como movimento/redimensionamento.
 - A base preserva os limites de saída/MotW, pausa, cancelamento e rollback aprovados no PR #90 e o roteiro do Brotinho do PR #91.
