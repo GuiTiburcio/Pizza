@@ -19,6 +19,12 @@ public partial class AudioConverterTests
     [InlineData(24, 48000, 8192, 0)]
     [InlineData(16, 44100, 8192, 0)]
     [InlineData(24, 44100, 8192, 0)]
+    [InlineData(16, 48000, 4095, 0)]
+    [InlineData(16, 48000, 4096, 0)]
+    [InlineData(16, 48000, 4097, 0)]
+    [InlineData(24, 44100, 4095, 0)]
+    [InlineData(24, 44100, 4096, 0)]
+    [InlineData(24, 44100, 4097, 0)]
     [InlineData(16, 48000, 48001, 17)]
     [InlineData(24, 48000, 48001, 17)]
     [InlineData(16, 44100, 44101, 19)]
@@ -42,7 +48,10 @@ public partial class AudioConverterTests
         Assert.Equal(bits, Inspect(decoded).Bits);
         var expected = Pcm(source);
         var actual = Pcm(decoded);
-        Assert.True(expected.SequenceEqual(actual), $"PCM do fixture: origem={expected.Length} bytes, saída={actual.Length} bytes; codificado={Inspect(encoded)}; decodificado={Inspect(decoded)}");
+        if (!expected.SequenceEqual(actual))
+        {
+            Assert.Fail($"PCM do fixture: origem={expected.Length} bytes, saída={actual.Length} bytes; codificado={Inspect(encoded)}; decodificado={Inspect(decoded)}; leitura da origem={InputPcmTimeline(source)}; contêiner={M4aTimeline(encoded)}");
+        }
     }
 
     private static byte[] PatternWave(int bits, int rate, int frames, int trailingSilentFrames)
