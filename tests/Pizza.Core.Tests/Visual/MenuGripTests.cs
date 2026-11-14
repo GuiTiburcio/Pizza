@@ -28,10 +28,30 @@ public class MenuGripTests
     }
 
     [Fact]
-    public void Fatia_nivel_e_barra_de_abas_continuam_alvos()
+    public void Fatia_continua_alvo()
     {
         Assert.Equal(GripZone.Target, MenuGrip.Disc(DiscLayout.CenterX + 100, DiscLayout.CenterY, onTarget: true));
-        Assert.Equal(GripZone.Target, MenuGrip.Disc(DiscLayout.CenterX, DiscLayout.TabBarHeight / 2.0, onTarget: false));
+    }
+
+    [Fact]
+    public void Barra_de_abas_move_e_nivel_continua_alvo()
+    {
+        Assert.Equal(GripZone.Move, MenuGrip.Bar(onLevel: false));
+        Assert.Equal(GripZone.Target, MenuGrip.Bar(onLevel: true));
+    }
+
+    [Theory]
+    [InlineData(100, 0, ResizeDirection.Horizontal)]
+    [InlineData(-100, 5, ResizeDirection.Horizontal)]
+    [InlineData(0, 100, ResizeDirection.Vertical)]
+    [InlineData(3, -100, ResizeDirection.Vertical)]
+    [InlineData(70, 70, ResizeDirection.Diagonal)]
+    [InlineData(-70, -70, ResizeDirection.Diagonal)]
+    [InlineData(70, -70, ResizeDirection.AntiDiagonal)]
+    [InlineData(-70, 70, ResizeDirection.AntiDiagonal)]
+    public void Seta_de_tamanho_aponta_para_fora_do_centro(double dx, double dy, ResizeDirection expected)
+    {
+        Assert.Equal(expected, MenuGrip.Direction(dx, dy));
     }
 
     [Theory]

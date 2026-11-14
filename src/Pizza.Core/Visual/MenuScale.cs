@@ -1,13 +1,14 @@
 namespace Pizza.Core.Visual;
 
 /// <summary>
-/// ADR-037: o menu ocupa no máximo 1/15 da área útil do monitor, em pixels físicos, e tudo encolhe junto.
-/// O fator do usuário vai de 50% a 100% desse teto e vale para todos os menus.
+/// ADR-037: no padrão, o menu ocupa 1/15 da área útil do monitor, em pixels físicos, e tudo muda junto.
+/// O fator do usuário vai de 50% a 200% desse padrão e vale para todos os menus.
 /// </summary>
 public static class MenuScale
 {
     public const double Min = 0.5;
-    public const double Max = 1.0;
+    public const double Default = 1.0;
+    public const double Max = 2.0;
     public const int ScreenShare = 15;
     private const double WheelStep = 0.05;
 
@@ -22,7 +23,7 @@ public static class MenuScale
     public static int EffectiveDpi(int workWidth, int workHeight, double user) =>
         Math.Max(1, (int)Math.Round(96 * Fit(workWidth, workHeight, user)));
 
-    public static double Clamp(double user) => double.IsNaN(user) ? Max : Math.Clamp(user, Min, Max);
+    public static double Clamp(double user) => double.IsNaN(user) ? Default : Math.Clamp(user, Min, Max);
 
     /// <summary>Ctrl + roda: 5% por entalhe inteiro de 120.</summary>
     public static double Step(double user, int wheelDelta) => Clamp(user + (WheelStep * wheelDelta / 120.0));
