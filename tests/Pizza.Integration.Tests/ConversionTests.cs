@@ -161,6 +161,69 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
         Assert.StartsWith("FFD8FF", Convert.ToHexString(File.ReadAllBytes(Path.Combine(_folder, "fachada.jpg"))), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("oversized-output", false)]
+    [InlineData("oversized-bundle", true)]
+    [InlineData("oversized-after-done", false)]
+    public void Worker_hostil_nao_publica_saida_acima_do_teto(string mode, bool bundled)
+    {
+        var source = CopySample();
+        var before = SHA256.HashData(File.ReadAllBytes(source));
+        var result = Runner(fixture.ProbePath, "--act " + mode, TimeSpan.FromSeconds(60))
+            .Run(source, "image.pdf", "pdf", parts: bundled ? (part, count) => " - parte " + part : null);
+
+        Assert.Equal("LIMIT_EXCEEDED", result.ErrorCode);
+        Assert.Null(result.OutputName);
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
+        Assert.Single(Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }));
+    }
+
+    [Theory]
+    [InlineData(false, "CANCELLED")]
+    [InlineData(true, "TIMEOUT")]
+    public void Falha_ao_nomear_a_segunda_parte_remove_a_primeira(bool timeout, string expected)
+    {
+        var source = CopySample();
+        var before = SHA256.HashData(File.ReadAllBytes(source));
+        var firstWasPublished = false;
+        string Suffix(int part, int count)
+        {
+            if (part == 2)
+            {
+                firstWasPublished = File.Exists(Path.Combine(_folder, "fachada - parte 1.pdf"));
+                if (timeout)
+                {
+                    throw new TimeoutException();
+                }
+
+                throw new OperationCanceledException();
+            }
+
+            return " - parte " + part;
+        }
+
+        var result = Runner(fixture.ProbePath, "--act valid-bundle", TimeSpan.FromSeconds(60))
+            .Run(source, "image.pdf", "pdf", parts: Suffix);
+
+        Assert.True(firstWasPublished);
+        Assert.Equal(expected, result.ErrorCode);
+        Assert.Null(result.OutputName);
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
+        Assert.Single(Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }));
+    }
+
+    [Fact]
+    public void Metadados_acima_do_teto_param_antes_de_iniciar_o_worker()
+    {
+        var source = CopySample();
+        File.WriteAllText(source + ":Zone.Identifier", "ZoneId=3\r\n" + new string('x', 64 * 1024));
+        var result = new ConversionRunner("nao-existe.exe", SandboxFixture.Profile, new TempJournal(_folder + ".journal"), TimeSpan.FromSeconds(60))
+            .Run(source, "image.png", "png");
+
+        Assert.Equal("LIMIT_EXCEEDED", result.ErrorCode);
+        AssertNothingWritten();
+    }
+
     [Fact]
     public void Cancelar_para_o_worker_e_nao_deixa_resto()
     {

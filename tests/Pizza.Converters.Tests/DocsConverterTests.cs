@@ -179,6 +179,45 @@ public sealed class DocsConverterTests : IDisposable
         Assert.Equal(Bom + "\"'=HYPERLINK(\"\"x\"\")\";'+1;'-2;'@SUM(A1);'\tx;normal;-5;'=1+1\r\n", sheets[0]);
     }
 
+    public static IEnumerable<object[]> AlternativeCellValues()
+    {
+        (string Value, string Csv)[] values =
+        [
+            ("=1+1", "'=1+1"), ("+1", "'+1"), ("-2", "'-2"), ("@SUM(A1)", "'@SUM(A1)"),
+            ("\t1", "'\t1"), ("\r1", "\"'\r1\""), ("#DIV/0!", "#DIV/0!"),
+            ("=SUM(1;2)", "\"'=SUM(1;2)\""),
+        ];
+        foreach (var type in new[] { "e", "d", "unknown" })
+        {
+            foreach (var (value, csv) in values)
+            {
+                yield return [type, value, csv];
+            }
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(AlternativeCellValues))]
+    public void Tipos_alternativos_nao_contornam_o_literal_csv(string type, string value, string expected)
+    {
+        var xml = System.Security.SecurityElement.Escape(value)!.Replace("\r", "&#13;", StringComparison.Ordinal).Replace("\t", "&#9;", StringComparison.Ordinal);
+        var xlsx = Xlsx([$"<row><c t=\"{type}\"><v>{xml}</v></c></row>"]);
+        var (error, sheets) = Csv(xlsx);
+
+        Assert.Null(error);
+        Assert.Equal(Bom + expected + "\r\n", Assert.Single(sheets));
+    }
+
+    [Fact]
+    public void Numeros_negativos_validados_continuam_numeros()
+    {
+        var xlsx = Xlsx(["<row><c><v>-1E3</v></c><c t=\"n\"><v>-5</v></c><c t=\"b\"><v>1</v></c></row>"]);
+        var (error, sheets) = Csv(xlsx);
+
+        Assert.Null(error);
+        Assert.Equal(Bom + "-1000;-5;TRUE\r\n", Assert.Single(sheets));
+    }
+
     [Fact]
     public void Cada_planilha_vira_um_csv_na_ordem_da_pasta_de_trabalho_sem_graficos()
     {
