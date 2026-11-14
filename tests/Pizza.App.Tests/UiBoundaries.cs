@@ -20,11 +20,15 @@ internal static class DiscRenderer
     public static void Prepare(int left, int top, int width, int height, int dpi, bool live = false) { }
     public static void Release() { }
     public static void Show(nint hwnd, int left, int top, DiscFrame frame) { }
+    public static void PrepareTop(int left, int top, int width, int height, int dpi, bool live = false) { }
+    public static void ShowTop(nint hwnd, int left, int top, DiscFrame frame) { }
+    public static void ReleaseTop() { }
 }
 
 internal static class MenuSettings
 {
     public static double Scale { get; set; } = 1;
+    public static Pizza.Core.Visual.MenuPrefs Prefs { get; } = new();
     public static int Dpi(Pizza.App.Interop.Native.RECT work) => 96;
     public static void Save() { }
 }

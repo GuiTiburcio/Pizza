@@ -91,7 +91,10 @@ internal static unsafe partial class Native
     public const uint MONITOR_DEFAULTTONEAREST = 2;
     public static readonly nint DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4;
     public const int IDC_ARROW = 32512;
-    public const int IDC_SIZENWSE = 32642; // ADR-037: puxar a borda muda o tamanho.
+    public const int IDC_SIZENWSE = 32642; // ADR-037: puxar a borda muda o tamanho, seta para fora do centro.
+    public const int IDC_SIZENESW = 32643;
+    public const int IDC_SIZEWE = 32644;
+    public const int IDC_SIZENS = 32645;
     public const int IDC_SIZEALL = 32646; // ADR-037: segurar o vidro move a janela.
 
     // GDI
@@ -406,6 +409,9 @@ internal static unsafe partial class Native
 
     [LibraryImport("user32.dll")]
     public static partial nint SetCursor(nint cursor);
+
+    [LibraryImport("user32.dll")]
+    public static partial uint GetDoubleClickTime();
 
     [LibraryImport("user32.dll")]
     public static partial nint MonitorFromPoint(POINT pt, uint flags);

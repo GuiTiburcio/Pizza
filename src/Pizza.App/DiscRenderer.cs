@@ -220,6 +220,14 @@ internal static unsafe partial class DiscRenderer
 
     private static void Draw(nint g, DiscFrame frame)
     {
+        if (_drawTop)
+        {
+            // ADR-037: barra de abas e faixa na janela própria, nas mesmas medidas do WF-1.
+            DrawTabBar(g, frame);
+            DrawStrip(g, frame);
+            return;
+        }
+
         const float cx = DiscLayout.CenterX;
         const float cy = DiscLayout.CenterY;
 
@@ -253,8 +261,6 @@ internal static unsafe partial class DiscRenderer
         }
 
         DrawCenter(g, frame);
-        DrawTabBar(g, frame);
-        DrawStrip(g, frame);
 
         var hint = RoundedRect(DiscLayout.HintLeft, DiscLayout.HintTop, DiscLayout.HintWidth, DiscLayout.HintHeight, DiscLayout.HintHeight / 2f);
         Glass(g, hint, Math.Max(0.40, _glassAlpha), _palette.Border + 0.05);
