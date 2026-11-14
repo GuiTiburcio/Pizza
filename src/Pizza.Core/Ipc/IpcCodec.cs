@@ -12,7 +12,20 @@ public enum IpcType
     Progress,
     Done,
     Error,
+
+    /// <summary>Adendo do ADR-035: o painel de áudio pede duração e formato para o tamanho previsto.</summary>
+    Probe,
+
+    /// <summary>Resposta ao probe; o mesmo Worker fica esperando o convert.</summary>
+    Info,
 }
+
+/// <summary>
+/// Duração (ms), taxa, canais e bits por amostra da origem de áudio; bits 0 quando o codec não informa.
+/// <c>LosslessPercent</c>: tamanho do FLAC de uma amostra do próprio arquivo sobre o PCM dela, de 1 a 100; 0 quando
+/// não deu para medir.
+/// </summary>
+public sealed record MediaInfo(long DurationMs, int SampleRate, int Channels, int Bits, int LosslessPercent);
 
 /// <summary>Mensagem do canal entre residente e Worker (SPECS §10.3). Não existe campo para caminho de arquivo (SEC-15).</summary>
 public sealed record IpcMessage(IpcType Type, string JobId)
@@ -35,6 +48,8 @@ public sealed record IpcMessage(IpcType Type, string JobId)
     public long? ElapsedMs { get; init; }
 
     public string? Code { get; init; }
+
+    public MediaInfo? Media { get; init; }
 }
 
 public sealed class IpcProtocolException(string message) : Exception(message);
@@ -65,7 +80,12 @@ public static partial class IpcCodec
         [IpcType.Progress] = ["percent"],
         [IpcType.Done] = ["elapsedMs"],
         [IpcType.Error] = ["code"],
+        [IpcType.Probe] = ["converterId", "srcHandle"],
+        [IpcType.Info] = ["durationMs", "sampleRate", "channels", "bits", "losslessPercent"],
     };
+
+    // Limites do "info": até 100 horas, taxas e canais que o Media Foundation trata.
+    private const long MaxDurationMs = 100L * 3600 * 1000;
 
     // Só o Juntar manda; nas outras conversões o campo não aparece.
     private static readonly Dictionary<IpcType, string[]> OptionalFields = new()
@@ -218,6 +238,16 @@ public static partial class IpcCodec
         IpcType.Progress => new IpcMessage(type, jobId) { Percent = (int)Number(values, "percent", 0, 100) },
         IpcType.Done => new IpcMessage(type, jobId) { ElapsedMs = Number(values, "elapsedMs", 0, long.MaxValue) },
         IpcType.Error => new IpcMessage(type, jobId) { Code = OneOf(values, "code", ErrorCodes) },
+        IpcType.Probe => new IpcMessage(type, jobId) { ConverterId = ConverterId(values), SrcHandle = Handle(values, "srcHandle") },
+        IpcType.Info => new IpcMessage(type, jobId)
+        {
+            Media = new MediaInfo(
+                Number(values, "durationMs", 0, MaxDurationMs),
+                (int)Number(values, "sampleRate", 1, 768_000),
+                (int)Number(values, "channels", 1, 32),
+                (int)Number(values, "bits", 0, 64),
+                (int)Number(values, "losslessPercent", 0, 100)),
+        },
         _ => new IpcMessage(type, jobId),
     };
 
@@ -268,6 +298,8 @@ public static partial class IpcCodec
         "progress" => IpcType.Progress,
         "done" => IpcType.Done,
         "error" => IpcType.Error,
+        "probe" => IpcType.Probe,
+        "info" => IpcType.Info,
         _ => throw new IpcProtocolException("Tipo desconhecido."),
     };
 
@@ -315,6 +347,19 @@ public static partial class IpcCodec
 
             case IpcType.Error:
                 writer.WriteString("code", message.Code);
+                break;
+
+            case IpcType.Probe:
+                writer.WriteString("converterId", message.ConverterId);
+                writer.WriteNumber("srcHandle", message.SrcHandle!.Value);
+                break;
+
+            case IpcType.Info:
+                writer.WriteNumber("durationMs", message.Media!.DurationMs);
+                writer.WriteNumber("sampleRate", message.Media.SampleRate);
+                writer.WriteNumber("channels", message.Media.Channels);
+                writer.WriteNumber("bits", message.Media.Bits);
+                writer.WriteNumber("losslessPercent", message.Media.LosslessPercent);
                 break;
         }
     }

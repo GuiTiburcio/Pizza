@@ -158,6 +158,11 @@ internal static unsafe partial class Overlay
             var (centerX, centerY) = DiscCenter();
             HideWindow();
             OptionsPanel.Show(dropped.Converter, Path.GetFileName(dropped.Paths[0]), centerX, centerY);
+            if (dropped.Converter.Tab == Pizza.Core.Conversions.ConverterCatalog.AudioTab && dropped.Paths.Count == 1)
+            {
+                // Adendo do ADR-035: o tamanho previsto chega pelo Worker do próprio arquivo, sem travar o painel.
+                OptionsPanel.ProbeAudio(dropped.Paths[0], dropped.Converter);
+            }
         }
         else
         {

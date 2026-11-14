@@ -532,7 +532,7 @@ Todas têm `v` (versão do protocolo), `type` e `jobId` (12 hex aleatórios). Ta
 | `convert` | App → Worker | `converterId`, `srcHandle`, `moreSrcHandles?`, `dstHandle`, `options`, `password?` | `converterId` na lista do registro; `options` validadas pelo `OptionSchema`; handles são números de handles já duplicados. `moreSrcHandles` só no Juntar (ADR-033): lista de 1 a 499 handles, na ordem do arraste |
 | `cancel` | App → Worker | — | `jobId` existente |
 | `probe` | App → Worker | `converterId`, `srcHandle` | Só na aba Áudio (ADR-035): pede a duração e o formato para o tamanho previsto |
-| `info` | Worker → App | `durationMs`, `sampleRate`, `channels`, `bits` | Inteiros positivos |
+| `info` | Worker → App | `durationMs`, `sampleRate`, `channels`, `bits`, `losslessPercent` | Inteiros dentro da faixa; `losslessPercent` de 0 a 100 (0 = não medido) |
 | `progress` | Worker → App | `percent` | 0–100 |
 | `done` | Worker → App | `elapsedMs` | — |
 | `error` | Worker → App | `code` | Um dos códigos da §10.4 |

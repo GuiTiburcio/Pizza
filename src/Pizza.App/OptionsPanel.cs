@@ -14,6 +14,9 @@ internal static unsafe class OptionsPanel
 {
     private const string ClassName = "PizzaPanel";
     private const nuint TimerBubble = 1;
+
+    // Adendo do ADR-035: o "info" do probe chegou (Conversion.Probe).
+    private const uint WmProbeInfo = WM_APP + 1;
     private const uint AnimationMs = 10;
 
     private static PanelPalette _palette = PanelPalette.Light;
@@ -86,6 +89,8 @@ internal static unsafe class OptionsPanel
         SetWindowPos(_window, HWND_TOPMOST, _left, _top, width, height, SWP_SHOWWINDOW);
         TakeFocus(_window);
     }
+
+    public static void ProbeAudio(string path, ConverterInfo converter) => Conversion.Probe(path, converter, _window, WmProbeInfo);
 
     /// <summary>Fecha sem avisar o overlay: é ele quem está pedindo. A cópia da tela é zerada aqui (ADR-023).</summary>
     public static void Close()
@@ -179,6 +184,15 @@ internal static unsafe class OptionsPanel
                 else
                 {
                     Scroll(-notches * 44);
+                }
+
+                return 0;
+
+            case WmProbeInfo:
+                if ((_main ?? _state) is { } owner && Conversion.ProbeInfo() is { } info)
+                {
+                    owner.SetInfo(info);
+                    Render();
                 }
 
                 return 0;
@@ -326,6 +340,12 @@ internal static unsafe class OptionsPanel
         }
 
         var options = action == PanelAction.Convert ? _state!.Options() : null;
+        if (options is null)
+        {
+            // Cancelou: o Worker que respondeu ao probe não vai converter.
+            Conversion.DiscardProbe();
+        }
+
         Close();
         Overlay.OnPanelClosed(options);
     }

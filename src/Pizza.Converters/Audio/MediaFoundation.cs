@@ -172,6 +172,13 @@ internal static unsafe partial class MediaFoundation
         return new Span<byte>(data, (int)length);
     }
 
+    public static uint TotalLength(nint sample)
+    {
+        uint length;
+        Check(((delegate* unmanaged[Stdcall]<nint, uint*, int>)Slot(sample, 45))(sample, &length));
+        return length;
+    }
+
     public static void Unlock(nint buffer) => Check(((delegate* unmanaged[Stdcall]<nint, int>)Slot(buffer, 4))(buffer));
 
     /// <summary>Duração em unidades de 100 ns, ou 0 quando o arquivo não informa.</summary>
