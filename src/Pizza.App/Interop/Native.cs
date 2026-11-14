@@ -15,6 +15,8 @@ internal static unsafe partial class Native
     public const uint WM_TIMER = 0x0113;
     public const uint WM_APP = 0x8000;
     public const int WM_CONTEXTMENU = 0x007B;
+    public const int WM_SETCURSOR = 0x0020;
+    public const int WM_CAPTURECHANGED = 0x0215;
     public const int WM_MOUSEMOVE = 0x0200;
     public const int WM_LBUTTONDOWN = 0x0201;
     public const int WM_LBUTTONUP = 0x0202;
@@ -89,6 +91,8 @@ internal static unsafe partial class Native
     public const uint MONITOR_DEFAULTTONEAREST = 2;
     public static readonly nint DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4;
     public const int IDC_ARROW = 32512;
+    public const int IDC_SIZENWSE = 32642; // ADR-037: puxar a borda muda o tamanho.
+    public const int IDC_SIZEALL = 32646; // ADR-037: segurar o vidro move a janela.
 
     // GDI
     public const uint SPI_GETCLIENTAREAANIMATION = 0x1042;
@@ -401,6 +405,9 @@ internal static unsafe partial class Native
     public static partial nint LoadCursorW(nint instance, nint name);
 
     [LibraryImport("user32.dll")]
+    public static partial nint SetCursor(nint cursor);
+
+    [LibraryImport("user32.dll")]
     public static partial nint MonitorFromPoint(POINT pt, uint flags);
 
     [LibraryImport("user32.dll")]
@@ -408,10 +415,6 @@ internal static unsafe partial class Native
 
     [LibraryImport("user32.dll")]
     public static partial int SetProcessDpiAwarenessContext(nint context);
-
-    // shcore
-    [LibraryImport("shcore.dll")]
-    public static partial int GetDpiForMonitor(nint monitor, int type, uint* dpiX, uint* dpiY);
 
     // gdi32
     [LibraryImport("user32.dll")]

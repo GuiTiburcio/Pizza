@@ -31,7 +31,8 @@ internal readonly record struct DiscFrame(
     double LevelSwell = 0,
     bool[]? Unavailable = null,
     IReadOnlyList<(string Number, string Name)>? Order = null,
-    bool Merging = false);
+    bool Merging = false,
+    bool RimHover = false);
 
 /// <summary>
 /// Desenha o menu no visual do Dossiê (DES-1, WF-1, WF-2) com GDI+ e transparência por pixel (ADR-023).
@@ -102,6 +103,7 @@ internal static unsafe partial class DiscRenderer
     private static int _height;
     private static double _glassAlpha;
     private static double _scale = 1;
+    private static bool _live;
 
     public static void Start()
     {
@@ -112,9 +114,11 @@ internal static unsafe partial class DiscRenderer
     }
 
     /// <summary>Prepara a janela de desenho e, com a transparência ligada, o vidro desfocado.</summary>
-    public static void Prepare(int left, int top, int width, int height, int dpi)
+    /// <param name="live">ADR-037: movendo ou redimensionando, a janela fica só translúcida, sem copiar a tela.</param>
+    public static void Prepare(int left, int top, int width, int height, int dpi, bool live = false)
     {
         Release();
+        _live = live && TransparencyEnabled();
         _width = width;
         _scale = dpi / 96.0;
         _height = height;
@@ -124,7 +128,7 @@ internal static unsafe partial class DiscRenderer
         _fringes = true;
         _slowFrames = 0;
         _glassAlpha = _palette.MinimumVeil;
-        if (!TransparencyEnabled())
+        if (_live || !TransparencyEnabled())
         {
             return;
         }
@@ -229,6 +233,13 @@ internal static unsafe partial class DiscRenderer
 
         Glass(g, Ellipse(cx, cy, 190), _glassAlpha, _palette.Border);
         Arc(g, _palette.Sheen, 1.5f, cx, cy, 186, -160, 81);
+        if (frame.RimHover)
+        {
+            // ADR-037: a borda só se destaca com o cursor sobre ela; puxar muda o tamanho de tudo.
+            var rim = Ellipse(cx, cy, 189);
+            Stroke(g, _palette == Dark ? Argb(255, 185, 164, 255) : Argb(255, 91, 51, 214), 4, rim);
+            GdipDeletePath(rim);
+        }
 
         for (var slot = 0; slot < frame.Slices.Count; slot++)
         {
