@@ -55,7 +55,7 @@ public partial class AudioConverterTests
         return duration;
     }
 
-    private static string M4aTimeline(byte[] data)
+    private static string M4aTimeline(byte[] data, (uint Frames, uint Rate)? valid = null)
     {
         if (data.Length < 8 || !data.AsSpan(4, 4).SequenceEqual("ftyp"u8))
         {
@@ -63,6 +63,7 @@ public partial class AudioConverterTests
         }
 
         var result = new List<string>();
+        uint movieScale = 0;
         Visit(0, data.Length, 0);
         return string.Join("; ", result);
 
@@ -101,10 +102,26 @@ public partial class AudioConverterTests
                     var scaleOffset = payload + (version == 0 ? 12 : 20);
                     Assert.True(stop - scaleOffset >= (version == 0 ? 8 : 12));
                     var scale = BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(scaleOffset, 4));
+                    if (name == "mvhd") movieScale = scale;
+                    if (valid is { } length)
+                    {
+                        var corrected = (ulong)length.Frames * scale / length.Rate;
+                        if (version == 0) BinaryPrimitives.WriteUInt32BigEndian(data.AsSpan(scaleOffset + 4, 4), checked((uint)corrected));
+                        else BinaryPrimitives.WriteUInt64BigEndian(data.AsSpan(scaleOffset + 4, 8), corrected);
+                    }
                     var duration = version == 0
                         ? BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(scaleOffset + 4, 4))
                         : BinaryPrimitives.ReadUInt64BigEndian(data.AsSpan(scaleOffset + 4, 8));
                     result.Add($"{name}: escala={scale}, duração={duration}");
+                }
+                else if (name == "tkhd" && valid is { } length)
+                {
+                    Assert.NotEqual(0U, movieScale);
+                    var version = data[payload];
+                    var durationOffset = payload + (version == 0 ? 20 : 28);
+                    var corrected = (ulong)length.Frames * movieScale / length.Rate;
+                    if (version == 0) BinaryPrimitives.WriteUInt32BigEndian(data.AsSpan(durationOffset, 4), checked((uint)corrected));
+                    else BinaryPrimitives.WriteUInt64BigEndian(data.AsSpan(durationOffset, 8), corrected);
                 }
                 else if (name == "stts")
                 {
@@ -122,6 +139,13 @@ public partial class AudioConverterTests
                     }
 
                     result.Add($"stts: pacotes={packets}, duração={ticks}");
+                    if (valid is { } length)
+                    {
+                        // Experimento limitado a um pacote: sem redimensionar tabelas ou mudar o áudio codificado.
+                        Assert.Equal(1UL, packets);
+                        Assert.Equal(1U, count);
+                        BinaryPrimitives.WriteUInt32BigEndian(data.AsSpan(payload + 12, 4), length.Frames);
+                    }
                 }
 
                 position = stop;
