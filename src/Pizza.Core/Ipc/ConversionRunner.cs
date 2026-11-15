@@ -40,6 +40,9 @@ public sealed class ProbedWorker(SandboxedProcess worker, MediaInfo? info) : IDi
 
 public sealed class ConversionRunner(string workerPath, string profile, TempJournal journal, TimeSpan timeout, string workerArguments = "", string? desktop = null, Func<SandboxedProcess>? start = null)
 {
+    /// <summary>Diagnóstico de testes: somente fase fixa e código de saída, sem dados do arquivo (PRIV-16).</summary>
+    internal Action<string, int?>? ObserveFailure { get; init; }
+
     /// <summary>Não é erro do Worker nem vai ao usuário: o cartão só some.</summary>
     public const string Cancelled = "CANCELLED";
 
@@ -342,6 +345,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
 
         if (reply.Result is { } error)
         {
+            ObserveFailure?.Invoke("reply", worker.WaitForExit(0) ? worker.ExitCode : null);
             worker.Kill();
             return RandomAccess.GetLength(destination) > limit ? "LIMIT_EXCEEDED" : error;
         }
@@ -350,7 +354,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     }
 
     /// <summary>A saída só é confirmada com o Worker encerrado (SEC-29), e cancelar vale até esse instante (FR-29).</summary>
-    private static string? AwaitExit(SandboxedProcess worker, CancellationToken cancellation, SafeFileHandle destination, long limit)
+    private string? AwaitExit(SandboxedProcess worker, CancellationToken cancellation, SafeFileHandle destination, long limit)
     {
         var clock = Stopwatch.StartNew();
         while (!worker.WaitForExit(ExitPollMs))
@@ -369,6 +373,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
 
             if (clock.Elapsed >= ExitGrace)
             {
+                ObserveFailure?.Invoke("exit-grace", worker.WaitForExit(0) ? worker.ExitCode : null);
                 worker.Kill();
                 return "WORKER_CRASHED";
             }

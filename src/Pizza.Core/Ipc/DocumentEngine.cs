@@ -24,6 +24,9 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
     /// <summary>Quanto o motor de reserva espera por um documento antes de sair sozinho.</summary>
     public TimeSpan SpareIdle { get; init; } = TimeSpan.FromSeconds(60);
 
+    /// <summary>Diagnóstico interno de testes; não entra em logs nem no protocolo IPC.</summary>
+    internal Action<string, int?>? ObserveFailure { get; set; }
+
     private readonly Lock _gate = new();
     private Spare? _spare;
     private bool _granted;
@@ -89,7 +92,10 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
 
         try
         {
-            var runner = new ConversionRunner(docsPath, profile, journal, timeout, start: () => engine.Process);
+            var runner = new ConversionRunner(docsPath, profile, journal, timeout, start: () => engine.Process)
+            {
+                ObserveFailure = ObserveFailure,
+            };
             return runner.Run(sourcePath, converterId, extension, cancellation: cancellation, control: control);
         }
         finally
