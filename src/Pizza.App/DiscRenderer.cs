@@ -264,7 +264,10 @@ internal static unsafe partial class DiscRenderer
 
         var hint = RoundedRect(DiscLayout.HintLeft, DiscLayout.HintTop, DiscLayout.HintWidth, DiscLayout.HintHeight, DiscLayout.HintHeight / 2f);
         Glass(g, hint, Math.Max(0.40, _glassAlpha), _palette.Border + 0.05);
-        var hintText = frame.Slices.Count == 0
+        var incompatible = frame.Slices.Count > 0 && frame.FileName is { } name
+            && !frame.Slices.Any(slice => RadialMenu.Fits(slice, name));
+        var hintText = incompatible ? RadialMenu.EmptyMessage(frame.TargetTab)
+            : frame.Slices.Count == 0
             ? "Role para trocar de aba · Esc cancela"
             : frame.Choosing ? "Clique no nível ou na fatia · Direito: opções · Esc cancela"
             : "Solte no nível ou na fatia · Role sobre a faixa para trocar o nível";

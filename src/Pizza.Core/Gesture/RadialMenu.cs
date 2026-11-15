@@ -79,11 +79,11 @@ public static class RadialMenu
 
     /// <summary>Fatias de uma volta da aba, sem descartar os formatos das voltas seguintes (ADR-024).</summary>
     public static IReadOnlyList<ConverterInfo> Slices(int tab, string path, int turn = 0) =>
-        Fitting(path).Where(converter => converter.Tab == tab).Skip(turn * SlotCount).Take(SlotCount).ToArray();
+        Shown(tab, path).Skip(turn * SlotCount).Take(SlotCount).ToArray();
 
     public static IReadOnlyList<MenuPage> Pages(string path) =>
         Enumerable.Range(0, MenuTabs.Names.Count)
-            .SelectMany(tab => Enumerable.Range(0, Math.Max(1, (Fitting(path).Count(converter => converter.Tab == tab) + SlotCount - 1) / SlotCount))
+            .SelectMany(tab => Enumerable.Range(0, Math.Max(1, (Shown(tab, path).Count() + SlotCount - 1) / SlotCount))
                 .Select(turn => new MenuPage(tab, turn))).ToArray();
 
     /// <summary>FR-03: o menu abre na aba do tipo do arquivo, a primeira com alguma conversão para ele.</summary>
@@ -113,5 +113,12 @@ public static class RadialMenu
         ConverterCatalog.All.Where(converter => !converter.DocumentEngine || ConverterCatalog.DocumentEngineAvailable);
 
     private static IEnumerable<ConverterInfo> Fitting(string path) => Installed.Where(converter => Fits(converter, path));
+
+    /// <summary>Sem conversão para a entrada nesta aba, apresenta as funções instaladas para descoberta.</summary>
+    private static IEnumerable<ConverterInfo> Shown(int tab, string path)
+    {
+        var fitting = Fitting(path).Where(converter => converter.Tab == tab).ToArray();
+        return fitting.Length > 0 ? fitting : Installed.Where(converter => converter.Tab == tab);
+    }
 
 }

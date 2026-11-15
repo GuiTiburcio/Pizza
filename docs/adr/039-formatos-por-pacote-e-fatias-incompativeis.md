@@ -51,6 +51,17 @@ Regressões: JPG em PDF/Documento/Áudio, PDF e DOCX em Imagem; página de cada 
 
 ## Alternativas descartadas
 
+### Revisão do mantenedor em 14/11/2026 — descoberta das funções
+
+Após testar o candidato c1a492c, o mantenedor confirmou que a orientação funciona e pediu manter também as fatias das outras abas, para mostrar o que o Pizza oferece. Esta revisão substitui o adendo anterior somente quanto a esconder essas fatias:
+
+- Na aba sem conversão para o arquivo, exibir as funções realmente instaladas, esmaecidas e sem seleção/conversão.
+- Manter nomes e descrições das funções. A explicação sobre a entrada esperada aparece imediatamente no rodapé, sem se sobrepor às fatias nem exigir um clique.
+- Na aba compatível, manter a filtragem por arquivo e as páginas de seis fatias. A abertura continua na primeira aba que realmente converte o arquivo, não na primeira aba ilustrada.
+- As funções do motor ausente não passam a ser anunciadas como disponíveis. Nenhum conversor novo é habilitado por esta mudança.
+
+O mantenedor também escolheu confirmação antes da conversão, com volta à escolha, e lote misto agrupado por tipo com revisão final. Essas duas mudanças ainda não são implementação entregue; o contrato e a sequência de trabalho estão em [FLUXO-UNIFICADO.md](../FLUXO-UNIFICADO.md).
+
 - **Abas separadas para Texto, Planilha e Apresentação:** mais abas na barra, que cabe seis; o menu já abre na aba certa e filtra as fatias.
 - **Sub-abas dentro de Docs:** mais um gesto e desenho novo no disco.
 - **Mostrar no Brotinho as fatias do Jumbo apagadas, com "Disponível no Pizza Jumbo":** poluiria o menu do pacote leve.

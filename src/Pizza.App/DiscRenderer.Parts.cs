@@ -82,7 +82,8 @@ internal static unsafe partial class DiscRenderer
 
         // FR-30 com a emenda da ADR-033 (prancha 6A-1): a fatia que não vale fica esmaecida e diz o porquê.
         var unavailable = frame.Unavailable is { } dimmed && dimmed[slot];
-        var caption = unavailable ? slice.UnavailableCaption : slice.Caption;
+        var caption = unavailable && RadialMenu.Fits(slice, frame.FileName ?? string.Empty)
+            ? slice.UnavailableCaption : slice.Caption;
         if (unavailable)
         {
             ink = WithAlpha(ink, 0.38);

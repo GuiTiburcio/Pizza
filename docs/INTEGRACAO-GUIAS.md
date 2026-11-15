@@ -11,7 +11,7 @@ Não foi possível ler uma janela controlável da conversa do Claude; a conferê
 ## Contrato do candidato
 
 - Imagem, PDF, Documento e Áudio permanecem visíveis, com um único catálogo e filtragem por entrada.
-- Arquivo compatível abre a aba certa e mostra suas conversões. Arquivo incompatível numa outra aba mostra orientação imediatamente, sem fatias falsas nem conversão por clique/drop/teclado.
+- Arquivo compatível abre a aba certa e mostra suas conversões. Conforme a revisão do mantenedor após o teste de c1a492c, numa aba incompatível as funções instaladas permanecem visíveis e esmaecidas para descoberta; o rodapé mostra imediatamente qual arquivo usar. Clique/drop/teclado não iniciam conversão incompatível.
 - Numa aba vazia, o rodapé orienta a usar a roda para trocar de aba ou Esc para cancelar; não pede clique em fatias ou níveis inexistentes.
 - A faixa de níveis não adota um conversor que não aceite os arquivos selecionados.
 - Seleção usa a mesma geometria desenhada, inclusive hover, antes de interpretar a borda como movimento/redimensionamento.
@@ -21,6 +21,8 @@ Não foi possível ler uma janela controlável da conversa do Claude; a conferê
 
 Identificar o candidato pelo SHA e CI, não apenas por "0.1.1". Exigir build, testes, NativeAOT e CodeQL aprovados na branch integrada. A revisão estática encontrou e corrigiu conflito entre alvo em hover e zona de movimento; a apresentação de fatias incompatíveis foi substituída pela escolha explícita do mantenedor.
 
-Depois desses checks, conferir visualmente JPG → PDF/Documento/Áudio, PDF → Imagem, DOCX → Áudio e MP3 → PDF, mantendo o arquivo original. Nas abas incompatíveis devem aparecer as orientações; na aba correspondente, as operações reais. Repetir com roda, teclado, redimensionamento e arraste do menu, nos dois temas. A validação visual ainda não foi realizada neste candidato.
+Depois desses checks, conferir visualmente JPG → PDF/Documento/Áudio, PDF → Imagem, DOCX → Áudio e MP3 → PDF, mantendo o arquivo original. Nas abas incompatíveis devem aparecer as funções esmaecidas e as orientações; na aba correspondente, as operações reais. Repetir com roda, teclado, redimensionamento e arraste do menu, nos dois temas. O mantenedor confirmou o funcionamento da orientação em c1a492c; a revisão posterior de descoberta das fatias ainda requer nova validação visual.
+
+O contrato de confirmação com volta e lote misto agrupado por tipo está em [FLUXO-UNIFICADO.md](FLUXO-UNIFICADO.md). Essas etapas não estão implementadas nesta revisão de descoberta das fatias.
 
 Markdown (#92), novos formatos PDF/Web e as correções pendentes de ALAC/negociação de bitrate não são declarados concluídos por esta integração. O teste intermitente do motor Jumbo continua obrigatório e uma falha impede aprovar o CI; ele não será removido para publicar o candidato.

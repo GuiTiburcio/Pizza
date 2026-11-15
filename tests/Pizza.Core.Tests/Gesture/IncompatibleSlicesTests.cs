@@ -5,7 +5,7 @@ namespace Pizza.Core.Tests.Gesture;
 
 /// <summary>
 /// Adendo do ADR-039: as quatro abas permanecem visíveis; sem conversão para o arquivo, orientam qual tipo
-/// usar, sem fatias incompatíveis. No Brotinho, as fatias do motor de documentos não aparecem.
+/// usar, mantendo as funções incompatíveis visíveis para descoberta. No Brotinho, as fatias do motor não aparecem.
 /// </summary>
 [Collection(DocumentEngineSwitch.Name)]
 public class IncompatibleSlicesTests
@@ -29,14 +29,17 @@ public class IncompatibleSlicesTests
     [InlineData("foto.jpg", ConverterCatalog.AudioTab)]
     [InlineData("escritura.pdf", ConverterCatalog.ImageTab)]
     [InlineData("contrato.docx", ConverterCatalog.ImageTab)]
-    public void Nas_outras_abas_nao_ha_fatias_e_a_orientacao_nao_promete_recurso_futuro(string file, int tab)
+    public void Nas_outras_abas_as_funcoes_aparecem_mas_nao_aceitam_o_arquivo(string file, int tab)
     {
         using var _ = DocumentEngineSwitch.Set(true);
 
         var slices = RadialMenu.Pages(file).Where(page => page.Tab == tab)
             .SelectMany(page => RadialMenu.Slices(tab, file, page.Turn)).ToArray();
 
-        Assert.Empty(slices);
+        Assert.NotEmpty(slices);
+        Assert.Equal(ConverterCatalog.All.Where(converter => converter.Tab == tab).Select(converter => converter.Id),
+            slices.Select(converter => converter.Id));
+        Assert.All(slices, converter => Assert.False(converter.Accepts([file])));
         Assert.Contains(RadialMenu.Pages(file), page => page.Tab == tab);
         Assert.StartsWith("Use ", RadialMenu.EmptyMessage(tab));
         Assert.NotEqual("Em breve", RadialMenu.EmptyMessage(tab));

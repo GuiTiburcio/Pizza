@@ -173,14 +173,14 @@ public sealed class OverlayDropTests
     [Fact]
     public void Clique_na_aba_incompativel_mantem_a_escolha_sem_converter()
     {
-        // Adendo do ADR-039: a imagem na aba PDF vê a orientação, sem fatias nem conversão.
+        // Adendo do ADR-039: a imagem na aba PDF vê as funções, sem poder iniciar conversão.
         PrepareChoice();
         OpenPage("entrada.jpg", ConverterCatalog.PdfTab);
 
         Assert.False(ChooseAt(0, -130));
         Assert.Equal(GestureState.Choosing, Session.State);
         Assert.Null(Dropped);
-        Assert.Empty(RadialMenu.Slices(ConverterCatalog.PdfTab, "entrada.jpg"));
+        Assert.NotEmpty(RadialMenu.Slices(ConverterCatalog.PdfTab, "entrada.jpg"));
         Assert.Equal("Use um arquivo PDF", RadialMenu.EmptyMessage(ConverterCatalog.PdfTab));
     }
 
@@ -211,7 +211,7 @@ public sealed class OverlayDropTests
         Assert.False(selected);
         Assert.Equal(GestureState.Choosing, Session.State);
         Assert.Null(Dropped);
-        Assert.Empty(RadialMenu.Slices(ConverterCatalog.AudioTab, "entrada.jpg"));
+        Assert.NotEmpty(RadialMenu.Slices(ConverterCatalog.AudioTab, "entrada.jpg"));
         Assert.Equal("Use um arquivo de áudio", RadialMenu.EmptyMessage(ConverterCatalog.AudioTab));
     }
 
