@@ -18,7 +18,7 @@ Usar cópias de imagens de exemplo numa pasta de teste local. Não pedir documen
 | Distribuição da Fase 8 | Pacote oficial do CI, assinatura e verificações previstas nas SPECS | Ainda não é instalador estável |
 | Preparação da máquina | Extração, .NET Runtime e permissão de leitura do Worker conferidos | Procedimento atual em USO.md |
 
-O comando de permissão de USO.md aplica-se somente à pasta dedicada dos binários. Não aplicá-lo à pasta que contém imagens/documentos. Não enviar ao participante um executável compilado localmente como se fosse distribuição oficial.
+A inicialização configura leitura e execução somente para o perfil AppContainer específico, na pasta dedicada dos binários. Não conceder permissões amplas na pasta que contém imagens/documentos. Não enviar ao participante um executável compilado localmente como se fosse distribuição oficial.
 
 ## Casos reproduzíveis
 
