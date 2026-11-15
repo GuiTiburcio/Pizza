@@ -24,6 +24,14 @@ O pacote de partes de hoje (ADR-033, `PZB1`) leva saídas de um formato só, con
 
 ## Consequências
 
+### Correção de limites e controle da finalização — 15/11/2026
+
+A validação do tamanho bruto do PZB2 não basta: o nome final de uma imagem pode ser maior que seu marcador e aparecer várias vezes. O residente deve limitar a escrita do Markdown já transformado ao saldo do teto agregado de 2 GiB, descontando os bytes das imagens. O fluxo continua recusando excesso, sem truncar conteúdo nem reduzir qualidade, com rollback das imagens já nomeadas.
+
+A validação UTF-8 e a substituição de marcadores verificam cancelamento, pausa e prazo ativo por blocos, reutilizando CheckFinalization. As verificações também cercam o descarregamento final do buffer; não basta conferir apenas antes e depois de percorrer o arquivo inteiro. O formato do PZB2 e a compatibilidade do PZB1 não mudam.
+
+Regressões cobrem expansão com nomes Unicode, limite agregado exato e um byte acima, ausência de parciais após uma imagem nomeada, cancelamento durante texto sem marcadores e com referências repetidas, prazo antes do flush e controle durante validação UTF-8. O teto reduzido interno dos testes nunca pode ultrapassar o teto de produção.
+
 O PDF → PNG/JPG por página (Pizza — VI) não precisa do `PZB2`. Ele continua no `PZB1`, só com mais assinaturas na lista (PNG e JPEG).
 
 O residente passa a ler o `.md` em fluxo para trocar os marcadores. É a única parte de conteúdo que ele toca, e só para trocar o marcador, que tem tamanho fixo de formato.

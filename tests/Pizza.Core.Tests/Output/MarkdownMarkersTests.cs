@@ -11,6 +11,31 @@ public class MarkdownMarkersTests
 {
     private const char Marker = '\uE000';
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Controle_interrompe_texto_e_referencias_durante_a_substituicao(bool markers)
+    {
+        var text = markers ? string.Concat(Enumerable.Repeat($"{Marker}1{Marker}", 100)) : new string('a', 1000);
+        using var input = new MemoryStream(Encoding.UTF8.GetBytes(text));
+        using var output = new MemoryStream();
+        var checks = 0;
+        Assert.Throws<OperationCanceledException>(() => MarkdownMarkers.Replace(input, output, ["imagem.png"], 16,
+            () => { if (++checks == 3) throw new OperationCanceledException(); }));
+        Assert.True(input.Position < input.Length);
+    }
+
+    [Fact]
+    public void Prazo_e_conferido_antes_de_descarregar_o_ultimo_buffer()
+    {
+        using var input = new MemoryStream("texto"u8.ToArray());
+        using var output = new MemoryStream();
+        var checks = 0;
+        Assert.Throws<TimeoutException>(() => MarkdownMarkers.Replace(input, output, [], check:
+            () => { if (++checks == 2) throw new TimeoutException(); }));
+        Assert.Empty(output.ToArray());
+    }
+
     private static string Replace(string markdown, string[] names, int buffer = 4096)
     {
         using var input = new MemoryStream(Encoding.UTF8.GetBytes(markdown));

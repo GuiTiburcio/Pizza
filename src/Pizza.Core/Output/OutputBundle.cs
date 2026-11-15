@@ -80,8 +80,9 @@ public static class OutputBundle
     /// e depois só imagens que comecem pela assinatura do seu formato. Fora disso, nada é aceito. O total passa
     /// pelo mesmo orçamento de saída do PZB1.
     /// </summary>
-    public static IReadOnlyList<FormattedPart> ReadFormatted(SafeFileHandle handle, int maxParts, string extension, long maxOutputBytes = OutputBudget.MaxBytes)
+    public static IReadOnlyList<FormattedPart> ReadFormatted(SafeFileHandle handle, int maxParts, string extension, long maxOutputBytes = OutputBudget.MaxBytes, Action? check = null)
     {
+        check?.Invoke();
         Require(extension == "md");
         var size = RandomAccess.GetLength(handle);
         OutputBudget.Check(size, maxOutputBytes + HeaderBytes + ((long)(1 + LengthBytes) * maxParts));
@@ -92,6 +93,7 @@ public static class OutputBundle
         long total = 0;
         for (var index = 0; index < count; index++)
         {
+            check?.Invoke();
             Require(size - position >= head.Length && RandomAccess.Read(handle, head, position) == head.Length);
             position += head.Length;
             var format = (PartFormat)head[0];
@@ -100,12 +102,13 @@ public static class OutputBundle
             OutputBudget.Check(partLength, maxOutputBytes - total);
             total += partLength;
             Require(index == 0 ? format == PartFormat.Markdown : format is PartFormat.Png or PartFormat.Jpeg or PartFormat.Gif or PartFormat.Webp);
-            Require(format == PartFormat.Markdown ? IsUtf8(handle, position, partLength) : HasSignature(handle, position, partLength, format));
+            Require(format == PartFormat.Markdown ? IsUtf8(handle, position, partLength, check) : HasSignature(handle, position, partLength, format));
             parts.Add(new FormattedPart(position, partLength, format));
             position += partLength;
         }
 
         Require(position == size);
+        check?.Invoke();
         return parts;
     }
 
@@ -144,7 +147,7 @@ public static class OutputBundle
     }
 
     /// <summary>UTF-8 válido do começo ao fim, lido em pedaços (o decodificador guarda o que fica entre eles).</summary>
-    private static bool IsUtf8(SafeFileHandle handle, long position, long length)
+    private static bool IsUtf8(SafeFileHandle handle, long position, long length, Action? check)
     {
         var decoder = new UTF8Encoding(false, throwOnInvalidBytes: true).GetDecoder();
         var bytes = new byte[64 * 1024];
@@ -153,6 +156,7 @@ public static class OutputBundle
         {
             for (long done = 0; done < length;)
             {
+                check?.Invoke();
                 var read = RandomAccess.Read(handle, bytes.AsSpan(0, (int)Math.Min(bytes.Length, length - done)), position + done);
                 if (read <= 0)
                 {
