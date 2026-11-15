@@ -107,7 +107,7 @@ public sealed class OptionsPanelState
 
     private readonly bool[] _enabled;
 
-    public OptionsPanelState(ConverterInfo converter)
+    public OptionsPanelState(ConverterInfo converter, IReadOnlyDictionary<string, string>? options = null)
         : this(
             converter,
             PanelPage.Main,
@@ -118,6 +118,25 @@ public sealed class OptionsPanelState
             converter.Options.Where(option => option.Advanced).ToDictionary(option => option.Key, option => option.Default),
             null)
     {
+        if (options is not null)
+        {
+            var resolved = ConverterCatalog.ResolveOptions(converter, options)
+                ?? throw new ArgumentException("As opções não pertencem ao conversor.", nameof(options));
+            for (var row = 0; row < Rows.Count; row++)
+            {
+                if (Rows[row].Key == VolumeKey) continue;
+                var value = resolved[Rows[row].Key];
+                var choice = Rows[row].Choices.ToList().FindIndex(candidate => candidate.Value == value);
+                if (choice >= 0) _selected[row] = choice;
+                if (Rows[row].Minimum is not null)
+                    _percent[row] = value == ConverterOption.Original ? Full : int.Parse(value, CultureInfo.InvariantCulture);
+            }
+
+            foreach (var key in _advanced.Keys.ToArray()) _advanced[key] = resolved[key];
+            KeepMetadata = resolved.GetValueOrDefault(ConverterCatalog.MetadataKey) == ConverterCatalog.MetadataKeep;
+            SyncVolumeRow();
+        }
+        if (Rows.Count == 0) _focus = _stops.IndexOf((PanelTargetKind.Convert, 0));
     }
 
     private OptionsPanelState(ConverterInfo converter, PanelPage page, IReadOnlyList<ConverterOption> rows, Dictionary<string, string> advanced, bool[]? enabled)

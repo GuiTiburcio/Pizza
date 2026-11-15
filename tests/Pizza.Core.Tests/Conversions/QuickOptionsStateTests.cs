@@ -5,6 +5,55 @@ namespace Pizza.Core.Tests.Conversions;
 /// <summary>TST-01 / ADR-027: faixa preserva contexto sem executar conversão.</summary>
 public class QuickOptionsStateTests
 {
+    [Fact]
+    public void Volta_do_painel_expoe_resolucao_personalizada_e_preserva_as_demais_opcoes()
+    {
+        var converter = ConverterCatalog.Find("image.png")!;
+        var state = new QuickOptionsState();
+        var options = new Dictionary<string, string>
+        {
+            ["resolution"] = "73", ["compression"] = "fast", [ConverterCatalog.MetadataKey] = "keep",
+        };
+
+        state.Restore(converter, options);
+
+        Assert.Equal("73", state.Levels[state.Selected].Value);
+        Assert.Equal("73", state.Options()!["resolution"]);
+        Assert.Equal("fast", state.Options()!["compression"]);
+        Assert.Equal("keep", state.Options()![ConverterCatalog.MetadataKey]);
+        state.Step(-1);
+        Assert.NotEqual("73", state.Options()!["resolution"]);
+        Assert.Equal("fast", state.Options()!["compression"]);
+        Assert.Equal("keep", state.Options()![ConverterCatalog.MetadataKey]);
+    }
+
+    [Fact]
+    public void Volta_do_painel_restaura_valor_de_audio_fora_dos_atalhos_sem_perder_volume()
+    {
+        var converter = ConverterCatalog.Find("audio.mp3")!;
+        var state = new QuickOptionsState();
+        var options = ConverterCatalog.ResolveOptions(converter,
+            new Dictionary<string, string> { ["bitrate"] = "224", ["gain"] = "6" })!;
+
+        state.Restore(converter, options);
+
+        Assert.Equal("224", state.Levels[state.Selected].Value);
+        Assert.Equal("6", state.Options()!["gain"]);
+        state.PointAt(ConverterCatalog.Find("image.webp"));
+        Assert.DoesNotContain("gain", state.Options()!.Keys);
+        state.Restore(converter, options);
+        Assert.Equal("6", state.Options()!["gain"]);
+    }
+
+    [Fact]
+    public void Opcoes_invalidas_nao_podem_ser_restauradas_na_faixa()
+    {
+        var state = new QuickOptionsState();
+        Assert.Throws<ArgumentException>(() => state.Restore(ConverterCatalog.Find("image.png")!,
+            new Dictionary<string, string> { ["resolution"] = "0" }));
+        Assert.Null(state.Converter);
+    }
+
     [Theory]
     [InlineData("image.jpg", "quality", "75")]
     [InlineData("image.webp", "quality", "75")]

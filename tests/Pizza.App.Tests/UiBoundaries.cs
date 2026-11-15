@@ -40,15 +40,17 @@ internal static class Log
 
 internal static class OptionsPanel
 {
+    public static (ConverterInfo Converter, IReadOnlyDictionary<string, string>? Options)? Shown { get; set; }
     public static void TakeFocus(nint window) { }
     public static void Close() { }
-    public static void Show(ConverterInfo converter, string fileName, int centerX, int centerY) =>
-        throw new InvalidOperationException("O teste não deve abrir um painel.");
+    public static void Show(ConverterInfo converter, string fileName, int centerX, int centerY, IReadOnlyDictionary<string, string>? options = null) =>
+        Shown = (converter, options);
     public static void ProbeAudio(string path, ConverterInfo converter) { }
 }
 
 internal static class Notifications
 {
+    public static (IReadOnlyList<string> Paths, ConverterInfo Converter, IReadOnlyDictionary<string, string> Options)? Started { get; set; }
     public static void Convert(IReadOnlyList<string> paths, ConverterInfo converter, IReadOnlyDictionary<string, string> options) =>
-        throw new InvalidOperationException("O teste não deve iniciar uma conversão.");
+        Started = (paths, converter, options);
 }

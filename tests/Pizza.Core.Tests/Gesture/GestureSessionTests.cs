@@ -4,6 +4,25 @@ namespace Pizza.Core.Tests.Gesture;
 
 public class GestureSessionTests
 {
+    [Fact]
+    public void Retomar_confirmacao_nao_reabre_arraste_nem_reage_a_timers_antigos()
+    {
+        var session = new GestureSession();
+        session.Begin();
+        session.OnDragEnter(true);
+        session.OnButtonReleased();
+        session.OnDragLeave();
+        session.End();
+
+        session.ResumeChoice();
+
+        Assert.Equal(GestureState.Choosing, session.State);
+        Assert.Equal(SessionAction.None, session.OnDropTimeout());
+        Assert.Equal(SessionAction.None, session.OnLeaveTimeout());
+        Assert.Equal(SessionAction.None, session.OnDragEnter(false));
+        Assert.Equal(GestureState.Choosing, session.State);
+    }
+
     private readonly GestureSession _session = new();
 
     [Fact]

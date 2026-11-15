@@ -269,8 +269,8 @@ internal static unsafe partial class DiscRenderer
         var hintText = incompatible ? RadialMenu.EmptyMessage(frame.TargetTab)
             : frame.Slices.Count == 0
             ? "Role para trocar de aba · Esc cancela"
-            : frame.Choosing ? "Clique no nível ou na fatia · Direito: opções · Esc cancela"
-            : "Solte no nível ou na fatia · Role sobre a faixa para trocar o nível";
+            : frame.Choosing ? "Escolha a fatia ou o nível · Revise antes de converter · Esc cancela"
+            : "Solte na fatia ou no nível para revisar · Esc cancela";
         Text(g, hintText, _regular, 12, StyleRegular, _palette.Ink, DiscLayout.HintLeft + 10, DiscLayout.HintTop, DiscLayout.HintWidth - 20, DiscLayout.HintHeight);
     }
 

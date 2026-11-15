@@ -286,7 +286,7 @@ public sealed class OverlayDropTests
     }
 
     [Fact]
-    public void Soltar_na_fatia_converte_com_o_nivel_marcado_sem_abrir_o_painel()
+    public void Soltar_na_fatia_prepara_a_confirmacao_com_o_nivel_marcado()
     {
         Prepare();
         var (x, y) = SliceCenter(1);
@@ -364,9 +364,9 @@ public sealed class OverlayDropTests
     }
 
     [Theory]
-    [InlineData(Native.WM_LBUTTONDOWN, Native.WM_LBUTTONUP, false)]
-    [InlineData(Native.WM_RBUTTONDOWN, Native.WM_RBUTTONUP, true)]
-    public void Botao_direito_na_fatia_abre_o_painel_e_o_esquerdo_converte(uint down, uint up, bool panel)
+    [InlineData(Native.WM_LBUTTONDOWN, Native.WM_LBUTTONUP)]
+    [InlineData(Native.WM_RBUTTONDOWN, Native.WM_RBUTTONUP)]
+    public void Os_dois_botoes_preparam_a_mesma_confirmacao(uint down, uint up)
     {
         PrepareChoice();
         var (x, y) = SliceCenter(1);
@@ -375,7 +375,73 @@ public sealed class OverlayDropTests
         choose.Invoke(null, [up, x, y]);
 
         Assert.Equal("image.webp", Dropped!.Value.Converter.Id);
-        Assert.Equal(panel, Dropped!.Value.Options is null);
+        Assert.Equal("75", Dropped!.Value.Options!["quality"]);
+    }
+
+    [Theory]
+    [InlineData(false, 1, "image.webp")]
+    [InlineData(false, 4, "image.tiff")]
+    [InlineData(true, 0, "pdf.merge")]
+    public void Soltura_abre_confirmacao_inclusive_sem_opcoes_sem_iniciar_conversao(bool pdfs, int slot, string id)
+    {
+        if (pdfs) PreparePdf("primeiro.pdf", "segundo.pdf"); else Prepare();
+        var (x, y) = SliceCenter(slot);
+        Assert.True(Overlay.OnDrop(pdfs ? Files("primeiro.pdf", "segundo.pdf") : Files("entrada.jpg"), x, y));
+
+        typeof(Overlay).GetMethod("FinishDrop", PrivateStatic)!.Invoke(null, null);
+
+        Assert.Equal(id, OptionsPanel.Shown!.Value.Converter.Id);
+        Assert.NotNull(Get("_awaitingOptions"));
+        Assert.Null(Notifications.Started);
+    }
+
+    [Fact]
+    public void Voltar_preserva_arquivos_pagina_e_opcoes_e_somente_confirmar_inicia_conversao()
+    {
+        Prepare();
+        var (x, y) = SliceCenter(1);
+        Assert.True(Overlay.OnDrop(Files("entrada.jpg"), x, y));
+        typeof(Overlay).GetMethod("FinishDrop", PrivateStatic)!.Invoke(null, null);
+        var options = ConverterCatalog.ResolveOptions(ConverterCatalog.Find("image.webp")!,
+            new Dictionary<string, string> { ["quality"] = "95", [ConverterCatalog.MetadataKey] = "keep" })!;
+        var page = Carousel.Target;
+
+        // O estado retorna antes da reconstrução das janelas, exercitada na validação visual do aplicativo.
+        Assert.True((bool)typeof(Overlay).GetMethod("ResumeReview", PrivateStatic)!.Invoke(null, [options])!);
+
+        Assert.Equal(GestureState.Choosing, Session.State);
+        Assert.Equal(page, Carousel.Target);
+        Assert.Equal("entrada.jpg", ((DraggedFiles)Get("_files")!).First);
+        Assert.Equal("95", Strip.Options()!["quality"]);
+        Assert.Equal("keep", Strip.Options()![ConverterCatalog.MetadataKey]);
+        Assert.Null(Notifications.Started);
+        var point = typeof(Overlay).GetMethod("PointStripConverter", PrivateStatic)!;
+        point.Invoke(null, [ConverterCatalog.Find("image.png")!]);
+        point.Invoke(null, [ConverterCatalog.Find("image.webp")!]);
+        Assert.Equal("95", Strip.Options()!["quality"]);
+        Assert.Equal("keep", Strip.Options()![ConverterCatalog.MetadataKey]);
+        typeof(Overlay).GetProperty(nameof(Overlay.IsVisible))!.SetValue(null, true);
+        Assert.True(ChooseAt(113, -65));
+        typeof(Overlay).GetMethod("FinishDrop", PrivateStatic)!.Invoke(null, null);
+        Assert.Equal("95", OptionsPanel.Shown!.Value.Options!["quality"]);
+        Overlay.OnPanelClosed(OptionsPanel.Shown.Value.Options);
+        Assert.Equal("image.webp", Notifications.Started!.Value.Converter.Id);
+        Assert.Equal("95", Notifications.Started.Value.Options["quality"]);
+    }
+
+    [Fact]
+    public void Cancelar_confirmacao_descarta_selecao_sem_converter()
+    {
+        Prepare();
+        var (x, y) = SliceCenter(1);
+        Assert.True(Overlay.OnDrop(Files("entrada.jpg"), x, y));
+        typeof(Overlay).GetMethod("FinishDrop", PrivateStatic)!.Invoke(null, null);
+
+        Overlay.OnPanelClosed(null);
+
+        Assert.Equal(GestureState.Idle, Session.State);
+        Assert.Null(Get("_files"));
+        Assert.Null(Notifications.Started);
     }
 
     [Fact]
@@ -422,6 +488,10 @@ public sealed class OverlayDropTests
 
     private static void Prepare()
     {
+        OptionsPanel.Shown = null;
+        Notifications.Started = null;
+        ((Dictionary<string, IReadOnlyDictionary<string, string>>)Get("ReviewOptions")!).Clear();
+        Set("_awaitingOptions", null);
         Set("_files", Files("entrada.jpg"));
         Set("_left", 0);
         Set("_top", 0);

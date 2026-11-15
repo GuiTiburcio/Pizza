@@ -1,6 +1,7 @@
 using Pizza.App.Interop;
 using Pizza.Core.Diagnostics;
 using Pizza.Core.Gesture;
+using Pizza.Core.Visual;
 using static Pizza.App.Interop.Native;
 
 namespace Pizza.App;
@@ -103,8 +104,8 @@ internal static unsafe partial class Overlay
     }
 
     /// <summary>
-    /// ADR-027: a fatia converte direto com o nível marcado na faixa, que é o padrão se a roda não mexeu.
-    /// Com <paramref name="panel"/>, o painel completo abre antes (botão direito).
+    /// A fatia prepara a confirmação com o nível marcado na faixa. Os dois botões seguem o mesmo painel;
+    /// nenhuma conversão começa antes de confirmar, inclusive nos formatos sem opções.
     /// </summary>
     private static bool Select(DraggedFiles files, int slot, bool panel = false)
     {
@@ -118,8 +119,8 @@ internal static unsafe partial class Overlay
         }
 
         // Outra fatia que não a da faixa volta ao padrão dela.
-        Strip.PointAt(converter);
-        var options = panel && converter.HasPanel ? null : Strip.Options() ?? new Dictionary<string, string>();
+        PointStripConverter(converter);
+        var options = Strip.Options() ?? new Dictionary<string, string>();
 
         Log.Write(LogEvent.FileDropped);
         Session.End();
@@ -152,23 +153,60 @@ internal static unsafe partial class Overlay
 
         _dropped = null;
         _pulseSlot = null;
-        if (dropped.Options is null)
+        _awaitingOptions = (dropped.Paths, dropped.Converter);
+        var (centerX, centerY) = DiscCenter();
+        HideWindow();
+        var description = dropped.Paths.Count > 1 ? $"{dropped.Paths.Count} PDFs" : Path.GetFileName(dropped.Paths[0]);
+        OptionsPanel.Show(dropped.Converter, description, centerX, centerY, dropped.Options);
+        if (dropped.Converter.Tab == Pizza.Core.Conversions.ConverterCatalog.AudioTab && dropped.Paths.Count == 1)
         {
-            _awaitingOptions = (dropped.Paths, dropped.Converter);
-            var (centerX, centerY) = DiscCenter();
-            HideWindow();
-            OptionsPanel.Show(dropped.Converter, Path.GetFileName(dropped.Paths[0]), centerX, centerY);
-            if (dropped.Converter.Tab == Pizza.Core.Conversions.ConverterCatalog.AudioTab && dropped.Paths.Count == 1)
-            {
-                // Adendo do ADR-035: o tamanho previsto chega pelo Worker do próprio arquivo, sem travar o painel.
-                OptionsPanel.ProbeAudio(dropped.Paths[0], dropped.Converter);
-            }
+            // Adendo do ADR-035: o tamanho previsto chega pelo Worker do próprio arquivo, sem travar o painel.
+            OptionsPanel.ProbeAudio(dropped.Paths[0], dropped.Converter);
         }
-        else
-        {
-            Hide();
-            Notifications.Convert(dropped.Paths, dropped.Converter, dropped.Options);
-        }
+    }
+
+    /// <summary>Restabelece o nível e as opções completas revisadas desta fatia, se já houve uma volta.</summary>
+    private static void PointStripConverter(Pizza.Core.Conversions.ConverterInfo converter)
+    {
+        if (Strip.Converter?.Id == converter.Id) return;
+        if (ReviewOptions.TryGetValue(converter.Id, out var options)) Strip.Restore(converter, options);
+        else Strip.PointAt(converter);
+    }
+
+    /// <summary>Voltar/Esc preserva arquivos, página e opções; o painel já descartou o probe e o vidro antigo.</summary>
+    public static void OnPanelBack(IReadOnlyDictionary<string, string> options)
+    {
+        if (!ResumeReview(options)) return;
+
+        // O painel já fechou. Recompõe a tela antes de copiar um novo fundo, sem reutilizar pixels descartados.
+        DwmFlush();
+        var width = (int)Math.Round(DiscLayout.Width * _scale);
+        var height = (int)Math.Round(DiscLayout.Height * _scale);
+        DiscRenderer.Prepare(_left, _top, width, height, (int)Math.Round(_scale * 96));
+        PlaceBar();
+        IsVisible = true;
+        Render();
+        SetWindowPos(Disc, HWND_TOPMOST, _left, _top, width, height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        var (barWidth, barHeight) = BarSize();
+        SetWindowPos(_bar, HWND_TOPMOST, BarLeft, BarTop, barWidth, barHeight, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        PrepareChoice();
+    }
+
+    /// <summary>Retoma o estado validado do drop antes de reconstruir as janelas e a cópia da tela.</summary>
+    private static bool ResumeReview(IReadOnlyDictionary<string, string> options)
+    {
+        if (_awaitingOptions is not { } pending || _files is null) return false;
+        ReviewOptions[pending.Converter.Id] = new Dictionary<string, string>(options);
+        Strip.Restore(pending.Converter, options);
+        _awaitingOptions = null;
+        Session.ResumeChoice();
+        _clickArmed = false;
+        _pulseSlot = null;
+        _levelHover = null;
+        foreach (var hover in Hover) hover.Snap(0);
+        Carousel.Snap();
+        LevelGlide.Snap(Strip.Selected);
+        return true;
     }
 
     /// <summary>O painel fechou: com as opções escolhidas, ou null se o usuário cancelou.</summary>
@@ -209,6 +247,7 @@ internal static unsafe partial class Overlay
         KillTimer(Disc, TimerPulse);
         HideWindow();
         _files = null;
+        ReviewOptions.Clear();
         Session.Begin();
         PrepareAtCursor();
 

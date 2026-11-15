@@ -60,8 +60,9 @@ internal static unsafe partial class Overlay
     private static int? _pulseSlot;
 
     private static DraggedFiles? _files;
-    private static (IReadOnlyList<string> Paths, ConverterInfo Converter, IReadOnlyDictionary<string, string>? Options)? _dropped; // Options null: abrir o painel.
+    private static (IReadOnlyList<string> Paths, ConverterInfo Converter, IReadOnlyDictionary<string, string>? Options)? _dropped; // Escolha retida até abrir a confirmação.
     private static (IReadOnlyList<string> Paths, ConverterInfo Converter)? _awaitingOptions;
+    private static readonly Dictionary<string, IReadOnlyDictionary<string, string>> ReviewOptions = new();
 
     /// <summary>Janela do menu; também recebe as mensagens enviadas pelos hooks.</summary>
     public static nint Disc { get; private set; }
@@ -158,6 +159,7 @@ internal static unsafe partial class Overlay
         _hoverSlot = null;
         _levelHover = null;
         Strip.Clear();
+        ReviewOptions.Clear();
         SliceGlide.Snap(0);
         LevelGlide.Snap(0);
         foreach (var transition in Hover)
@@ -206,7 +208,9 @@ internal static unsafe partial class Overlay
         Strip.Clear();
         _levelHover = null;
         _files = null;
+        ReviewOptions.Clear();
         _dropped = null;
+        _awaitingOptions = null;
         _pulseSlot = null;
         _clickArmed = false;
         ResetGrip();

@@ -24,13 +24,14 @@ Decisões do mantenedor em 14/11/2026, após validar a orientação do candidato
 
 A conferência do Claude usa checkout, commits e PRs, não acesso à conversa completa do aplicativo. Não alterar o checkout dele nem incorporar Markdown junto com uma mudança de menu sem revisão específica.
 
-## Lacunas concretas do fluxo atual
+## Lacunas identificadas e estado da implementação
 
-- `Overlay.Drag.Select` encerra a sessão e pode encaminhar diretamente a `Notifications.Convert`. Clique esquerdo e seleção de nível não oferecem confirmação geral. O painel completo hoje é acessado pelo botão direito.
-- `Overlay.OnPanelClosed(null)` limpa a seleção e esconde o menu. Trocar apenas o texto "Cancelar" por "Voltar" não resolve: é necessário preservar/restaurar arquivos, aba e opções.
-- `OptionsPanel.Show` cria o estado com os padrões do catálogo. A confirmação deverá receber as opções já escolhidas na faixa, inclusive volume, em vez de reiniciá-las silenciosamente.
+- O candidato anterior convertia diretamente ao escolher uma fatia ou nível. A revisão de confirmação torna o painel obrigatório, também nos formatos sem opções; somente a confirmação encaminha a conversão. Implementação em revisão, sem aceite visual.
+- O cancelamento anterior descartava a seleção. Voltar/Esc agora restaura a sessão e mantém arquivos, página e opções; Alt+F4 cancela. A cópia da tela é refeita, sem reutilizar o fundo descartado. Contrato e testes em [CONFIRMACAO-E-VOLTA.md](CONFIRMACAO-E-VOLTA.md).
+- O painel e a faixa passam a recuperar as opções completas da sessão, incluindo volume, metadados e valores personalizados, em vez de reiniciar os padrões.
 - `ConverterInfo.Accepts` aceita vários arquivos somente para Juntar PDFs. `Overlay.Usable` e a escolha inicial usam o primeiro arquivo; um lote não pode depender da ordem dos itens para abrir ou detectar um arquivo suportado.
 - `Conversion.Start` usa tarefas com uma trava global. Disparar uma tarefa por arquivo não constitui uma fila de lote adequada: faltam planejamento, limite de tarefas pendentes, progresso e cancelamento do conjunto.
+- `BatchPlan` e seus testes acrescentam somente o planejamento puro: grupos com destinos compatíveis para todos os integrantes, escolhas validadas, entradas sem suporte explícitas e prontidão somente após revisar todos os grupos. Não estão ligados ao drop, à interface nem à fila; lote misto continua pendente.
 - O teste obrigatório do motor Jumbo `Macro_ao_abrir_nao_executa` apresentou `WORKER_CRASHED` e passou em repetição sem mudança de código. A causa permanece em investigação; não remover nem relaxar o teste.
 
 ## Ordem de implementação e aceite
@@ -41,4 +42,4 @@ A conferência do Claude usa checkout, commits e PRs, não acesso à conversa co
 4. **Revisão e fila de execução:** apresentar destinos/opções por grupo e resumo final; permitir voltar sem perder os demais grupos. Implementar fila limitada, estados por arquivo, cancelamento e falhas parciais explícitas. Preservar SEC-05/06, SEC-15/20, SEC-31, SEC-40 e PRIV-16; manter os limites de saída por conversão. A política de lote deve ser registrada nas SPECS antes desta execução, substituindo a restrição temporária de FR-30.
 5. **Fidelidade e lançamento:** fechar ALAC e consentimento de bitrate, revisar #92 separadamente, executar a matriz das quatro abas num único candidato e então validar distribuição. Não chamar um lote de pronto porque o menu aceitou vários arquivos.
 
-Não foram alterados neste ajuste o protocolo IPC, o Worker, os codecs nem os limites de recursos. O próximo portão é a confirmação com volta em um arquivo; o lote depende desse mesmo estado de revisão para manter comportamento coerente nas quatro abas.
+Não foram alterados nesta revisão o protocolo IPC, os codecs nem os limites de recursos. O diagnóstico interno de teste do Worker registra somente fases fixas e códigos de saída, sem nomes, conteúdo ou caminhos. O próximo portão é validar a confirmação com volta em um arquivo; depois, ligar o plano de lote à revisão e à fila. A aprovação de um CI em que a falha intermitente não ocorreu não estabelece sua causa nem prova sua correção.

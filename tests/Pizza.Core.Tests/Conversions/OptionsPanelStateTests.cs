@@ -28,10 +28,45 @@ public class OptionsPanelStateTests
     [Theory]
     [InlineData("image.tiff")]
     [InlineData("image.gif")]
-    public void Conversao_sem_opcoes_nao_abre_painel(string id)
+    public void Conversao_sem_opcoes_tambem_tem_confirmacao(string id)
     {
-        // FR-21.
+        // Revisão do fluxo: HasPanel descreve opções, não dispensa a confirmação.
         Assert.False(ConverterCatalog.Find(id)!.HasPanel);
+        var panel = Panel(id);
+        Assert.Equal(PanelAction.Cancel, panel.Press(PanelKey.Escape));
+        Assert.Equal(PanelAction.Convert, panel.Press(PanelKey.Enter));
+        Assert.Empty(panel.Options());
+    }
+
+    [Fact]
+    public void Confirmacao_restaura_resolucao_personalizada_compressao_e_metadados()
+    {
+        var converter = ConverterCatalog.Find("image.png")!;
+        var chosen = ConverterCatalog.ResolveOptions(converter,
+            new Dictionary<string, string> { ["resolution"] = "73", ["compression"] = "fast", [ConverterCatalog.MetadataKey] = "keep" })!;
+
+        var panel = new OptionsPanelState(converter, chosen);
+
+        Assert.Equal(chosen.OrderBy(option => option.Key), panel.Options().OrderBy(option => option.Key));
+    }
+
+    [Fact]
+    public void Confirmacao_restaura_efeitos_de_volume_sem_os_reativar_no_padrao()
+    {
+        var converter = ConverterCatalog.Find("audio.mp3")!;
+        var chosen = ConverterCatalog.ResolveOptions(converter, new Dictionary<string, string> { ["gain"] = "6", ["limit"] = "-2" })!;
+
+        var panel = new OptionsPanelState(converter, chosen);
+
+        Assert.Equal(chosen.OrderBy(option => option.Key), panel.Options().OrderBy(option => option.Key));
+        Assert.True(panel.IsSelected(panel.Rows.ToList().FindIndex(row => row.Key == OptionsPanelState.VolumeKey), 1));
+    }
+
+    [Fact]
+    public void Confirmacao_recusa_opcao_fora_do_conversor()
+    {
+        Assert.Throws<ArgumentException>(() => new OptionsPanelState(ConverterCatalog.Find("image.png")!,
+            new Dictionary<string, string> { ["gain"] = "6" }));
     }
 
     [Theory]

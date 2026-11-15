@@ -178,7 +178,7 @@ internal static unsafe partial class DiscRenderer
                     break;
 
                 case PanelTargetKind.Cancel:
-                    PanelButton(g, bounds, volumePage ? "Voltar  Esc" : "Cancelar  Esc", accent: false, state.Focus.Kind == PanelTargetKind.Cancel, colors);
+                    PanelButton(g, bounds, "Voltar  Esc", accent: false, state.Focus.Kind == PanelTargetKind.Cancel, colors);
                     break;
 
                 case PanelTargetKind.Convert:

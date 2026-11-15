@@ -23,6 +23,6 @@ Identificar o candidato pelo SHA e CI, não apenas por "0.1.1". Exigir build, te
 
 Depois desses checks, conferir visualmente JPG → PDF/Documento/Áudio, PDF → Imagem, DOCX → Áudio e MP3 → PDF, mantendo o arquivo original. Nas abas incompatíveis devem aparecer as funções esmaecidas e as orientações; na aba correspondente, as operações reais. Repetir com roda, teclado, redimensionamento e arraste do menu, nos dois temas. O mantenedor confirmou o funcionamento da orientação em c1a492c; a revisão posterior de descoberta das fatias ainda requer nova validação visual.
 
-O contrato de confirmação com volta e lote misto agrupado por tipo está em [FLUXO-UNIFICADO.md](FLUXO-UNIFICADO.md). Essas etapas não estão implementadas nesta revisão de descoberta das fatias.
+O contrato de confirmação com volta e lote misto agrupado por tipo está em [FLUXO-UNIFICADO.md](FLUXO-UNIFICADO.md). A confirmação com volta está implementada para revisão nesta branch e exige CI/aceite visual; o plano puro de lote ainda não está ligado à interface nem à execução.
 
 Markdown (#92), novos formatos PDF/Web e as correções pendentes de ALAC/negociação de bitrate não são declarados concluídos por esta integração. O teste intermitente do motor Jumbo continua obrigatório e uma falha impede aprovar o CI; ele não será removido para publicar o candidato.

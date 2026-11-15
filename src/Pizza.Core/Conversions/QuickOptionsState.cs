@@ -7,17 +7,40 @@ public sealed class QuickOptionsState
     public ConverterOption? Primary { get; private set; }
 
     /// <summary>Níveis da faixa: os atalhos da opção, quando ela tem (prancha AU-2), ou todas as escolhas.</summary>
-    public IReadOnlyList<OptionChoice> Levels => Primary is null ? [] : Primary.Quick ?? Primary.Choices;
+    public IReadOnlyList<OptionChoice> Levels => Primary is null ? []
+        : _custom is { } custom ? [.. (Primary.Quick ?? Primary.Choices), custom] : Primary.Quick ?? Primary.Choices;
     public int Selected { get; private set; }
+    private IReadOnlyDictionary<string, string>? _options;
+    private OptionChoice? _custom;
 
     /// <summary>Espaço vazio preserva o contexto; outra fatia restaura os padrões.</summary>
     public void PointAt(ConverterInfo? converter)
     {
         if (converter is null || converter.Id == Converter?.Id) return;
         Converter = converter;
+        _options = null;
+        _custom = null;
         _wheelDelta = 0;
         Primary = converter.Options.FirstOrDefault(option => option.Key != ConverterCatalog.MetadataKey && !option.Advanced);
         Selected = Primary is null ? 0 : Levels.ToList().FindIndex(choice => choice.Value == Primary.Default);
+    }
+
+    /// <summary>Retoma as opções do painel, inclusive um valor que não está entre os atalhos da faixa.</summary>
+    public void Restore(ConverterInfo converter, IReadOnlyDictionary<string, string> options)
+    {
+        var resolved = ConverterCatalog.ResolveOptions(converter, options)
+            ?? throw new ArgumentException("As opções não pertencem ao conversor.", nameof(options));
+        PointAt(converter);
+        _options = resolved;
+        _custom = null;
+        if (Primary is { } primary)
+        {
+            var value = resolved[primary.Key];
+            if (!Levels.Any(choice => choice.Value == value))
+                _custom = primary.Choices.FirstOrDefault(choice => choice.Value == value)
+                    ?? new OptionChoice(value, primary.Minimum is not null ? $"{value}%" : value);
+            Selected = Levels.ToList().FindIndex(choice => choice.Value == value);
+        }
     }
 
     /// <summary>Roda/teclado só alteram a prévia, sem dar a volta nas extremidades.</summary>
@@ -96,8 +119,9 @@ public sealed class QuickOptionsState
     public IReadOnlyDictionary<string, string>? Options()
     {
         if (Converter is null || Primary is null) return null;
-        return ConverterCatalog.ResolveOptions(Converter,
-            new Dictionary<string, string> { [Primary.Key] = Levels[Selected].Value });
+        var options = _options is null ? new Dictionary<string, string>() : new Dictionary<string, string>(_options);
+        options[Primary.Key] = Levels[Selected].Value;
+        return ConverterCatalog.ResolveOptions(Converter, options);
     }
 
     public void Clear()
@@ -106,5 +130,7 @@ public sealed class QuickOptionsState
         _wheelDelta = 0;
         Primary = null;
         Selected = 0;
+        _options = null;
+        _custom = null;
     }
 }

@@ -243,8 +243,8 @@ O Pizza é uma **ferramenta** que roda no computador do cliente. Quem decide con
 
 | ID | Requisito | Critério de aceite |
 | --- | --- | --- |
-| FR-20 | Soltar numa fatia com opções DEVE converter com o nível marcado na faixa, que é o padrão se a roda não o mudou (ADR-027). O botão direito na fatia abre o painel (WF-3) já com o padrão marcado | No painel, Enter converte sem nenhuma outra escolha |
-| FR-21 | Conversões sem opções DEVEM começar ao soltar | TIFF, GIF, Juntar e Word não abrem painel |
+| FR-20 | Escolher uma fatia ou nível DEVE abrir a confirmação com as opções já escolhidas. Os dois botões do mouse usam o mesmo fluxo. Voltar ou Esc retoma a pizza com arquivos, aba e opções preservados; fechar a janela cancela a sessão | Somente Converter/Enter no painel inicia a conversão; voltar não cria saída nem exige repetir Ctrl + arraste |
+| FR-21 | Conversões sem opções TAMBÉM DEVEM pedir confirmação, conforme decisão do mantenedor em 14/11/2026 | TIFF, GIF, Juntar e Word exibem formato, Converter e Voltar; nenhuma conversão começa só com a soltura |
 | FR-22 | "Usar sempre estas opções" DEVE pular o painel nas próximas vezes | Desfazível em Configurações › Qualidade |
 | FR-23 | O painel DEVE ter a opção "Manter metadados", desmarcada por padrão | Ver PRIV-30 |
 | FR-24 | PDF com senha DEVE mostrar um campo de senha no painel | Ver SEC-70 |

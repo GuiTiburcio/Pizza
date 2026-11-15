@@ -59,9 +59,9 @@ internal static unsafe class OptionsPanel
     }
 
     /// <summary>Abre centrado no ponto, inteiro na área de trabalho do monitor.</summary>
-    public static void Show(ConverterInfo converter, string fileName, int centerX, int centerY)
+    public static void Show(ConverterInfo converter, string fileName, int centerX, int centerY, IReadOnlyDictionary<string, string>? options = null)
     {
-        _state = new OptionsPanelState(converter);
+        _state = new OptionsPanelState(converter, options);
         _main = null;
         _fileName = fileName;
         _palette = DarkTheme() ? PanelPalette.Dark : PanelPalette.Light;
@@ -201,10 +201,12 @@ internal static unsafe class OptionsPanel
                 return 0;
 
             case WM_CLOSE:
-                // Alt+F4 vale como cancelar. Sem isto, o Windows destruiria a janela, que é reaproveitada.
+                // Alt+F4 cancela a sessão inteira; Esc e o botão Voltar retomam a escolha.
                 if (_state is not null)
                 {
-                    Apply(PanelAction.Cancel);
+                    Conversion.DiscardProbe();
+                    Close();
+                    Overlay.OnPanelClosed(null);
                 }
 
                 return 0;
@@ -338,15 +340,16 @@ internal static unsafe class OptionsPanel
             return;
         }
 
-        var options = action == PanelAction.Convert ? _state!.Options() : null;
-        if (options is null)
+        var options = _state!.Options();
+        if (action == PanelAction.Cancel)
         {
             // Cancelou: o Worker que respondeu ao probe não vai converter.
             Conversion.DiscardProbe();
         }
 
         Close();
-        Overlay.OnPanelClosed(options);
+        if (action == PanelAction.Cancel) Overlay.OnPanelBack(options);
+        else Overlay.OnPanelClosed(options);
     }
 
     /// <summary>A bolha de cada grupo desliza até a opção escolhida, na mola do giro de aba (ADR-027).</summary>

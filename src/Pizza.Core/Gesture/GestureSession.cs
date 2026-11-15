@@ -49,6 +49,14 @@ public sealed class GestureSession
         _released = false;
     }
 
+    /// <summary>Retoma somente uma seleção cujo drop já foi validado e ficou retido pela confirmação.</summary>
+    public void ResumeChoice()
+    {
+        State = GestureState.Choosing;
+        _waitingReentry = false;
+        _released = false;
+    }
+
     /// <summary>
     /// O hook vê o botão subir antes de o Windows concluir o arraste. Em qualquer estado ativo,
     /// a camada precisa continuar na tela para o drop não cair na janela de baixo.

@@ -37,7 +37,7 @@ internal static unsafe partial class Overlay
 
         if (Strip.Converter is null)
         {
-            Strip.PointAt(converter);
+            PointStripConverter(converter);
             LevelGlide.Snap(Strip.Selected);
             return;
         }
@@ -51,7 +51,7 @@ internal static unsafe partial class Overlay
         if (_hoverSlot is { } slot && CurrentSlices().ElementAtOrDefault(slot) is { } converter
             && _files is { } file && converter.Accepts(file.Paths))
         {
-            Strip.PointAt(converter);
+            PointStripConverter(converter);
             LevelGlide.Snap(Strip.Selected);
             Render();
         }

@@ -79,15 +79,20 @@ public sealed class DocumentTests : IDisposable
         File.Delete(marker);
         var source = Write("macro.odt", OdtWithOpenMacro(marker));
 
-        var engine = Engine();
-        var failures = new List<string>();
-        engine.ObserveFailure = (stage, code) => failures.Add(
-            $"{stage}: {(code is { } value ? $"0x{value:X8}" : "processo ativo ou indisponível")}");
-        var result = engine.Run(source, "document.pdf", "pdf");
+        // A falha foi intermitente: três processos sucessivos exercitam o mesmo documento, sem aceitar
+        // uma tentativa bem-sucedida como substituta de uma falha. Cada motor é descartado antes do seguinte.
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            using var engine = Engine();
+            var failures = new List<string>();
+            engine.ObserveFailure = (stage, code) => failures.Add(
+                $"{stage}: {(code is { } value ? $"0x{value:X8}" : "processo ativo ou indisponível")}");
+            var result = engine.Run(source, "document.pdf", "pdf");
 
-        Assert.True(result.ErrorCode is null,
-            $"Erro={result.ErrorCode}; fases={string.Join("; ", failures)}");
-        Assert.False(File.Exists(marker));
+            Assert.True(result.ErrorCode is null,
+                $"Tentativa={attempt}; erro={result.ErrorCode}; fases={string.Join("; ", failures)}");
+            Assert.False(File.Exists(marker));
+        }
     }
 
     [JumboFact]
