@@ -291,7 +291,8 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         }));
 
         // A leitura bloqueia; encerrar o Worker fecha o canal e a libera.
-        var reply = Task.Run(() => ReadOutcome(worker.Output, jobId, control?.Progress));
+        var reply = Task.Run(() => ReadOutcome(worker.Output, jobId, control?.Progress,
+            ObserveFailure is null ? null : stage => ObserveFailure(stage, worker.WaitForExit(0) ? worker.ExitCode : null)));
         // ADR-029: pausar congela o Worker, e o prazo do SEC-43 conta só o tempo ativo.
         active.Start();
         var suspended = false;
@@ -345,7 +346,10 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
 
         if (reply.Result is { } error)
         {
-            ObserveFailure?.Invoke("reply", worker.WaitForExit(0) ? worker.ExitCode : null);
+            if (ObserveFailure is { } observe)
+            {
+                observe("reply", worker.WaitForExit(100) ? worker.ExitCode : null);
+            }
             worker.Kill();
             return RandomAccess.GetLength(destination) > limit ? "LIMIT_EXCEEDED" : error;
         }
@@ -384,8 +388,14 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     }
 
     /// <summary>Lê até o resultado. Tudo que vem do Worker é não confiável (SEC-13, SEC-24).</summary>
-    private static string? ReadOutcome(Stream output, string jobId, Action<int>? progress)
+    private static string? ReadOutcome(Stream output, string jobId, Action<int>? progress, Action<string>? failure = null)
     {
+        string Failed(string phase)
+        {
+            failure?.Invoke(phase);
+            return "WORKER_CRASHED";
+        }
+
         // Só a porcentagem que avança chega à interface: um Worker comprometido não enche a fila de mensagens.
         var last = -1;
         try
@@ -395,7 +405,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
                 var message = IpcCodec.Parse(frame);
                 if (message.JobId != jobId)
                 {
-                    return "WORKER_CRASHED";
+                    return Failed("job-id");
                 }
 
                 switch (message.Type)
@@ -413,15 +423,15 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
 
                         continue;
                     default:
-                        return "WORKER_CRASHED";
+                        return Failed("message-type");
                 }
             }
 
-            return "WORKER_CRASHED";
+            return Failed("end-of-stream");
         }
         catch (Exception ex) when (ex is IpcProtocolException or IOException)
         {
-            return "WORKER_CRASHED";
+            return Failed(ex is IpcProtocolException ? "protocol" : "pipe-io");
         }
     }
 }

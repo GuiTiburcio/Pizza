@@ -80,13 +80,13 @@ public sealed class DocumentTests : IDisposable
         var source = Write("macro.odt", OdtWithOpenMacro(marker));
 
         var engine = Engine();
-        string? failureStage = null;
-        int? exitCode = null;
-        engine.ObserveFailure = (stage, code) => (failureStage, exitCode) = (stage, code);
+        var failures = new List<string>();
+        engine.ObserveFailure = (stage, code) => failures.Add(
+            $"{stage}: {(code is { } value ? $"0x{value:X8}" : "processo ativo ou indisponível")}");
         var result = engine.Run(source, "document.pdf", "pdf");
 
         Assert.True(result.ErrorCode is null,
-            $"Erro={result.ErrorCode}; fase={failureStage ?? "não observada"}; saída={(exitCode is { } code ? $"0x{code:X8}" : "processo ainda ativo ou indisponível")}");
+            $"Erro={result.ErrorCode}; fases={string.Join("; ", failures)}");
         Assert.False(File.Exists(marker));
     }
 
