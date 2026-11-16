@@ -48,11 +48,11 @@ O cartão de resultado permite abrir a saída ou mostrá-la na pasta. O menu do 
 | PDF | Juntar, dividir e girar páginas |
 | DOCX | TXT e HTML |
 | XLSX | CSV, um arquivo por planilha |
-| MP3, M4A, AAC, FLAC e WAV | MP3, M4A, FLAC e WAV; validação final da aba Áudio pendente |
+| MP3, M4A, AAC, FLAC e WAV | MP3, M4A/AAC ou ALAC, FLAC e WAV |
 
 O catálogo omite conversões para o mesmo formato quando não há operação correspondente. GIFs são tratados como imagem estática nesta etapa. HEIC, BMP e vídeo ficam fora desta prévia. Juntar PDFs aceita várias entradas; isso não representa conversão genérica em lote. DOCX → Markdown continua planejado. DOCX/XLSX/PPTX → PDF depende do motor opcional do Pizza Jumbo, separado do Brotinho.
 
-**Pendências conhecidas de Áudio:** fidelidade de duração no ALAC e confirmação antes de tentar uma taxa menor quando o Windows recusa a qualidade escolhida. Não usar a opção M4A sem perda como prova de fidelidade concluída. O lançamento depende de corrigir e validar esses casos.
+**Validação de Áudio:** os [testes do PR #84](https://github.com/GuiTiburcio/Pizza/pull/84) preservam integralmente o PCM ALAC nos casos de pacote completo/parcial, silêncio final, 16/24 bits e mono/estéreo/seis canais. Uma hora de áudio converteu em 94,77 s na CI, com hash do PCM preservado na releitura. O [PR #95](https://github.com/GuiTiburcio/Pizza/pull/95) exige confirmação antes de usar bitrate menor. Isso não substitui a matriz manual do candidato de lançamento nem valida todas as combinações de efeitos e conversões com perda; ver [critérios do Brotinho](docs/BROTINHO-LANCAMENTO.md).
 
 **Portfólio:** o código, os testes, o [dossiê](docs/dossie/README.md) e os PRs mostram a evolução do projeto. Recursos planejados não são apresentados como entregues. As versões para [macOS e Linux](docs/PORTABILIDADE.md) ainda estão no roteiro, sem data prometida.
 

@@ -18,7 +18,7 @@ Cada aprovação registra SHA, execução de CI, versão do Windows, data e resu
 | Imagem | JPG, PNG, WEBP, AVIF, TIFF, ICO, GIF e Imagem → PDF, conforme catálogo | O mantenedor já confirmou uso funcional. Repetir matriz no candidato final, incluindo qualidade, dimensões, orientação, metadados e transparência quando suportados. GIF é estático nesta etapa. |
 | PDF | Juntar, dividir e girar | Conferir ordem, número de páginas, rotações, texto/imagens e remoção de conteúdo ativo. Senhas e demais conversões não são prometidas por esta matriz. |
 | Documento | DOCX → TXT/HTML e XLSX → CSV | Conferir texto, acentos, listas, tabelas, links e imagens conforme cada destino. HTML teve correções de listas e quebras de código no PR #88, aprovado no CI e integrado. Neutralização de fórmulas CSV integrada no PR #90, com regressões aprovadas. Markdown é futuro; renderização Office → PDF pertence ao Jumbo. |
-| Áudio | MP3, M4A/AAC, FLAC e WAV; opções de canais, taxa, profundidade e volume | Bloqueiam o aceite: ALAC com preenchimento/duração extra e fallback de bitrate sem confirmação. Efeitos desligados devem preservar o áudio conforme o destino; efeitos ligados devem corresponder à escolha explícita. |
+| Áudio | MP3, M4A/AAC ou ALAC, FLAC e WAV; opções de canais, taxa, profundidade e volume | Regressões ALAC e WAV mono de 24 bits corrigidas e verificadas no PR #84; confirmação de bitrate no PR #95, com prévias aprovadas pelo mantenedor. Repetir a matriz manual no candidato final, incluindo efeitos, reamostragem e destinos com perda. |
 
 O escopo corresponde aos conversores realmente oferecidos. Formatos futuros não devem aparecer como funcionais. Não reduzir esta matriz nem esconder um formato com defeito para declarar a aba concluída sem decisão do mantenedor.
 
@@ -33,6 +33,8 @@ O escopo corresponde aos conversores realmente oferecidos. Formatos futuros não
 CI e CodeQL aprovados são necessários. A validação manual do aplicativo e os demais portões das SPECS também são necessários. O scan estático de 13–14/11/2026 teve cobertura parcial: não fecha TST-28 nem prova que todo o repositório está seguro.
 
 **Marco verificado em 14/11/2026:** PR #90 integrado após CI e CodeQL aprovados; 903 testes, zero falhas e zero ignorados, incluindo excesso de saída, ADS, CSV, pausa, cancelamento e rollback. Não é aceite manual das quatro abas. O teste do motor Jumbo `Macro_ao_abrir_nao_executa` apresentou falha intermitente `WORKER_CRASHED` numa rodada documental e passou na base com as correções; sua causa permanece sem confirmação e o teste continua obrigatório.
+
+**Áudio verificado em 15/11/2026 (America/Cuiaba):** código `c66efb001567c8be1d29f7a4faf323981092768a`, [CI #259](https://github.com/GuiTiburcio/Pizza/actions/runs/43786725684) e [CodeQL #260](https://github.com/GuiTiburcio/Pizza/actions/runs/43786725701) aprovados em Windows Server 2025 `10.0.26100`, imagem `windows-2025-vs2026` `20261103.298.1`. Foram 966 testes aprovados (Core 567, App 40, Converters 247, Integration 112), zero falhas e zero ignorados, com NativeAOT e Worker publicados. ALAC preservou cada amostra, comprimento e canais nos casos sintéticos de 16/24 bits, 44,1/48 kHz, limites de pacote e silêncio real. O Worker converteu uma hora de PCM estéreo em 94,77 s, dentro do prazo de 120 s; a releitura preservou o hash e o comprimento do PCM. O teste de macro passou nesta rodada, sem resolver a causa da intermitência anterior. A confirmação de bitrate foi validada na CI #255, e o mantenedor aprovou o cartão e o painel Arquivos desenhados pelo `DiscRenderer`.
 
 ## Distribuição e canais
 
@@ -52,4 +54,4 @@ O atualizador e a assinatura estável ainda são trabalho pendente. A configura�
 
 Manter uma demonstração com arquivos de exemplo, uma tabela de capacidades e limitações, links dos PRs/testes e um relato das decisões de segurança e experiência. Informar o apoio de ferramentas de IA com transparência, sem exigir do mantenedor um cargo profissional ou prometer serviços ainda não validados.
 
-Próximo marco: integrar correções verificadas, fechar Áudio sem perder amostras/qualidade e executar as quatro matrizes no mesmo candidato. Depois, validar distribuição e atualização; só então abrir o lançamento Estável. O roteiro de portabilidade permanece [separado](PORTABILIDADE.md).
+Próximo marco: executar as quatro matrizes manuais no mesmo candidato, incluindo os casos de Áudio já cobertos pela CI. Depois, completar os portões de segurança e validar distribuição e atualização; só então abrir o lançamento Estável. O roteiro de portabilidade permanece [separado](PORTABILIDADE.md).
