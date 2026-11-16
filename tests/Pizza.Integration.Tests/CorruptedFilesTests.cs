@@ -86,7 +86,7 @@ public sealed class CorruptedFilesTests(SandboxFixture fixture) : IDisposable
             var path = Path.Combine(_folder, "caso." + extension);
             File.WriteAllBytes(path, bytes);
 
-            var problem = Check(runner.Run(path, target.Id, target.Extension), path, bytes);
+            var problem = Check(runner.Run(path, target.Id, target.Extension, AudioOptions(target.Id)), path, bytes);
             if (problem is not null)
             {
                 failures.Add($"semente {seed}, {extension} para {target.Id}: {problem}");
@@ -106,7 +106,7 @@ public sealed class CorruptedFilesTests(SandboxFixture fixture) : IDisposable
         var corpus = new List<(string, byte[])> { ("wav", File.ReadAllBytes(wav)) };
         foreach (var (id, extension) in new[] { ("audio.mp3", "mp3"), ("audio.m4a", "m4a"), ("audio.flac", "flac") })
         {
-            var result = runner.Run(wav, id, extension);
+            var result = runner.Run(wav, id, extension, AudioOptions(id));
             Assert.Null(result.ErrorCode);
             corpus.Add((extension, File.ReadAllBytes(Path.Combine(_folder, result.OutputName!))));
         }
@@ -114,6 +114,11 @@ public sealed class CorruptedFilesTests(SandboxFixture fixture) : IDisposable
         Clear();
         return corpus.ToArray();
     }
+
+    // O corpus testa arquivos malformados, com taxa aceita. A oferta de taxa tem teste próprio no Worker real.
+    private static IReadOnlyDictionary<string, string> AudioOptions(string id) => id is "audio.mp3" or "audio.m4a"
+        ? new Dictionary<string, string> { ["bitrate"] = "96", ["channels"] = "mono" }
+        : new Dictionary<string, string>();
 
     private static byte[] AudioSample()
     {

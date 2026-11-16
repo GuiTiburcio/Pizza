@@ -45,6 +45,32 @@ public sealed class BitrateOfferTests
     }
 
     [Fact]
+    public void Fechar_preserva_oferta_e_uma_nova_reducao_exige_novo_aceite()
+    {
+        var history = new ConversionHistory();
+        var converter = ConverterCatalog.Find("audio.mp3")!;
+        history.Add(1, "a.wav", converter, new Dictionary<string, string> { ["bitrate"] = "320" });
+        Assert.True(history.OfferBitrate(1, 192));
+        var stack = new NotificationStack();
+        stack.Set(1, NotificationKind.Confirmation, "Confirmar qualidade", history.Find(1)!.Message!);
+        stack.Dismiss(1);
+        Assert.Equal(HistoryState.AwaitingConfirmation, history.Find(1)!.State);
+        var files = new FilesPanelState(history);
+        Assert.Equal((1L, NotificationAction.AcceptBitrate), files.Press(PanelKey.Enter));
+        Assert.Null(files.Press(PanelKey.Tab));
+        Assert.Equal((1L, NotificationAction.Cancel), files.Press(PanelKey.Enter));
+
+        var accepted = history.AcceptBitrate(1)!;
+        history.Remove(1);
+        history.Add(2, "a.wav", converter, accepted);
+        Assert.True(history.OfferBitrate(2, 128));
+        Assert.Equal("192", history.Find(2)!.Options["bitrate"]);
+        Assert.Null(history.Find(2)!.OutputPath);
+        Assert.Null(history.AcceptBitrate(1));
+        Assert.Equal("128", history.AcceptBitrate(2)!["bitrate"]);
+    }
+
+    [Fact]
     public void Cancelar_nao_confirma_e_oferta_nao_expira_sozinha()
     {
         var history = new ConversionHistory();
