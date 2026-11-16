@@ -18,6 +18,9 @@ public enum IpcType
 
     /// <summary>Resposta ao probe; o mesmo Worker fica esperando o convert.</summary>
     Info,
+
+    /// <summary>Taxa menor disponível; não autoriza converter.</summary>
+    QualityOffer,
 }
 
 /// <summary>
@@ -50,6 +53,8 @@ public sealed record IpcMessage(IpcType Type, string JobId)
     public string? Code { get; init; }
 
     public MediaInfo? Media { get; init; }
+
+    public int? Bitrate { get; init; }
 }
 
 public sealed class IpcProtocolException(string message) : Exception(message);
@@ -82,6 +87,7 @@ public static partial class IpcCodec
         [IpcType.Error] = ["code"],
         [IpcType.Probe] = ["converterId", "srcHandle"],
         [IpcType.Info] = ["durationMs", "sampleRate", "channels", "bits", "losslessPercent"],
+        [IpcType.QualityOffer] = ["bitrate"],
     };
 
     // Limites do "info": até 100 horas, taxas e canais que o Media Foundation trata.
@@ -238,6 +244,7 @@ public static partial class IpcCodec
         IpcType.Progress => new IpcMessage(type, jobId) { Percent = (int)Number(values, "percent", 0, 100) },
         IpcType.Done => new IpcMessage(type, jobId) { ElapsedMs = Number(values, "elapsedMs", 0, long.MaxValue) },
         IpcType.Error => new IpcMessage(type, jobId) { Code = OneOf(values, "code", ErrorCodes) },
+        IpcType.QualityOffer => new IpcMessage(type, jobId) { Bitrate = (int)Number(values, "bitrate", 1, 320) },
         IpcType.Probe => new IpcMessage(type, jobId) { ConverterId = ConverterId(values), SrcHandle = Handle(values, "srcHandle") },
         IpcType.Info => new IpcMessage(type, jobId)
         {
@@ -300,6 +307,7 @@ public static partial class IpcCodec
         "error" => IpcType.Error,
         "probe" => IpcType.Probe,
         "info" => IpcType.Info,
+        "qualityoffer" => IpcType.QualityOffer,
         _ => throw new IpcProtocolException("Tipo desconhecido."),
     };
 
@@ -347,6 +355,10 @@ public static partial class IpcCodec
 
             case IpcType.Error:
                 writer.WriteString("code", message.Code);
+                break;
+
+            case IpcType.QualityOffer:
+                writer.WriteNumber("bitrate", message.Bitrate!.Value);
                 break;
 
             case IpcType.Probe:

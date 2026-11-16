@@ -7,6 +7,7 @@ public enum HistoryState
     Running,
     Done,
     Failed,
+    AwaitingConfirmation,
 }
 
 /// <summary>Uma conversão desta sessão, com o necessário para abrir ou repetir.</summary>
@@ -21,13 +22,15 @@ public sealed class HistoryEntry(long id, string sourcePath, ConverterInfo conve
 
     public ConverterInfo Converter { get; } = converter;
 
-    public IReadOnlyDictionary<string, string> Options { get; } = options;
+    public IReadOnlyDictionary<string, string> Options { get; } = new Dictionary<string, string>(options);
 
     public HistoryState State { get; internal set; }
 
     public string? OutputPath { get; internal set; }
 
     public string? Message { get; internal set; }
+
+    public int? SuggestedBitrate { get; internal set; }
 
     /// <summary>O arquivo gerado foi movido ou apagado; descoberto só na hora do clique.</summary>
     public bool Missing { get; set; }
@@ -75,6 +78,31 @@ public sealed class ConversionHistory
     }
 
     public void Remove(long id) => _entries.RemoveAll(entry => entry.Id == id);
+
+    public bool OfferBitrate(long id, int suggested)
+    {
+        if (Find(id) is not { State: HistoryState.Running } entry || !BitrateOffer.IsValid(entry.Converter.Id, entry.Options, suggested))
+        {
+            return false;
+        }
+
+        entry.State = HistoryState.AwaitingConfirmation;
+        entry.SuggestedBitrate = suggested;
+        entry.Message = BitrateOffer.Message(entry.Converter.Id, entry.Options, suggested);
+        return true;
+    }
+
+    /// <summary>Consome somente a oferta exibida. Repetir a ação não confirma outra redução.</summary>
+    public IReadOnlyDictionary<string, string>? AcceptBitrate(long id)
+    {
+        if (Find(id) is not { State: HistoryState.AwaitingConfirmation, SuggestedBitrate: { } suggested } entry)
+        {
+            return null;
+        }
+
+        entry.SuggestedBitrate = null;
+        return BitrateOffer.Accept(entry.Converter.Id, entry.Options, suggested);
+    }
 
     /// <summary>Tira as mais antigas, poupando o que ainda está em andamento ou com cartão na tela.</summary>
     private void Trim()

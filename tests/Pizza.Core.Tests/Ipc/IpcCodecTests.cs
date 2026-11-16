@@ -6,6 +6,26 @@ namespace Pizza.Core.Tests.Ipc;
 /// <summary>SEC-13: JSON estrito, tamanho máximo, esquema validado, campos desconhecidos rejeitados.</summary>
 public class IpcCodecTests
 {
+    [Fact]
+    public void Oferta_de_taxa_e_tipificada_e_volta_pelo_mesmo_esquema()
+    {
+        var original = new IpcMessage(IpcType.QualityOffer, "0123456789ab") { Bitrate = 192 };
+        var parsed = IpcCodec.Parse(IpcCodec.Serialize(original));
+        Assert.Equal(original, parsed);
+    }
+
+    [Theory]
+    [InlineData("\"bitrate\":0")]
+    [InlineData("\"bitrate\":321")]
+    [InlineData("\"bitrate\":192.5")]
+    [InlineData("\"bitrate\":\"192\"")]
+    [InlineData("\"bitrate\":192,\"path\":\"a.wav\"")]
+    [InlineData("\"bitrate\":192,\"bitrate\":128")]
+    public void Oferta_fora_do_esquema_e_recusada(string fields)
+    {
+        Assert.Throws<IpcProtocolException>(() => Parse("{" + Job + ",\"type\":\"qualityoffer\"," + fields + "}"));
+    }
+
     private const string Job = "\"v\":1,\"jobId\":\"0123456789ab\"";
 
     private static IpcMessage Parse(string json) => IpcCodec.Parse(Encoding.UTF8.GetBytes(json));

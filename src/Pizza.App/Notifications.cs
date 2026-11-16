@@ -96,14 +96,21 @@ internal static unsafe class Notifications
             return;
         }
 
-        Log.Write(result.ErrorCode is null ? LogEvent.ConversionDone : LogEvent.ConversionFailed);
+        if (result.ErrorCode != BitrateOffer.Required)
+        {
+            Log.Write(result.ErrorCode is null ? LogEvent.ConversionDone : LogEvent.ConversionFailed);
+        }
         if (History.Find(finished.Id) is not { } entry)
         {
             return;
         }
 
         RefreshHeld();
-        if (result.ErrorCode is { } code)
+        if (result.ErrorCode == BitrateOffer.Required && result.SuggestedBitrate is { } suggested && History.OfferBitrate(finished.Id, suggested))
+        {
+            Stack.Set(finished.Id, NotificationKind.Confirmation, "Confirmar qualidade", entry.Message!);
+        }
+        else if (result.ErrorCode is { } code)
         {
             // FR-42 e PRIV-17: o motivo em português e só o nome do arquivo, nunca o caminho.
             var message = ConversionMessages.For(code);
@@ -353,6 +360,17 @@ internal static unsafe class Notifications
                 Stack.Dismiss(id);
                 History.Remove(id);
                 Convert([entry.SourcePath, .. entry.MoreSources], entry.Converter, entry.Options);
+                return;
+
+            case NotificationAction.AcceptBitrate:
+                if (History.AcceptBitrate(id) is not { } accepted)
+                {
+                    return;
+                }
+
+                Stack.Dismiss(id);
+                History.Remove(id);
+                Convert([entry.SourcePath, .. entry.MoreSources], entry.Converter, accepted);
                 return;
 
             case NotificationAction.Details:

@@ -144,3 +144,15 @@ O áudio de teste é gerado pelo próprio teste. Passa quem cumprir:
 - **Efeitos do XAudio2 (XAPO) ou de uma biblioteca de DSP:** foram feitos para tocar, não para converter, ou seriam dependência nova; as contas são curtas e testáveis.
 - **Estimar o tamanho só pelo tamanho da origem:** erra muito quando a origem já é comprimida.
 - **Limitador com 5 ms de antecipação:** atrasa o áudio e exige fabricar amostras extras no fim. O ataque instantâneo também garante que nada passe do teto, sem atraso (ajuste de 13/11/2026, na etapa 2a).
+
+## Adendo de 15/11/2026: confirmação de taxa menor
+
+O mantenedor escolheu pedir confirmação quando o codificador não aceita a taxa solicitada. A lista de opções continua completa: a disponibilidade depende dos canais, da taxa de amostragem e do Windows.
+
+- O Worker testa a configuração antes de `BeginWriting`. Se só uma taxa menor do catálogo funcionar, devolve `qualityoffer` com esse inteiro e encerra a tentativa. Nenhuma saída é publicada.
+- O residente valida a oferta contra o catálogo e a escolha original (SEC-13). Só MP3/AAC aceitam redução numérica; `lossless` nunca autoriza trocar ALAC por AAC.
+- O cartão mostra a taxa pedida e a sugerida, com os botões "Usar taxa menor" e "Cancelar". Não expira sozinho. Fechar o cartão preserva a decisão no painel Arquivos.
+- Aceitar inicia outra conversão, com exatamente a taxa exibida e as demais opções preservadas. A confirmação é consumida uma vez. Se outra redução for necessária, exige nova oferta e novo clique.
+- A origem continua só para leitura; o temporário da tentativa é descartado (SEC-15, SEC-20, SEC-29 e SEC-31). Não há nome ou caminho na mensagem do pipe nem registro de conteúdo no log (PRIV-16).
+
+Verificação: TST-01 cobre a confirmação e seu consumo único; TST-04 cobre o esquema estrito e ofertas inválidas; TST-02/TST-10 cobrem o codificador nativo e o Worker real, sem saída antes do aceite e com hash da origem preservado. A aparência precisa ser vista no `DiscRenderer` e validada pelo mantenedor antes de ser declarada concluída.

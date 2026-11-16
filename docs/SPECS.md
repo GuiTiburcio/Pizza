@@ -536,6 +536,7 @@ Todas têm `v` (versão do protocolo), `type` e `jobId` (12 hex aleatórios). Ta
 | `cancel` | App → Worker | — | `jobId` existente |
 | `probe` | App → Worker | `converterId`, `srcHandle` | Só na aba Áudio (ADR-035): pede a duração e o formato para o tamanho previsto |
 | `info` | Worker → App | `durationMs`, `sampleRate`, `channels`, `bits`, `losslessPercent` | Inteiros dentro da faixa; `losslessPercent` de 0 a 100 (0 = não medido) |
+| `qualityoffer` | Worker → App | `bitrate` | Inteiro de 1 a 320; o residente exige taxa do catálogo MP3/AAC, menor que a pedida. Não pode substituir ALAC. Encerra a tentativa sem publicar saída; só o clique de confirmação inicia nova conversão com a taxa exibida (ADR-035) |
 | `progress` | Worker → App | `percent` | 0–100 |
 | `done` | Worker → App | `elapsedMs` | — |
 | `error` | Worker → App | `code` | Um dos códigos da §10.4 |

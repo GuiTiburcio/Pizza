@@ -29,7 +29,7 @@ public sealed class AudioConversionTests(SandboxFixture fixture) : IDisposable
 
         foreach (var (id, extension, options) in new[]
         {
-            ("audio.mp3", "mp3", new Dictionary<string, string> { ["bitrate"] = "320", ["channels"] = "mono" }),
+            ("audio.mp3", "mp3", new Dictionary<string, string> { ["bitrate"] = "96", ["channels"] = "mono" }),
             ("audio.m4a", "m4a", new Dictionary<string, string> { ["bitrate"] = "lossless" }),
             ("audio.flac", "flac", new Dictionary<string, string> { ["depth"] = "24", ["rate"] = "48000" }),
         })
@@ -41,6 +41,32 @@ public sealed class AudioConversionTests(SandboxFixture fixture) : IDisposable
             Assert.True(new FileInfo(Path.Combine(_folder, result.OutputName!)).Length > 1000, id);
         }
 
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
+        Assert.Empty(Directory.GetFiles(_folder, ".~pizza-*", new EnumerationOptions { AttributesToSkip = 0 }));
+    }
+
+    [MediaFact]
+    public void Taxa_menor_so_converte_depois_de_confirmada()
+    {
+        // TST-02/TST-10: Worker real, sem saída final ou temporário enquanto a oferta aguarda o usuário.
+        var source = Path.Combine(_folder, "voz.wav");
+        File.WriteAllBytes(source, Wav(seconds: 1));
+        var before = SHA256.HashData(File.ReadAllBytes(source));
+        var options = new Dictionary<string, string> { ["bitrate"] = "320", ["channels"] = "mono" };
+
+        var offer = Runner().Run(source, "audio.mp3", "mp3", options);
+
+        Assert.Equal(Pizza.Core.Conversions.BitrateOffer.Required, offer.ErrorCode);
+        Assert.Null(offer.OutputName);
+        Assert.NotNull(offer.SuggestedBitrate);
+        Assert.Single(Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }));
+        var accepted = Pizza.Core.Conversions.BitrateOffer.Accept("audio.mp3", options, offer.SuggestedBitrate.Value);
+        Assert.NotNull(accepted);
+
+        var converted = Runner().Run(source, "audio.mp3", "mp3", accepted);
+
+        Assert.Null(converted.ErrorCode);
+        Assert.Equal("voz.mp3", converted.OutputName);
         Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
         Assert.Empty(Directory.GetFiles(_folder, ".~pizza-*", new EnumerationOptions { AttributesToSkip = 0 }));
     }
