@@ -122,6 +122,8 @@ public sealed class AudioConverter(string id) : IConverter
         var (rate, channels, bits) = ((uint)target.Rate, (uint)target.Channels, (uint)target.Bits);
         var alac = Format == "m4a" && options["bitrate"] == "lossless"
             ? new AlacTailStream(destination, (int)channels, (int)bits, (int)rate) : null;
+        var wave = Format == "wav" ? new WaveHeaderStream(destination) : null;
+        long pcmBytes = 0;
 
         // O leitor entrega PCM já no formato da saída: ele mesmo reamostra e mistura os canais.
         var pcm = MediaFoundation.CreateMediaType();
@@ -132,7 +134,7 @@ public sealed class AudioConverter(string id) : IConverter
             MediaFoundation.SetCurrentMediaType(reader.Handle, MediaFoundation.FirstAudioStream, pcm);
             current = MediaFoundation.CurrentMediaType(reader.Handle, MediaFoundation.FirstAudioStream);
 
-            outStream = HandleStream.Create(alac ?? destination);
+            outStream = HandleStream.Create((Stream?)alac ?? wave ?? destination);
             outBytes = MediaFoundation.ByteStream(outStream);
             if (OpenWriter(outBytes, current, options, rate, channels, bits) is not { } opened)
             {
@@ -173,6 +175,7 @@ public sealed class AudioConverter(string id) : IConverter
                 }
 
                 alac?.Record(sample);
+                pcmBytes = checked(pcmBytes + MediaFoundation.TotalLength(sample));
                 MediaFoundation.WriteSample(writer, stream, sample);
             }) is { } error)
             {
@@ -189,7 +192,15 @@ public sealed class AudioConverter(string id) : IConverter
                 alac?.CheckLimit();
             }
 
+            // Fecha todas as referências do gravador antes de reparar os cabeçalhos observados.
+            MediaFoundation.Release(writer);
+            writer = 0;
+            MediaFoundation.Release(outBytes);
+            outBytes = 0;
+            MediaFoundation.Release(outStream);
+            outStream = 0;
             alac?.Complete();
+            wave?.Complete(pcmBytes);
             progress?.Report(ProgressSteps);
             return null;
         }

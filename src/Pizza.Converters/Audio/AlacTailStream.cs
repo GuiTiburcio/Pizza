@@ -84,7 +84,7 @@ internal sealed class AlacTailStream(Stream inner, int channels, int bits, int r
         }
     }
 
-    public void BeginFinalization() => _finalizing = _pcmBytes % _tail.Length != 0;
+    public void BeginFinalization() => _finalizing = _pcmBytes > 0;
 
     public void CheckLimit()
     {
@@ -98,7 +98,7 @@ internal sealed class AlacTailStream(Stream inner, int channels, int bits, int r
         _finalizing = false;
         var frames = _pcmBytes / (channels * (bits / 8));
         var partialFrames = checked((int)(frames % FrameLength));
-        var packet = PartialPacket(_tail.AsSpan(0, partialFrames * channels * (bits / 8)), channels, bits);
+        var packet = partialFrames == 0 ? null : PartialPacket(_tail.AsSpan(0, partialFrames * channels * (bits / 8)), channels, bits);
         var media = FindMedia();
         var moovHeader = Captured(media.End, 8);
         Require(Encoding.ASCII.GetString(moovHeader, 4, 4) == "moov");
@@ -109,6 +109,19 @@ internal sealed class AlacTailStream(Stream inner, int channels, int bits, int r
         var sizes = moov.Find("stsz");
         var packetCount = checked((int)U32(sizes.Data, 8));
         Require(packetCount == (frames + FrameLength - 1) / FrameLength);
+        if (packet is null)
+        {
+            // A duração do MF também pode arredondar um quadro completo uma amostra para baixo.
+            SetDurations(moov, frames, 0, packetCount, rate);
+            var completeMetadata = moov.Encode();
+            OutputBudget.Check(media.End + completeMetadata.Length);
+            inner.Position = media.End;
+            inner.Write(completeMetadata);
+            inner.SetLength(media.End + completeMetadata.Length);
+            _finalWrites.Clear();
+            return;
+        }
+
         var fixedSize = U32(sizes.Data, 4);
         Require(fixedSize != 0 || sizes.Data.Length == 12L + packetCount * 4L);
         uint Size(int index) => fixedSize == 0 ? U32(sizes.Data, 12 + index * 4) : fixedSize;
@@ -205,16 +218,24 @@ internal sealed class AlacTailStream(Stream inner, int channels, int bits, int r
 
         var track = moov.Find("tkhd").Data;
         PutDuration(track, track[0] == 0 ? 20 : 28, frames);
-        var table = new byte[packets == 1 ? 16 : 24];
-        Put32(table, 4, packets == 1 ? 1u : 2u);
-        if (packets > 1)
+        var table = new byte[partial == 0 || packets == 1 ? 16 : 24];
+        Put32(table, 4, (uint)((table.Length - 8) / 8));
+        if (partial == 0)
         {
-            Put32(table, 8, (uint)(packets - 1));
+            Put32(table, 8, (uint)packets);
             Put32(table, 12, FrameLength);
         }
+        else
+        {
+            if (packets > 1)
+            {
+                Put32(table, 8, (uint)(packets - 1));
+                Put32(table, 12, FrameLength);
+            }
 
-        Put32(table, table.Length - 8, 1);
-        Put32(table, table.Length - 4, (uint)partial);
+            Put32(table, table.Length - 8, 1);
+            Put32(table, table.Length - 4, (uint)partial);
+        }
         moov.Find("stts").Data = table;
     }
 

@@ -55,9 +55,17 @@ public partial class AudioConverterTests
     [InlineData(16, 2, 1)]
     [InlineData(24, 2, 4097)]
     [InlineData(16, 6, 4097)]
+    [InlineData(16, 6, 8192)]
     [InlineData(24, 6, 4095)]
     public void Alac_preserva_cauda_curta_mono_estereo_e_multicanal(int bits, int channels, int frames) =>
         AssertLosslessRoundtrip("audio.m4a", bits, 48000, frames, Math.Min(frames, 7), channels);
+
+    [MediaTheory]
+    [InlineData("audio.wav")]
+    [InlineData("audio.flac")]
+    [InlineData("audio.m4a")]
+    public void Mono_de_24_bits_nao_conta_alinhamento_RIFF_como_PCM(string id) =>
+        AssertLosslessRoundtrip(id, 24, 48000, 4095, 7, 1);
 
     private static void AssertLosslessRoundtrip(string id, int bits, int rate, int frames, int trailingSilentFrames, int channels = 2)
     {
@@ -67,6 +75,7 @@ public partial class AudioConverterTests
         var options = id == "audio.m4a" ? new[] { ("bitrate", "lossless") } : Array.Empty<(string, string)>();
         var (error, encoded) = Run(id, source, options);
         Assert.Null(error);
+        if (id == "audio.m4a") Assert.Contains($"mdhd: escala={rate}, duração={frames}", M4aTimeline(encoded));
         var (decodeError, decoded) = Run("audio.wav", encoded);
         Assert.Null(decodeError);
         Assert.Equal(source, before);
@@ -77,7 +86,9 @@ public partial class AudioConverterTests
         var actual = Pcm(decoded);
         if (!expected.SequenceEqual(actual))
         {
-            Assert.Fail($"PCM do fixture: origem={expected.Length} bytes, saída={actual.Length} bytes; codificado={Inspect(encoded)}; decodificado={Inspect(decoded)}; leitura da origem={InputPcmTimeline(source)}; contêiner={M4aTimeline(encoded)}");
+            var mismatch = 0;
+            while (mismatch < Math.Min(expected.Length, actual.Length) && expected[mismatch] == actual[mismatch]) mismatch++;
+            Assert.Fail($"PCM do fixture: origem={expected.Length} bytes, saída={actual.Length} bytes, primeira diferença={mismatch}; codificado={Inspect(encoded)}; decodificado={Inspect(decoded)}; leitura da origem={InputPcmTimeline(source)}; contêiner={M4aTimeline(encoded)}");
         }
     }
 
@@ -86,7 +97,8 @@ public partial class AudioConverterTests
         var bytes = bits / 8;
         using var memory = new MemoryStream();
         using var writer = new BinaryWriter(memory);
-        writer.Write("RIFF"u8); writer.Write(36 + frames * channels * bytes); writer.Write("WAVEfmt "u8);
+        var dataLength = frames * channels * bytes;
+        writer.Write("RIFF"u8); writer.Write(36 + dataLength + (dataLength & 1)); writer.Write("WAVEfmt "u8);
         writer.Write(16); writer.Write((short)1); writer.Write((short)channels); writer.Write(rate);
         writer.Write(rate * channels * bytes); writer.Write((short)(channels * bytes)); writer.Write((short)bits);
         writer.Write("data"u8); writer.Write(frames * channels * bytes);
@@ -99,6 +111,7 @@ public partial class AudioConverterTests
                 : (int)(((long)frame * (channel == 0 ? 7919 : 1237 * channel)) % maximum) - maximum / 2;
             for (var b = 0; b < bytes; b++) writer.Write((byte)(sample >> (8 * b)));
         }
+        if ((dataLength & 1) != 0) writer.Write((byte)0);
         writer.Flush();
         return memory.ToArray();
     }
