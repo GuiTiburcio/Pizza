@@ -145,6 +145,33 @@ O áudio de teste é gerado pelo próprio teste. Passa quem cumprir:
 - **Estimar o tamanho só pelo tamanho da origem:** erra muito quando a origem já é comprimida.
 - **Limitador com 5 ms de antecipação:** atrasa o áudio e exige fabricar amostras extras no fim. O ataque instantâneo também garante que nada passe do teto, sem atraso (ajuste de 13/11/2026, na etapa 2a).
 
+## Verificação de fidelidade de 13/11/2026: ALAC ainda pendente
+
+Os testes de releitura do PR #84 com PCM estéreo de 48 kHz, canais distintos e valores extremos preservaram exatamente as amostras em WAV e FLAC, nas profundidades de 16 e 24 bits. Isso não comprova todas as combinações de entrada, reamostragem, mistura de canais ou efeitos.
+
+O mesmo teste revelou dois problemas no caminho ALAC/M4A:
+
+- A lista de subtipos recusava a própria saída: o MPEG-4 source expõe `616c6163-767a-494d-b478-f29d25dc9037` para a entrada `alac`, além do identificador `MFAudioFormat_ALAC` usado pelo codificador. A correção aceita somente essa representação adicional do mesmo codec.
+- Após essa correção, as 48.000 amostras por canal da origem foram recuperadas integralmente, mas a saída decodificada tinha 49.152 amostras por canal, com 1.152 amostras extras de silêncio (24 ms). O contêiner já informava duração ampliada. Cortar silêncio na releitura poderia apagar silêncio verdadeiro e não corrige o arquivo exportado.
+
+Os casos de ALAC permanecem reprovando a igualdade integral. A fidelidade desse caminho e a conclusão da aba Áudio continuam pendentes. Não substituir o teste por tolerância de duração nem considerar a simples criação do arquivo uma prova de conversão sem perda. As origens dos testes continuam preservadas.
+
+**Decisão do mantenedor em 13/11/2026, após conhecer esse resultado:** corrigir o ALAC antes de concluir a aba Áudio, mesmo que a etapa leve mais tempo. Não adiar nem retirar a opção para declarar a aba concluída. A correção precisa preservar o comprimento válido na codificação ou no contêiner, além das amostras; remover silêncio pelo conteúdo não atende ao aceite. Validar também pacotes completos, pacotes parciais e silêncio verdadeiro no final, em 16 e 24 bits e em 44,1 e 48 kHz.
+
+## Adendo de 13/11/2026: qualidade indisponível exige confirmação
+
+Decisão do mantenedor: quando o codificador do Windows não aceitar a taxa escolhida, oferecer uma taxa menor e só converter depois da confirmação. A redução automática não atende a essa decisão.
+
+- O aviso deve mostrar a taxa solicitada e a taxa menor disponível, ambas em kbps, para a mesma combinação de formato, canais e taxa de amostragem.
+- Oferecer a alternativa não autoriza converter. Cancelar não gera uma saída, e a origem permanece intacta (SEC-30, SEC-31).
+- Confirmar autoriza somente a taxa mostrada. Se essa taxa também for recusada, não tentar outra menor sem nova confirmação.
+- A opção "Sem perda" não pode virar AAC nem outro modo com perda como alternativa automática.
+- A detecção de suporte continua no Worker isolado. Qualquer negociação pelo IPC precisa de esquema estrito e validação nos dois lados (SEC-13), sem caminhos nem conteúdo do arquivo (SEC-15).
+
+**Implementado em 15/11/2026 no PR #95:** detecção no Worker, confirmação na interface e nova tentativa com a taxa explicitamente aceita. CI e CodeQL aprovados; o mantenedor validou as prévias do cartão e do painel Arquivos.
+
+**Critérios de aceite:** uma combinação recusada oferece a alternativa sem iniciar a conversão; Cancelar não deixa saída; confirmar usa exatamente a taxa mostrada; outra recusa não reduz novamente em silêncio; "Sem perda" nunca é substituído por codificação com perda. Os testes também devem verificar a preservação do original e a rejeição de sugestões fora do catálogo.
+
 ## Adendo de 15/11/2026: confirmação de taxa menor
 
 O mantenedor escolheu pedir confirmação quando o codificador não aceita a taxa solicitada. A lista de opções continua completa: a disponibilidade depende dos canais, da taxa de amostragem e do Windows.
@@ -156,3 +183,17 @@ O mantenedor escolheu pedir confirmação quando o codificador não aceita a tax
 - A origem continua só para leitura; o temporário da tentativa é descartado (SEC-15, SEC-20, SEC-29 e SEC-31). Não há nome ou caminho na mensagem do pipe nem registro de conteúdo no log (PRIV-16).
 
 Verificação: TST-01 cobre a confirmação e seu consumo único; TST-04 cobre o esquema estrito e ofertas inválidas; TST-02/TST-10 cobrem o codificador nativo e o Worker real, sem saída antes do aceite e com hash da origem preservado. A aparência precisa ser vista no `DiscRenderer` e validada pelo mantenedor antes de ser declarada concluída.
+
+## Investigação de 15/11/2026: pacote parcial ALAC
+
+A CI #252 demonstrou que corrigir apenas `mvhd`, `mdhd`, `tkhd` e `stts` não basta: com 4.095 amostras declaradas, o leitor ainda devolveu 4.096. Na CI #254, o fixture `Alac_leitor_respeita_pacote_parcial_explicito` passou ao substituir o pacote por um quadro de escape ALAC com comprimento explícito, mantendo as 4.095 amostras e o silêncio verdadeiro no final. A conversão normal ainda tinha dez falhas de fidelidade no conversor e uma no Worker; o PR #84 continuava bloqueado.
+
+A implementação em validação conserva o codificador Microsoft nos quadros completos e substitui somente o último quadro parcial por PCM sem compressão dentro do próprio ALAC. Esse modo faz parte do formato; não troca codec nem reduz a precisão. Ajusta a tabela de tamanhos, a duração e o cabeçalho do contêiner à contagem exata. A referência de estrutura é o [codificador ALAC publicado pela Apple](https://github.com/macosforge/alac/blob/master/codec/ALACEncoder.cpp); nenhuma biblioteca adicional é carregada.
+
+O Worker conserva em memória um quadro de PCM e observa suas próprias escritas de cabeçalho/finalização. Não lê o destino, não reabre caminhos e não altera os direitos dos handles (SEC-15, SEC-20, SEC-22, SEC-31). A captura da finalização tem teto de 64 MiB para não crescer com o conteúdo inteiro (SEC-44); exceder esse teto interrompe com `LIMIT_EXCEEDED`. O limite agregado de 2 GiB continua conferido antes da publicação. O teste de aceite continua sendo igualdade integral do PCM, com limites de pacote, silêncio real, 16/24 bits, 44,1/48 kHz e releitura no Worker real. A implementação não está declarada aprovada até essa CI passar.
+
+A ampliação dos testes encontrou duas falhas adicionais: o plano limitava todo M4A a dois canais, inclusive ALAC, e o sink WAV incluía o byte de alinhamento RIFF no tamanho válido do PCM mono de 24 bits. A limitação de canais passa a valer somente para MP3/AAC. A exportação WAV usa a contagem exata do PCM escrito para corrigir o tamanho de `data`, sem remover amostras e sem ler o destino. O [formato RIFF documentado pela Microsoft](https://learn.microsoft.com/en-us/windows/win32/xaudio2/resource-interchange-file-format--riff-) exclui o alinhamento do tamanho válido do chunk. As durações ALAC são normalizadas também para pacotes completos, pela contagem de amostras. O teste de uma hora usa PCM real gerado em fluxo e compara seu hash após a releitura; o prazo de cada Worker continua em dois minutos.
+
+## Resultado verificado em 15/11/2026
+
+O código `c66efb001567c8be1d29f7a4faf323981092768a` passou na [CI #259](https://github.com/GuiTiburcio/Pizza/actions/runs/43786725684) e no [CodeQL #260](https://github.com/GuiTiburcio/Pizza/actions/runs/43786725701): 966 testes, zero falhas e zero ignorados, NativeAOT e Worker publicados. As regressões de pacote completo/parcial, duração exata, silêncio real, mono, estéreo, seis canais e WAV mono de 24 bits passaram. O teste com uma hora de PCM estéreo a 44,1 kHz converteu em 94,77 s; a releitura preservou comprimento e hash do PCM. Ambiente: Windows Server 2025 `10.0.26100`, imagem `windows-2025-vs2026` `20261103.298.1`. Esse resultado fecha as regressões descritas acima; não equivale à matriz manual do candidato final, à validação de toda combinação de efeitos ou à auditoria completa TST-28. A confirmação de bitrate foi integrada separadamente no PR #95, com as prévias aprovadas pelo mantenedor.

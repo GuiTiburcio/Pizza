@@ -4,7 +4,7 @@ using Pizza.Converters.Audio;
 namespace Pizza.Converters.Tests;
 
 /// <summary>ADR-035: conversões de áudio pelo Media Foundation, com o áudio de teste gerado aqui (sem arquivo de usuário).</summary>
-public class AudioConverterTests
+public partial class AudioConverterTests
 {
     [MediaFact]
     public void Wav_vira_cada_formato_com_a_assinatura_certa_e_a_mesma_duracao()

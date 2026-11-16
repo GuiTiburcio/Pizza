@@ -86,16 +86,20 @@ internal static class Program
     private static IpcMessage Convert(IpcMessage request, IProgress<int> progress)
     {
         // SPECS §10.3: só o que está no registro, e só com opções dentro do esquema.
-        if (ConverterRegistry.Find(request.ConverterId!) is not { } converter
-            || ConverterCatalog.Find(converter.Id) is not { } info
+        if (ConverterCatalog.Find(request.ConverterId!) is not { } info
             || ConverterCatalog.ResolveOptions(info, request.Options!) is not { } options)
         {
             return new IpcMessage(IpcType.Error, request.JobId) { Code = "UNSUPPORTED" };
         }
 
-        if (converter is Pizza.Converters.Audio.AudioConverter)
+        if (info.Tab == ConverterCatalog.AudioTab)
         {
             RequireMicrosoftSigned();
+        }
+
+        if (ConverterRegistry.Find(info.Id) is not { } converter)
+        {
+            return new IpcMessage(IpcType.Error, request.JobId) { Code = "UNSUPPORTED" };
         }
 
         var clock = Stopwatch.StartNew();

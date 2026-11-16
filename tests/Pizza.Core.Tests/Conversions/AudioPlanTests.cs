@@ -13,6 +13,14 @@ public class AudioPlanTests
         ConverterCatalog.ResolveOptions(ConverterCatalog.Find(id)!, given.ToDictionary(o => o.Key, o => o.Value))!;
 
     [Fact]
+    public void Alac_preserva_os_canais_originais_e_AAC_limita_em_estereo()
+    {
+        Assert.Equal(6, AudioPlan.Target("m4a", Options("audio.m4a", ("bitrate", "lossless")), 48000, 6, 24).Channels);
+        Assert.Equal(2, AudioPlan.Target("m4a", Options("audio.m4a"), 48000, 6, 24).Channels);
+        Assert.Equal(1, AudioPlan.Target("m4a", Options("audio.m4a", ("bitrate", "lossless"), ("channels", "mono")), 48000, 6, 24).Channels);
+    }
+
+    [Fact]
     public void Mp3_e_taxa_vezes_duracao()
     {
         var size = AudioPlan.Estimate("audio.mp3", Options("audio.mp3"), Cd);
