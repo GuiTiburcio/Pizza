@@ -5,19 +5,20 @@ namespace Pizza.Converters.Tests;
 public partial class AudioConverterTests
 {
     [MediaFact]
-    public void Alac_leitor_respeita_comprimento_valido_do_container()
+    public void Alac_leitor_respeita_pacote_parcial_explicito()
     {
-        // Hipótese: corrigir só a duração do contêiner basta para o MF não devolver o padding do pacote.
-        // Fixture de um pacote; não corta silêncio por conteúdo nem altera o critério de igualdade.
+        // Corrigir só a duração não bastou (CI 252). Isola agora o suporte do leitor ao quadro parcial do ALAC.
+        // Fixture de um pacote, sem compressão: cada amostra real é mantida, inclusive o silêncio final.
         var source = PatternWave(16, 48000, 4095, 17);
         var (error, encoded) = Run("audio.m4a", source, ("bitrate", "lossless"));
         Assert.Null(error);
+        encoded = ReplaceSingleAlacPacket(encoded, Pcm(source));
         M4aTimeline(encoded, (4095, 48000));
         var (decodeError, decoded) = Run("audio.wav", encoded);
         Assert.Null(decodeError);
         var expected = Pcm(source);
         var actual = Pcm(decoded);
-        Assert.True(expected.SequenceEqual(actual), $"Duração corrigida, PCM origem={expected.Length}, saída={actual.Length}; {M4aTimeline(encoded)}");
+        Assert.True(expected.SequenceEqual(actual), $"Pacote parcial explícito, PCM origem={expected.Length}, saída={actual.Length}; {M4aTimeline(encoded)}");
     }
 
     [MediaTheory]
