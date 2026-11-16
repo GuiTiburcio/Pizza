@@ -49,10 +49,20 @@ public partial class AudioConverterTests
     public void Alac_preserva_pacotes_parciais_e_silencio_real_no_final(int bits, int rate, int frames, int trailingSilentFrames) =>
         AssertLosslessRoundtrip("audio.m4a", bits, rate, frames, trailingSilentFrames);
 
-    private static void AssertLosslessRoundtrip(string id, int bits, int rate, int frames, int trailingSilentFrames)
+    [MediaTheory]
+    [InlineData(16, 1, 1)]
+    [InlineData(24, 1, 4095)]
+    [InlineData(16, 2, 1)]
+    [InlineData(24, 2, 4097)]
+    [InlineData(16, 6, 4097)]
+    [InlineData(24, 6, 4095)]
+    public void Alac_preserva_cauda_curta_mono_estereo_e_multicanal(int bits, int channels, int frames) =>
+        AssertLosslessRoundtrip("audio.m4a", bits, 48000, frames, Math.Min(frames, 7), channels);
+
+    private static void AssertLosslessRoundtrip(string id, int bits, int rate, int frames, int trailingSilentFrames, int channels = 2)
     {
         // TST-02/TST-10: tamanho/duração iguais não provam fidelidade. Os canais diferem e incluem valores extremos.
-        var source = PatternWave(bits, rate, frames, trailingSilentFrames);
+        var source = PatternWave(bits, rate, frames, trailingSilentFrames, channels);
         var before = source.ToArray();
         var options = id == "audio.m4a" ? new[] { ("bitrate", "lossless") } : Array.Empty<(string, string)>();
         var (error, encoded) = Run(id, source, options);
@@ -61,7 +71,7 @@ public partial class AudioConverterTests
         Assert.Null(decodeError);
         Assert.Equal(source, before);
         Assert.Equal(rate, Inspect(decoded).SampleRate);
-        Assert.Equal(2, Inspect(decoded).Channels);
+        Assert.Equal(channels, Inspect(decoded).Channels);
         Assert.Equal(bits, Inspect(decoded).Bits);
         var expected = Pcm(source);
         var actual = Pcm(decoded);
@@ -71,9 +81,8 @@ public partial class AudioConverterTests
         }
     }
 
-    private static byte[] PatternWave(int bits, int rate, int frames, int trailingSilentFrames)
+    private static byte[] PatternWave(int bits, int rate, int frames, int trailingSilentFrames, int channels = 2)
     {
-        const int channels = 2;
         var bytes = bits / 8;
         using var memory = new MemoryStream();
         using var writer = new BinaryWriter(memory);
@@ -87,7 +96,7 @@ public partial class AudioConverterTests
         {
             var sample = frame >= frames - trailingSilentFrames ? 0
                 : frame % 257 == 0 ? (channel == 0 ? maximum : -maximum - 1)
-                : (int)(((long)frame * (channel == 0 ? 7919 : 1237)) % maximum) - maximum / 2;
+                : (int)(((long)frame * (channel == 0 ? 7919 : 1237 * channel)) % maximum) - maximum / 2;
             for (var b = 0; b < bytes; b++) writer.Write((byte)(sample >> (8 * b)));
         }
         writer.Flush();

@@ -183,3 +183,11 @@ O mantenedor escolheu pedir confirmação quando o codificador não aceita a tax
 - A origem continua só para leitura; o temporário da tentativa é descartado (SEC-15, SEC-20, SEC-29 e SEC-31). Não há nome ou caminho na mensagem do pipe nem registro de conteúdo no log (PRIV-16).
 
 Verificação: TST-01 cobre a confirmação e seu consumo único; TST-04 cobre o esquema estrito e ofertas inválidas; TST-02/TST-10 cobrem o codificador nativo e o Worker real, sem saída antes do aceite e com hash da origem preservado. A aparência precisa ser vista no `DiscRenderer` e validada pelo mantenedor antes de ser declarada concluída.
+
+## Investigação de 15/11/2026: pacote parcial ALAC
+
+A CI #252 demonstrou que corrigir apenas `mvhd`, `mdhd`, `tkhd` e `stts` não basta: com 4.095 amostras declaradas, o leitor ainda devolveu 4.096. Na CI #254, o fixture `Alac_leitor_respeita_pacote_parcial_explicito` passou ao substituir o pacote por um quadro de escape ALAC com comprimento explícito, mantendo as 4.095 amostras e o silêncio verdadeiro no final. A conversão normal ainda tinha dez falhas de fidelidade no conversor e uma no Worker; o PR #84 continuava bloqueado.
+
+A implementação em validação conserva o codificador Microsoft nos quadros completos e substitui somente o último quadro parcial por PCM sem compressão dentro do próprio ALAC. Esse modo faz parte do formato; não troca codec nem reduz a precisão. Ajusta a tabela de tamanhos, a duração e o cabeçalho do contêiner à contagem exata. A referência de estrutura é o [codificador ALAC publicado pela Apple](https://github.com/macosforge/alac/blob/master/codec/ALACEncoder.cpp); nenhuma biblioteca adicional é carregada.
+
+O Worker conserva em memória um quadro de PCM e observa suas próprias escritas de cabeçalho/finalização. Não lê o destino, não reabre caminhos e não altera os direitos dos handles (SEC-15, SEC-20, SEC-22, SEC-31). A captura da finalização tem teto de 64 MiB para não crescer com o conteúdo inteiro (SEC-44); exceder esse teto interrompe com `LIMIT_EXCEEDED`. O limite agregado de 2 GiB continua conferido antes da publicação. O teste de aceite continua sendo igualdade integral do PCM, com limites de pacote, silêncio real, 16/24 bits, 44,1/48 kHz e releitura no Worker real. A implementação não está declarada aprovada até essa CI passar.

@@ -120,6 +120,8 @@ public sealed class AudioConverter(string id) : IConverter
         // A mesma regra que o painel usa para o tamanho previsto (adendo do ADR-035).
         var target = Core.Conversions.AudioPlan.Target(Format, options, reader.Info.SampleRate, reader.Info.Channels, reader.Info.Bits);
         var (rate, channels, bits) = ((uint)target.Rate, (uint)target.Channels, (uint)target.Bits);
+        var alac = Format == "m4a" && options["bitrate"] == "lossless"
+            ? new AlacTailStream(destination, (int)channels, (int)bits, (int)rate) : null;
 
         // O leitor entrega PCM já no formato da saída: ele mesmo reamostra e mistura os canais.
         var pcm = MediaFoundation.CreateMediaType();
@@ -130,7 +132,7 @@ public sealed class AudioConverter(string id) : IConverter
             MediaFoundation.SetCurrentMediaType(reader.Handle, MediaFoundation.FirstAudioStream, pcm);
             current = MediaFoundation.CurrentMediaType(reader.Handle, MediaFoundation.FirstAudioStream);
 
-            outStream = HandleStream.Create(destination);
+            outStream = HandleStream.Create(alac ?? destination);
             outBytes = MediaFoundation.ByteStream(outStream);
             if (OpenWriter(outBytes, current, options, rate, channels, bits) is not { } opened)
             {
@@ -170,13 +172,24 @@ public sealed class AudioConverter(string id) : IConverter
                     Edit(sample, format, samples => applying.Apply(samples, format.Channels), write: true);
                 }
 
+                alac?.Record(sample);
                 MediaFoundation.WriteSample(writer, stream, sample);
             }) is { } error)
             {
                 return error;
             }
 
-            MediaFoundation.FinalizeWriting(writer);
+            alac?.BeginFinalization();
+            try
+            {
+                MediaFoundation.FinalizeWriting(writer);
+            }
+            finally
+            {
+                alac?.CheckLimit();
+            }
+
+            alac?.Complete();
             progress?.Report(ProgressSteps);
             return null;
         }
