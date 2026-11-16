@@ -143,6 +143,10 @@ internal static class Program
             {
                 error = "LIMIT_EXCEEDED";
             }
+            catch (Pizza.Converters.Audio.BitrateUnavailableException offer)
+            {
+                return new IpcMessage(IpcType.QualityOffer, request.JobId) { Bitrate = offer.Suggested };
+            }
 
             // NetVips e COM podem transformar a exceção de escrita em erro genérico.
             if (destination.Exceeded)

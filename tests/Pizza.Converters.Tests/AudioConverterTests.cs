@@ -53,11 +53,29 @@ public partial class AudioConverterTests
     }
 
     [MediaFact]
+    public void Taxa_recusada_oferece_alternativa_sem_gravar_nem_avancar()
+    {
+        var reported = new List<int>();
+        using var source = new MemoryStream(TestAudio.Sine(seconds: 1));
+        using var destination = new MemoryStream();
+        var options = Core.Conversions.ConverterCatalog.ResolveOptions(Core.Conversions.ConverterCatalog.Find("audio.mp3")!,
+            new Dictionary<string, string> { ["bitrate"] = "320", ["channels"] = "mono" })!;
+
+        var offer = Assert.Throws<BitrateUnavailableException>(() =>
+            new AudioConverter("audio.mp3").Convert(source, destination, options, new Collector(reported)));
+
+        Assert.True(Core.Conversions.BitrateOffer.IsValid("audio.mp3", options, offer.Suggested));
+        Assert.Equal(0, destination.Length);
+        Assert.Empty(reported);
+        Assert.Equal("320", options["bitrate"]);
+    }
+
+    [MediaFact]
     public void Canais_taxa_e_profundidade_seguem_as_opcoes()
     {
         var wav = TestAudio.Sine(seconds: 1);
 
-        Assert.Equal(1, Inspect(Run("audio.mp3", wav, ("channels", "mono")).Output).Channels);
+        Assert.Equal(1, Inspect(Run("audio.mp3", wav, ("channels", "mono"), ("bitrate", "96")).Output).Channels);
         Assert.Equal(48000, Inspect(Run("audio.wav", wav, ("rate", "48000")).Output).SampleRate);
         Assert.Equal(24, Inspect(Run("audio.flac", wav, ("depth", "24")).Output).Bits);
         Assert.Equal(2, Inspect(Run("audio.wav", TestAudio.Sine(seconds: 1, channels: 1), ("channels", "stereo")).Output).Channels);

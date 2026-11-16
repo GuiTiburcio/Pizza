@@ -200,8 +200,8 @@ public sealed class AudioConverter(string id) : IConverter
 
     /// <summary>
     /// Gravador com o fluxo de saída já ligado ao codificador. Se o codificador recusar a taxa pedida para esta
-    /// combinação de canais (mono não chega a 320 kbps, por exemplo), tenta o valor aceito logo abaixo, com um gravador
-    /// novo: nada é escrito antes de BeginWriting. Null quando o Windows não tem o codificador.
+    /// combinação de canais, procura uma alternativa para oferecer. A alternativa não inicia a escrita: precisa de
+    /// confirmação e nova conversão. Null quando o Windows não tem o codificador.
     /// </summary>
     private (nint Writer, uint Stream)? OpenWriter(nint byteStream, nint input, IReadOnlyDictionary<string, string> options, uint rate, uint channels, uint bits)
     {
@@ -245,6 +245,11 @@ public sealed class AudioConverter(string id) : IConverter
                 var hr = MediaFoundation.SetInputMediaType(writer, stream, input);
                 if (hr >= 0)
                 {
+                    if (kbps > 0 && options["bitrate"] != kbps.ToString(CultureInfo.InvariantCulture))
+                    {
+                        throw new BitrateUnavailableException((int)kbps);
+                    }
+
                     (var opened, writer) = (writer, 0);
                     return (opened, stream);
                 }

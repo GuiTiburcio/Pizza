@@ -37,6 +37,17 @@ jobs:
       - name: Compilar
         run: dotnet build Pizza.slnx -c Release --no-restore
 
+      # CLAUDE.md: conferir a tela com o próprio DiscRenderer antes de encerrar a mudança visual.
+      - name: Desenhar confirmação de qualidade
+        run: dotnet run --project tools/Pizza.UiPreview -c Release -- artifacts/ui
+
+      - name: Guardar prévias da interface
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ui-preview
+          path: artifacts/ui
+          retention-days: 14
+
       # TST-14: verificador independente. Só para teste; nunca entra no pacote do Pizza.
       # A versão atual fica em exiftool.org e as antigas no SourceForge; o hash vale para as duas origens.
       - name: Baixar ExifTool
