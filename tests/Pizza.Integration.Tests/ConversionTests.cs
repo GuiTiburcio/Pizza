@@ -9,6 +9,26 @@ namespace Pizza.Integration.Tests;
 [Collection(SandboxCollection.Name)]
 public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
 {
+    [Theory]
+    [InlineData("audio.mp3", "320", 192, "QUALITY_UNAVAILABLE")]
+    [InlineData("audio.mp3", "320", 319, "WORKER_CRASHED")]
+    [InlineData("audio.mp3", "320", 320, "WORKER_CRASHED")]
+    [InlineData("audio.mp3", "320", 0, "WORKER_CRASHED")]
+    [InlineData("audio.m4a", "lossless", 192, "WORKER_CRASHED")]
+    [InlineData("image.png", "320", 192, "WORKER_CRASHED")]
+    public void Oferta_do_worker_nao_publica_e_residente_confere_o_catalogo(string id, string requested, int suggested, string code)
+    {
+        var source = CopySample();
+        var before = SHA256.HashData(File.ReadAllBytes(source));
+        var result = Runner(fixture.ProbePath, "--act quality-offer --suggested " + suggested, TimeSpan.FromSeconds(60))
+            .Run(source, id, "mp3", new Dictionary<string, string> { ["bitrate"] = requested });
+        Assert.Equal(code, result.ErrorCode);
+        Assert.Equal(code == "QUALITY_UNAVAILABLE" ? suggested : (int?)null, result.SuggestedBitrate);
+        Assert.Null(result.OutputName);
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
+        Assert.Single(Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }));
+    }
+
     private readonly string _folder = CreateFolder();
 
     public void Dispose()

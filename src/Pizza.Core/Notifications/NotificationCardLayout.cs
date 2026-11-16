@@ -12,6 +12,7 @@ public enum NotificationAction
     Close,
     Pause,
     Resume,
+    AcceptBitrate,
 }
 
 public readonly record struct NotificationButton(NotificationAction Action, string Label, PanelRect Bounds);
@@ -60,10 +61,18 @@ public static class NotificationCardLayout
         new(NotificationAction.Close, "×", CloseBox),
     ];
 
+    private static readonly NotificationButton[] ConfirmationButtons =
+    [
+        new(NotificationAction.AcceptBitrate, "Usar taxa menor", Left),
+        new(NotificationAction.Cancel, "Cancelar", Right),
+        new(NotificationAction.Close, "×", CloseBox),
+    ];
+
     public static IReadOnlyList<NotificationButton> Buttons(NotificationKind kind) => kind switch
     {
         NotificationKind.Progress => ProgressButtons,
         NotificationKind.Success => SuccessButtons,
+        NotificationKind.Confirmation => ConfirmationButtons,
         _ => ErrorButtons,
     };
 

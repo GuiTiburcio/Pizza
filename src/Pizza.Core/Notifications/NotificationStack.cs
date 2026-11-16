@@ -5,6 +5,7 @@ public enum NotificationKind
     Progress,
     Success,
     Error,
+    Confirmation,
 }
 
 public sealed class Notification(long id)
