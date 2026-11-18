@@ -111,6 +111,20 @@ public sealed class OutputBundleTests : IDisposable
     }
 
     [Fact]
+    public void Partes_de_imagem_comecam_pela_assinatura_do_formato()
+    {
+        // Imagens do PDF (adendo da ADR-033): cada página é um JPG ou um PNG, conferido pelos primeiros bytes.
+        byte[] jpg = [0xFF, 0xD8, 0xFF, 0xE0, 0x00];
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00];
+        Assert.Equal(2, Read(Written(jpg, jpg), extension: "jpg").Count);
+        Assert.Single(Read(Written(png), extension: "png"));
+
+        Assert.Throws<InvalidDataException>(() => Read(Written(png), extension: "jpg"));
+        Assert.Throws<InvalidDataException>(() => Read(Written(jpg), extension: "png"));
+        Assert.Throws<InvalidDataException>(() => Read(Written(Pdf("um")), extension: "jpg"));
+    }
+
+    [Fact]
     public void Extensao_sem_pacote_conhecido_e_recusada()
     {
         Assert.Throws<InvalidDataException>(() => Read(Written(Pdf("um")), extension: "exe"));

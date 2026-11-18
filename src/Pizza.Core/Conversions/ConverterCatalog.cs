@@ -68,7 +68,22 @@ public sealed record ConverterInfo(
     /// CSV, que não tem painel, numera as planilhas.
     /// </summary>
     public Func<int, int, string>? PartSuffix(IReadOnlyDictionary<string, string> options) =>
-        Splits ? (part, count) => Output.OutputNaming.PartSuffix(Options.Count == 0 ? "sheets" : options.GetValueOrDefault("mode", Options[0].Default), part, count) : null;
+        Splits ? (part, count) => Output.OutputNaming.PartSuffix(PartMode(options), part, count) : null;
+
+    /// <summary>
+    /// Extensão da saída. A opção <c>format</c>, quando existe, escolhe entre as extensões dela (Imagens do PDF,
+    /// adendo da ADR-033); sem ela, vale a do catálogo.
+    /// </summary>
+    public string OutputExtension(IReadOnlyDictionary<string, string> options) =>
+        Options.Any(option => option.Key == FormatKey) ? options[FormatKey] : Extension;
+
+    public const string FormatKey = "format";
+
+    // O CSV não tem painel; o Dividir escolhe pelo modo; as Imagens do PDF numeram as páginas.
+    private string PartMode(IReadOnlyDictionary<string, string> options) =>
+        Options.Count == 0 ? "sheets"
+        : Options.Any(option => option.Key == "mode") ? options.GetValueOrDefault("mode", Options[0].Default)
+        : "images";
 }
 
 /// <summary>Lista das conversões. O menu e o painel se montam daqui; a ordem é a das fatias (ADR-012).</summary>
@@ -178,6 +193,22 @@ public static class ConverterCatalog
             [".pdf"],
             [new("mode", "Como dividir", "pages", [new("pages", "Cada página"), new("half", "Pela metade")])],
             Splits: true),
+
+        // Adendo da ADR-033 e prancha 6B-1: o PDFium desenha cada página; a faixa escolhe a resolução.
+        new(
+            "pdf.images",
+            PdfTab,
+            "Imagens",
+            "Cada página",
+            "jpg",
+            [".pdf"],
+            [
+                new("resolution", "Resolução", "150", [new("96", "Tela"), new("150", "Escritório"), new("300", "Impressão")]),
+                new(ConverterInfo.FormatKey, "Formato", "jpg", [new("jpg", "JPG"), new("png", "PNG")]),
+                new("quality", "Qualidade do JPG", "85", [new("95", "Máxima"), new("85", "Alta"), new("75", "Equilibrada"), new("60", "Compacta")]),
+            ],
+            Splits: true),
+        new("pdf.text", PdfTab, "Texto", "Só o texto", "txt", [".pdf"], []),
         new(
             "pdf.rotate",
             PdfTab,

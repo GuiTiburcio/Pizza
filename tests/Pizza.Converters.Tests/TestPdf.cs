@@ -44,6 +44,28 @@ internal static partial class TestPdf
         return Build([.. objects]);
     }
 
+    /// <summary>Páginas de 200 × 300 pt com um texto em Helvetica e, opcionalmente, a metade esquerda pintada de preto.</summary>
+    public static byte[] Drawn(int count, string? text = null, bool blackLeftHalf = false)
+    {
+        var content = (blackLeftHalf ? "0 0 0 rg 0 0 100 300 re f\n" : "") + (text is null ? "" : $"BT /F1 18 Tf 20 150 Td ({text}) Tj ET");
+        var kids = string.Join(" ", Enumerable.Range(0, count).Select(i => $"{i + 5} 0 R"));
+        var objects = new List<string>
+        {
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            $"<< /Type /Pages /Kids [{kids}] /Count {count} >>",
+            $"<< /Length {Encoding.Latin1.GetByteCount(content)} >>\nstream\n{content}\nendstream",
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        };
+        objects.AddRange(Enumerable.Range(0, count).Select(_ => "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] /Contents 3 0 R /Resources << /Font << /F1 4 0 R >> >> >>"));
+        return Build([.. objects]);
+    }
+
+    /// <summary>Uma página do tamanho pedido, em pontos, sem conteúdo.</summary>
+    public static byte[] Sized(int width, int height) => Build(
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        $"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {width} {height}] >>");
+
     /// <summary>Protege um PDF com senha de usuário, em AES-256, usando a própria QPDF.</summary>
     public static unsafe byte[] Encrypt(byte[] pdf, string password)
     {

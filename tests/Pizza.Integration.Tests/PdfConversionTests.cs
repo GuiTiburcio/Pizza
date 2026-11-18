@@ -131,6 +131,91 @@ public sealed class PdfConversionTests(SandboxFixture fixture) : IDisposable
         Assert.Single(Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }));
     }
 
+    [Fact]
+    public void Imagens_grava_cada_pagina_ao_lado_e_nao_toca_no_original()
+    {
+        // Adendo da ADR-033 e prancha 6B-1: o PDFium carrega no Worker em AppContainer e desenha cada página.
+        var source = Path.Combine(_folder, "escritura.pdf");
+        File.WriteAllBytes(source, Pages(3));
+        var before = SHA256.HashData(File.ReadAllBytes(source));
+
+        var result = Runner().Run(source, "pdf.images", "jpg", ImageOptions("jpg"), parts: (part, count) => OutputNaming.PartSuffix("images", part, count));
+
+        Assert.Null(result.ErrorCode);
+        Assert.Equal(3, result.Count);
+        string[] expected = ["escritura - pág 01.jpg", "escritura - pág 02.jpg", "escritura - pág 03.jpg"];
+        Assert.All(expected, name => Assert.Equal(new byte[] { 0xFF, 0xD8, 0xFF }, File.ReadAllBytes(Path.Combine(_folder, name))[..3]));
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
+        Assert.Empty(Directory.GetFiles(_folder, ".~pizza-*", new EnumerationOptions { AttributesToSkip = 0 }));
+    }
+
+    [Fact]
+    public void Imagens_de_uma_pagina_grava_sem_numero()
+    {
+        var source = Path.Combine(_folder, "escritura.pdf");
+        File.WriteAllBytes(source, Pages(1));
+
+        var result = Runner().Run(source, "pdf.images", "png", ImageOptions("png"), parts: (part, count) => OutputNaming.PartSuffix("images", part, count));
+
+        Assert.Null(result.ErrorCode);
+        Assert.Equal("escritura.png", result.OutputName);
+        Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, File.ReadAllBytes(Path.Combine(_folder, "escritura.png"))[..4]);
+    }
+
+    [Fact]
+    public void Texto_grava_o_txt_ao_lado()
+    {
+        var source = Path.Combine(_folder, "escritura.pdf");
+        File.WriteAllBytes(source, WithText("Contrato de compra"));
+
+        var result = Runner().Run(source, "pdf.text", "txt");
+
+        Assert.Null(result.ErrorCode);
+        Assert.Equal("escritura.txt", result.OutputName);
+        Assert.Equal(new byte[] { 0xEF, 0xBB, 0xBF }.Concat("Contrato de compra\r\n"u8.ToArray()), File.ReadAllBytes(Path.Combine(_folder, "escritura.txt")));
+    }
+
+    [Fact]
+    public void Texto_de_pdf_sem_texto_avisa_e_nao_grava_nada()
+    {
+        var source = Path.Combine(_folder, "digitalizado.pdf");
+        File.WriteAllBytes(source, Pages(2));
+
+        var result = Runner().Run(source, "pdf.text", "txt");
+
+        Assert.Equal("NO_TEXT", result.ErrorCode);
+        Assert.Single(Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }));
+    }
+
+    private static Dictionary<string, string> ImageOptions(string format) =>
+        new() { ["resolution"] = "96", ["format"] = format, ["quality"] = "85" };
+
+    private static byte[] WithText(string text)
+    {
+        var content = $"BT /F1 18 Tf 20 150 Td ({text}) Tj ET";
+        string[] objects =
+        [
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+            $"<< /Length {content.Length} >>\nstream\n{content}\nendstream",
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        ];
+        var pdf = new StringBuilder("%PDF-1.7\n");
+        var offsets = new List<int>();
+        for (var i = 0; i < objects.Length; i++)
+        {
+            offsets.Add(pdf.Length);
+            pdf.Append($"{i + 1} 0 obj\n{objects[i]}\nendobj\n");
+        }
+
+        var start = pdf.Length;
+        pdf.Append($"xref\n0 {objects.Length + 1}\n0000000000 65535 f \n");
+        offsets.ForEach(offset => pdf.Append($"{offset:D10} 00000 n \n"));
+        pdf.Append($"trailer\n<< /Size {objects.Length + 1} /Root 1 0 R >>\nstartxref\n{start}\n%%EOF\n");
+        return Encoding.ASCII.GetBytes(pdf.ToString());
+    }
+
     private ConversionRunner Runner() =>
         new(fixture.WorkerPath, SandboxFixture.Profile, new TempJournal(_folder + ".journal"), TimeSpan.FromSeconds(60));
 

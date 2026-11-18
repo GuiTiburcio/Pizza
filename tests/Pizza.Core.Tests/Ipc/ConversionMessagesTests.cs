@@ -13,6 +13,7 @@ public class ConversionMessagesTests
     [InlineData("TIMEOUT", "A conversão demorou mais que o limite")]
     [InlineData("UNSUPPORTED", "Este tipo de conversão não é suportado para este arquivo")]
     [InlineData("WORKER_CRASHED", "O conversor parou inesperadamente; o original não foi alterado")]
+    [InlineData("NO_TEXT", "Este PDF é uma imagem: não há texto para tirar")]
     public void Mensagem_em_portugues_claro(string code, string expected)
     {
         // SPECS §10.4 e FR-42.

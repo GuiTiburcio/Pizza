@@ -46,6 +46,44 @@ public class ConverterCatalogTests
     }
 
     [Fact]
+    public void Imagens_do_pdf_gravam_jpg_ou_png_conforme_o_formato()
+    {
+        // Adendo da ADR-033: a opção "format" escolhe a extensão; os demais conversores seguem a do catálogo.
+        var images = ConverterCatalog.Find("pdf.images")!;
+
+        Assert.Equal("jpg", images.OutputExtension(ConverterCatalog.ResolveOptions(images, Given())!));
+        Assert.Equal("png", images.OutputExtension(ConverterCatalog.ResolveOptions(images, Given(("format", "png")))!));
+        Assert.Equal("png", Png.OutputExtension(ConverterCatalog.ResolveOptions(Png, Given())!));
+        Assert.Null(ConverterCatalog.ResolveOptions(images, Given(("format", "exe"))));
+    }
+
+    [Fact]
+    public void Imagens_do_pdf_numeram_as_paginas_so_quando_ha_mais_de_uma()
+    {
+        // Prancha 6B-1: "escritura - pág 01.jpg"; com uma página, "escritura.jpg".
+        var images = ConverterCatalog.Find("pdf.images")!;
+        var suffix = images.PartSuffix(ConverterCatalog.ResolveOptions(images, Given())!)!;
+
+        Assert.Equal("", suffix(1, 1));
+        Assert.Equal(" - pág 02", suffix(2, 12));
+        Assert.Null(ConverterCatalog.Find("pdf.text")!.PartSuffix(Given()));
+    }
+
+    [Fact]
+    public void Aba_pdf_segue_a_ordem_da_prancha_6b1()
+    {
+        // Brotinho: Juntar, Dividir, Imagens, Texto e Girar (Comprimir entra numa etapa própria).
+        Assert.Equal(
+            ["pdf.merge", "pdf.split", "pdf.images", "pdf.text", "pdf.rotate"],
+            ConverterCatalog.All.Where(c => c.Tab == ConverterCatalog.PdfTab).Select(c => c.Id));
+
+        var images = ConverterCatalog.Find("pdf.images")!;
+        Assert.Equal(["resolution", "format", "quality"], images.Options.Select(o => o.Key));
+        Assert.Equal("150", images.Options[0].Default);
+        Assert.Empty(ConverterCatalog.Find("pdf.text")!.Options);
+    }
+
+    [Fact]
     public void Juntar_tem_limite_de_arquivos()
     {
         // SEC-46.

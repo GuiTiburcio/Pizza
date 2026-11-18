@@ -553,6 +553,7 @@ Todas têm `v` (versão do protocolo), `type` e `jobId` (12 hex aleatórios). Ta
 | `LIMIT_EXCEEDED` | O arquivo passa do limite permitido (tamanho, páginas ou pixels) |
 | `TIMEOUT` | A conversão demorou mais que o limite |
 | `UNSUPPORTED` | Este tipo de conversão não é suportado para este arquivo |
+| `NO_TEXT` | Este PDF é uma imagem: não há texto para tirar (ADR-033) |
 | `MEDIA_UNAVAILABLE` | Este Windows não tem os recursos de mídia. Instale o Media Feature Pack (ADR-035) |
 | `WORKER_CRASHED` | O conversor parou inesperadamente; o original não foi alterado |
 | `OFFICE_UNAVAILABLE` | Word ou LibreOffice não encontrado |

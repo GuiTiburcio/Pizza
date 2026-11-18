@@ -39,3 +39,14 @@ A Fase 6 traz a aba PDF: Girar, Juntar, Dividir, Imagens, Comprimir e Word (SPEC
 - PdfPig, PDFium e QPDF juntos no Worker, como redundância: um parser a mais é mais uma porta para um PDF malicioso, e a conferência dupla já existe nos testes.
 - PDFsharp 6.2.4 (MIT): versão congelada, sem correções.
 - iText, MuPDF e Ghostscript: AGPL (ADR-005).
+
+## Adendo de 15/11/2026: Imagens e Texto (prancha 6B-1)
+
+Aprovado pelo mantenedor em 14/11/2026. No Pizza Brotinho, a aba PDF fica com seis fatias: Comprimir, Juntar, Dividir, Imagens, Texto e Girar. Word só aparece no Pizza Jumbo (ADR-039).
+
+- **PDFium chromium/8152** (`pdfium-win-x64.tgz` do pdfium-binaries, empacotamento MIT, SHA-256 `cee2b0e9…6fdfe3`, igual ao publicado pelo GitHub para o arquivo). É compilado sem V8 e sem XFA, então nenhum JavaScript de PDF roda (SEC-76). Só `pdfium.dll` vai para a pasta do Worker; a DLL não depende do runtime do Visual C++.
+- **Isolamento igual ao da QPDF (SEC-20, SEC-15):** o PDFium roda só no Worker em AppContainer e lê o PDF da memória, com os mesmos limites de 512 MB e 2.000 páginas (SEC-42, SEC-44). PDF com senha de usuário recebe `PASSWORD` até existir o FR-24.
+- **Imagens:** uma fatia. A faixa escolhe a resolução: Tela (96 dpi), Escritório (150 dpi, padrão) e Impressão (300 dpi). No painel, Formato (JPG, padrão, ou PNG) e Qualidade do JPG. Cada página desenhada que passe de 100 milhões de pixels recebe `LIMIT_EXCEEDED` (SEC-41).
+- **Várias saídas:** as imagens vão no mesmo pacote do Dividir (`PZB1`); o residente confere que cada parte começa como JPG ou PNG e grava todas ou nenhuma. Nomes: `escritura - pág 01.jpg`…; com uma página só, `escritura.jpg`.
+- **Texto:** `escritura.txt` em UTF-8 com BOM e CRLF, como o TXT do Docs, uma página após a outra, separadas por uma linha em branco. Sem nenhum caractere de texto (PDF digitalizado), a conversão recebe o código novo `NO_TEXT` e nada é gravado. OCR fica fora do Pizza.
+- A opção `format` escolhe a extensão da saída (`ConverterInfo.OutputExtension`); sem ela, vale a extensão do catálogo, como antes.
