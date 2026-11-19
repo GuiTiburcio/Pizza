@@ -2,6 +2,8 @@
 
 Regras para qualquer pessoa ou agente que escreva código neste repositório. Elas juntam as regras da skill [karpathy-guidelines](https://github.com/multica-ai/andrej-karpathy-skills) (MIT) com as regras de segurança do Pizza.
 
+**Precedência e Papéis:** leia e siga rigorosamente o [Bloco de Precedência e Papéis dos Agentes em AGENTS.md](AGENTS.md).
+
 **Fonte da verdade:** `docs/SPECS.md`. Se o código e as SPECS discordam, pare e pergunte. Não "resolva" sozinho.
 
 **Troca assumida:** estas regras preferem cautela a velocidade. Para tarefas triviais, use bom senso.
