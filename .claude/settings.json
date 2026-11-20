@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Select-String *)",
+      "PowerShell(Select-Object *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(Get-Content *)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Out-String)",
+      "PowerShell(Measure-Object *)",
+      "PowerShell(Test-Path *)",
+      "PowerShell(gh pr view *)",
+      "PowerShell(gh pr list *)",
+      "PowerShell(gh pr checks *)",
+      "mcp__ccd_pr__get_status",
+      "mcp__ccd_session_mgmt__list_sessions"
+    ]
+  }
+}

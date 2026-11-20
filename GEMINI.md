@@ -11,3 +11,5 @@ Leia e siga estritamente [AGENTS.md](AGENTS.md) e [CLAUDE.md](CLAUDE.md).
 - Entrega commits no ramo de feature e relatório `RESULTADO.md`.
 - **Limites de atuação**: Não faz merge na `main`, não altera invariantes `SEC-*`/`PRIV-*`, não edita fora do próprio worktree.
 - Aplica o **Bloco de Precedência** definido em [AGENTS.md](AGENTS.md).
+- **Worktree ocupado**: um worktree pode estar em uso por um subagente do Claude. Antes de começar, rode `git worktree list` e não use worktree marcado como `locked` nem worktree que já tenha um `TAREFA.md` de outro agente.
+- Regras curtas em `.agents/rules/` e o contrato `TAREFA.md` → `RESULTADO.md` na skill `.agents/skills/tarefa-worktree/`.
