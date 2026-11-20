@@ -10,10 +10,6 @@ namespace Pizza.App;
 internal sealed unsafe partial class RecycleBin : IRecycleBin
 {
     private const uint FoDelete = 0x3;
-    private const ushort FofSilent = 0x4;
-    private const ushort FofNoConfirmation = 0x10;
-    private const ushort FofAllowUndo = 0x40;
-    private const ushort FofNoErrorUi = 0x400;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct ShFileOpStruct
@@ -43,7 +39,7 @@ internal sealed unsafe partial class RecycleBin : IRecycleBin
             {
                 Func = FoDelete,
                 From = from,
-                Flags = (ushort)(FofAllowUndo | FofNoConfirmation | FofSilent | FofNoErrorUi),
+                Flags = RecycleFlags.Delete,
             };
             return SHFileOperationW(&operation) == 0 && operation.AnyOperationsAborted == 0;
         }

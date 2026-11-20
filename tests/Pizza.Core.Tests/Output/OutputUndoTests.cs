@@ -28,6 +28,13 @@ public sealed class OutputUndoTests : IDisposable
     }
 
     [Fact]
+    public void Flags_da_lixeira_incluem_desfazer_e_aviso_de_apagar_de_vez()
+    {
+        Assert.Equal(0x40, RecycleFlags.Delete & RecycleFlags.AllowUndo);
+        Assert.Equal(0x4000, RecycleFlags.Delete & RecycleFlags.WantNukeWarning);
+    }
+
+    [Fact]
     public void Envia_so_o_gerado_e_nunca_o_original()
     {
         var source = Make("a.png", "original");

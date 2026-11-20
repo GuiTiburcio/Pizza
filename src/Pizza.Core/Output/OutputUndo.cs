@@ -7,6 +7,20 @@ public interface IRecycleBin
     bool Recycle(IReadOnlyList<string> paths);
 }
 
+/// <summary>Flags do SHFileOperation (FO_DELETE) usadas pelo Desfazer.</summary>
+public static class RecycleFlags
+{
+    public const ushort Silent = 0x4;
+    public const ushort NoConfirmation = 0x10;
+    public const ushort AllowUndo = 0x40;
+    public const ushort NoErrorUi = 0x400;
+
+    /// <summary>Avisa antes de apagar de vez quando a Lixeira não aceita o arquivo; vence o NoConfirmation.</summary>
+    public const ushort WantNukeWarning = 0x4000;
+
+    public const ushort Delete = Silent | NoConfirmation | AllowUndo | NoErrorUi | WantNukeWarning;
+}
+
 public enum UndoOutcome
 {
     Done,
