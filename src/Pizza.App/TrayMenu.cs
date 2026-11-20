@@ -44,10 +44,9 @@ internal static unsafe class TrayMenu
     {
         _state = new TrayMenuState();
         var monitor = MonitorFromPoint(new POINT { X = x, Y = y }, MONITOR_DEFAULTTONEAREST);
-        uint dpiX, dpiY;
-        _dpi = GetDpiForMonitor(monitor, 0, &dpiX, &dpiY) == S_OK ? (int)dpiX : 96;
         var info = new MONITORINFO { CbSize = (uint)sizeof(MONITORINFO) };
         GetMonitorInfoW(monitor, &info);
+        _dpi = MenuSettings.Dpi(info.RcWork); // ADR-037: 1/15 da tela, como o disco.
         var area = new PanelRect(info.RcWork.Left, info.RcWork.Top, info.RcWork.Right, info.RcWork.Bottom);
         (_left, _top) = TrayMenuState.Place(x, y, Scale(TrayMenuState.Width), Scale(_state.Height), area);
 
