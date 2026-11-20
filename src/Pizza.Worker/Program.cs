@@ -108,7 +108,9 @@ internal static class Program
         // O destino é fechado antes da resposta: depois de "done", o Worker não tem como escrever.
         using (var source = OpenHandle(request.SrcHandle!.Value, FileAccess.Read))
         using (var file = OpenHandle(request.DstHandle!.Value, FileAccess.Write, DestinationBufferBytes))
-        using (var destination = new OutputBudgetStream(file, OutputBudget.ContainerBytes(info.PartSuffix(options) is not null)))
+
+        // ADR-038: o Markdown também sai em pacote (texto e imagens), com o envelope fora do teto dos arquivos.
+        using (var destination = new OutputBudgetStream(file, OutputBudget.ContainerBytes(info.PartSuffix(options) is not null || info.Extension == "md")))
         {
             try
             {

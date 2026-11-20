@@ -58,6 +58,10 @@ Decisões do mantenedor para o HTML, que o Markdown seguirá:
 - **Links:** só `http`, `https` e `mailto`; o resto vira texto.
 - **Sem script:** a página leva a política de conteúdo `default-src 'none'; img-src data:; style-src 'unsafe-inline'`. O texto do documento é sempre escapado.
 
+### Adendo de 14/11/2026: DOCX → Markdown
+
+O Markdown leva a mesma estrutura do HTML, no padrão que o Obsidian lê bem (CommonMark e GFM, mais `==realce==` e notas `[^1]`), sem citar nenhum programa na legenda da fatia ("MD · Texto formatado"). As imagens vão em arquivos ao lado, citadas por `![[…]]`, com os nomes dados pelo residente (ADR-038). Tabelas usam a primeira linha como cabeçalho, e uma célula mesclada vira célula vazia, porque o Markdown não tem mescla. Texto que seria lido como marcação (`#`, `$`, `%%`, `*`, `[`, "- " no começo do parágrafo e outros) é escapado.
+
 ## Consequências
 
 Ninguém precisa instalar Office para converter documentos: quem quer só imagens baixa o Brotinho (cerca de 10 MB); quem quer DOCX/XLSX/PPTX → PDF baixa o Jumbo (cerca de 300 MB a mais). O isolamento é o mesmo do Worker de imagens: AppContainer, job, sem rede.

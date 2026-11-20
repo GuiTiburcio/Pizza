@@ -78,6 +78,7 @@ internal sealed class DocxReader
     private readonly Dictionary<string, XElement> _footnotes = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _noteNumbers = new(StringComparer.Ordinal);
     private readonly List<IReadOnlyList<Block>> _notes = [];
+    private readonly Dictionary<string, Picture> _pictures = new(StringComparer.OrdinalIgnoreCase);
     private Dictionary<string, string> _images = [];
     private IReadOnlyDictionary<string, string> _external = new Dictionary<string, string>();
     private XNamespace _w = WordNamespaces[0];
@@ -402,16 +403,18 @@ internal sealed class DocxReader
             return new Picture(null, null, alt, "[imagem não encontrada no arquivo]");
         }
 
-        var data = _package.ReadBytes(part);
-        var (mime, format) = Format(data);
-        if (format == "TIFF" && _tiffToPng(data) is { } png)
+        // A mesma mídia usada duas vezes é lida uma vez só e vira a mesma imagem (um arquivo só no Markdown).
+        if (!_pictures.TryGetValue(part, out var picture))
         {
-            return new Picture("image/png", png, alt, null);
+            var data = _package.ReadBytes(part);
+            var (mime, format) = Format(data);
+            picture = format == "TIFF" && _tiffToPng(data) is { } png ? new Picture("image/png", png, "", null)
+                : mime is not null ? new Picture(mime, data, "", null)
+                : new Picture(null, null, "", $"[imagem em {format}: salve como PNG no editor e converta de novo]");
+            _pictures[part] = picture;
         }
 
-        return mime is not null
-            ? new Picture(mime, data, alt, null)
-            : new Picture(null, null, alt, $"[imagem em {format}: salve como PNG no editor e converta de novo]");
+        return picture with { Alt = alt };
     }
 
     /// <summary>O formato real, pelos primeiros bytes; só os quatro da web saem com tipo.</summary>

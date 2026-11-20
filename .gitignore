@@ -38,3 +38,10 @@ Desktop.ini
 *.p12
 *.snk
 .env
+
+# Worktrees e sessões locais
+.claude/worktrees/
+worktrees/
+contexto-compactado-*.md
+scratchpad/
+TAREFA.md

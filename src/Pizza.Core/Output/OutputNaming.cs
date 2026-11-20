@@ -34,6 +34,13 @@ public static class OutputNaming
         _ => $" - parte {part}",
     };
 
+    /// <summary>
+    /// ADR-038: o nome do arquivo sem <c>[ ] | # ^</c>, que o Obsidian não aceita em <c>![[…]]</c>; serve de base
+    /// para o nome das imagens do Markdown. Só o nome é devolvido, sem a pasta.
+    /// </summary>
+    public static string LinkSafe(string sourcePath) =>
+        string.Concat(Path.GetFileName(sourcePath).Select(character => character is '[' or ']' or '|' or '#' or '^' ? '_' : character));
+
     public static string TemporaryName() =>
         $".~pizza-{Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(16))}.tmp";
 }
