@@ -58,6 +58,10 @@ internal static unsafe partial class Overlay
     private static int _top;
     private static int? _hoverSlot;
     private static int? _pulseSlot;
+
+    /// <summary>ADR-039: fatia apagada que a pessoa escolheu, na página em que estava; mostra a aba que serve.</summary>
+    private static MenuPage? _hintPage;
+    private static int _hintSlot;
     private static DraggedFiles? _files;
     private static (IReadOnlyList<string> Paths, ConverterInfo Converter, IReadOnlyDictionary<string, string>? Options)? _dropped; // Options null: abrir o painel.
     private static (IReadOnlyList<string> Paths, ConverterInfo Converter)? _awaitingOptions;
@@ -67,6 +71,9 @@ internal static unsafe partial class Overlay
 
     /// <summary>Verdadeiro com o menu na tela; só a camada invisível não conta.</summary>
     public static bool IsVisible { get; private set; }
+
+    /// <summary>Verdadeiro na escolha por clique, quando a roda chega às janelas do menu em vez de passar pelo hook.</summary>
+    public static bool IsChoosing => Session.State == GestureState.Choosing;
 
     public static void Create()
     {
@@ -87,6 +94,7 @@ internal static unsafe partial class Overlay
         const uint exStyle = WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED | WS_EX_NOACTIVATE;
         _catcher = CreateWindowExW(exStyle, ClassName, "Pizza Camada", WS_POPUP, 0, 0, 1, 1, 0, 0, instance, 0);
         Disc = CreateWindowExW(exStyle, ClassName, "Pizza", WS_POPUP, 0, 0, DiscLayout.Width, DiscLayout.Height, 0, 0, instance, 0);
+        CreateBar(instance, exStyle);
         SetLayeredWindowAttributes(_catcher, 0, CatcherAlpha, LWA_ALPHA);
 
         DiscTarget.Register(Disc);
@@ -96,6 +104,7 @@ internal static unsafe partial class Overlay
     public static void Destroy()
     {
         RevokeDragDrop(Disc);
+        RevokeDragDrop(_bar);
         RevokeDragDrop(_catcher);
     }
 
@@ -104,22 +113,21 @@ internal static unsafe partial class Overlay
     {
         var point = new POINT { X = x, Y = y };
         var monitor = MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST);
-        uint dpiX, dpiY;
-        if (GetDpiForMonitor(monitor, 0, &dpiX, &dpiY) != S_OK)
-        {
-            dpiX = 96;
-        }
-
         var info = new MONITORINFO { CbSize = (uint)sizeof(MONITORINFO) };
         GetMonitorInfoW(monitor, &info);
 
-        _scale = dpiX / 96.0;
-        var width = (int)Math.Round(DiscLayout.Width * _scale);
-        var height = (int)Math.Round(DiscLayout.Height * _scale);
+        // ADR-037: o conjunto ocupa 1/15 da área útil, vezes o fator do usuário.
+        _work = info.RcWork;
+        var dpi = MenuSettings.Dpi(_work);
+        _scale = dpi / 96.0;
+        var (width, height) = DiscSize();
         _left = Math.Max(info.RcWork.Left, Math.Min(x - (int)Math.Round(DiscLayout.CenterX * _scale), info.RcWork.Right - width));
         _top = Math.Max(info.RcWork.Top, Math.Min(y - (int)Math.Round(DiscLayout.CenterY * _scale), info.RcWork.Bottom - height));
-        return (width, height, (int)dpiX);
+        return (width, height, dpi);
     }
+
+    private static (int Width, int Height) DiscSize() =>
+        ((int)Math.Round(DiscLayout.Width * _scale), (int)Math.Round(DiscLayout.Height * _scale));
 
     /// <summary>
     /// NFR-03: copia e desfoca a tela já no início do gesto, enquanto o Windows ainda não confirmou o arraste de
@@ -135,6 +143,7 @@ internal static unsafe partial class Overlay
 
         var (width, height, dpi) = Place(cursor.X, cursor.Y);
         DiscRenderer.Prepare(_left, _top, width, height, dpi);
+        PlaceBar();
         _prepared = (width, height);
     }
 
@@ -146,6 +155,7 @@ internal static unsafe partial class Overlay
         {
             (width, height, var dpi) = Place(x, y);
             DiscRenderer.Prepare(_left, _top, width, height, dpi);
+            PlaceBar();
         }
 
         _prepared = null;
@@ -167,6 +177,8 @@ internal static unsafe partial class Overlay
         IsVisible = true;
         Render();
         SetWindowPos(Disc, HWND_TOPMOST, _left, _top, width, height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        var (barWidth, barHeight) = BarSize();
+        SetWindowPos(_bar, HWND_TOPMOST, BarLeft, BarTop, barWidth, barHeight, SWP_NOACTIVATE | SWP_SHOWWINDOW);
         int? elapsed = _gestureStarted == 0 ? null : (int)System.Diagnostics.Stopwatch.GetElapsedTime(_gestureStarted).TotalMilliseconds;
         _gestureStarted = 0;
         Log.Write(LogEvent.MenuOpened, elapsed);
@@ -200,17 +212,23 @@ internal static unsafe partial class Overlay
         Strip.Clear();
         _levelHover = null;
         _files = null;
+        _hintPage = null;
         _dropped = null;
         _pulseSlot = null;
         _clickArmed = false;
+        ResetGrip();
     }
 
     /// <summary>Some com o menu e descarta a cópia da tela usada no vidro (ADR-023).</summary>
     private static void HideWindow()
     {
         KillTimer(Disc, TimerAnimation);
+        KillTimer(Disc, TimerBar);
         _lastFrame = 0;
+        _barFrame = 0;
         ShowWindow(Disc, SW_HIDE);
+        ShowWindow(_bar, SW_HIDE);
+        DiscRenderer.ReleaseTop();
         IsVisible = false;
         _hoverSlot = null;
         _prepared = null;
@@ -259,8 +277,12 @@ internal static unsafe partial class Overlay
             LevelGlide.Swell,
             unavailable,
             order,
-            merging);
+            merging,
+            _hintPage == page ? _hintSlot : null,
+            _files is { } hinted ? RadialMenu.Hint(hinted.First) : null,
+            RimHover: _rimHover || _grip == GripZone.Resize);
         DiscRenderer.Show(Disc, _left, _top, frame);
+        DiscRenderer.ShowTop(_bar, BarLeft, BarTop, frame);
     }
 
     private static double TabPosition(double position)
@@ -294,14 +316,29 @@ internal static unsafe partial class Overlay
                 PrepareChoice();
                 return 0;
 
+            case WM_MOUSEMOVE when Session.State == GestureState.Choosing && DragGrip():
+                return 0;
+
+            case WM_LBUTTONDOWN when Session.State == GestureState.Choosing && BeginGrip(hwnd):
+            case WM_LBUTTONUP when EndGrip():
+                // ADR-037: segurar o vidro fora dos alvos move; a borda muda o tamanho.
+                return 0;
+
+            case WM_CAPTURECHANGED:
+                EndGrip();
+                return 0;
+
+            case WM_SETCURSOR when UpdateGripCursor(hwnd):
+                return 1;
+
             case WM_MOUSEMOVE when Session.State == GestureState.Choosing:
-                OnDragOver(_left + (short)(lParam & 0xFFFF), _top + (short)((lParam >> 16) & 0xFFFF));
+                OnDragOver(Origin(hwnd).X + (short)(lParam & 0xFFFF), Origin(hwnd).Y + (short)((lParam >> 16) & 0xFFFF));
                 KeepChoosing();
                 return 0;
 
             case WM_LBUTTONDOWN or WM_RBUTTONDOWN or WM_LBUTTONUP or WM_RBUTTONUP when Session.State == GestureState.Choosing:
                 // O botão direito numa fatia abre as opções do formato; fora das fatias, nenhum dos dois faz nada.
-                OnChoiceButton(msg, _left + (short)(lParam & 0xFFFF), _top + (short)((lParam >> 16) & 0xFFFF));
+                OnChoiceButton(msg, Origin(hwnd).X + (short)(lParam & 0xFFFF), Origin(hwnd).Y + (short)((lParam >> 16) & 0xFFFF));
                 return 0;
 
             case WM_KEYDOWN when Session.State == GestureState.Choosing:
@@ -332,11 +369,19 @@ internal static unsafe partial class Overlay
                 OnDropOutside();
                 return 0;
 
+            case WM_MOUSEWHEEL when Session.State == GestureState.Choosing:
+                // Na escolha por clique a roda chega nativa (o hook a deixa passar): o Ctrl vem na própria
+                // mensagem (MK_CONTROL), sem ler o teclado (SEC-02).
+                if (!((wParam & MK_CONTROL) != 0 && WheelResize((short)(wParam >> 16))))
+                {
+                    OnWheelAtCursor((short)(wParam >> 16));
+                }
+
+                return 0;
+
             case WmWheel:
                 // O hook só manda o giro; a posição vem do cursor, sem dado novo do hook (SEC-01).
-                POINT cursor;
-                GetCursorPos(&cursor);
-                OnWheel((int)lParam, cursor.X, cursor.Y);
+                OnWheelAtCursor((int)lParam);
                 return 0;
 
             case WM_TIMER:
@@ -355,8 +400,24 @@ internal static unsafe partial class Overlay
         }
     }
 
+    private static void OnWheelAtCursor(int delta)
+    {
+        POINT cursor;
+        GetCursorPos(&cursor);
+        OnWheel(delta, cursor.X, cursor.Y);
+    }
+
+    /// <summary>Canto da janela que recebeu a mensagem: o disco ou a barra (ADR-037).</summary>
+    private static (int X, int Y) Origin(nint hwnd) => hwnd == _bar ? (BarLeft, BarTop) : (_left, _top);
+
     private static void OnTimer(nuint id)
     {
+        if (id == TimerBar)
+        {
+            BarFrame();
+            return;
+        }
+
         if (id == TimerAnimation)
         {
             AnimationFrame();

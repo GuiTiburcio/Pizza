@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using Pizza.Core.Ipc;
@@ -10,7 +11,7 @@ namespace Pizza.Integration.Tests;
 /// de só binários da Microsoft ligada (SEC-26), lendo e gravando só pelos handles (SEC-15, SEC-22).
 /// </summary>
 [Collection(SandboxCollection.Name)]
-public sealed class AudioConversionTests(SandboxFixture fixture) : IDisposable
+public sealed class AudioConversionTests(SandboxFixture fixture, Xunit.Abstractions.ITestOutputHelper output) : IDisposable
 {
     private readonly string _folder = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "pizza-audio-" + Guid.NewGuid().ToString("N"))).FullName;
 
@@ -29,7 +30,7 @@ public sealed class AudioConversionTests(SandboxFixture fixture) : IDisposable
 
         foreach (var (id, extension, options) in new[]
         {
-            ("audio.mp3", "mp3", new Dictionary<string, string> { ["bitrate"] = "320", ["channels"] = "mono" }),
+            ("audio.mp3", "mp3", new Dictionary<string, string> { ["bitrate"] = "96", ["channels"] = "mono" }),
             ("audio.m4a", "m4a", new Dictionary<string, string> { ["bitrate"] = "lossless" }),
             ("audio.flac", "flac", new Dictionary<string, string> { ["depth"] = "24", ["rate"] = "48000" }),
         })
@@ -41,6 +42,82 @@ public sealed class AudioConversionTests(SandboxFixture fixture) : IDisposable
             Assert.True(new FileInfo(Path.Combine(_folder, result.OutputName!)).Length > 1000, id);
         }
 
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
+        Assert.Empty(Directory.GetFiles(_folder, ".~pizza-*", new EnumerationOptions { AttributesToSkip = 0 }));
+    }
+
+    [MediaFact]
+    public void M4a_sem_perda_volta_para_wav_no_worker_sem_alterar_as_amostras()
+    {
+        // TST-02/TST-10 e SEC-26: a releitura também precisa funcionar dentro do Worker com a política de assinatura.
+        var source = Path.Combine(_folder, "original.wav");
+        var original = Wav(seconds: 1);
+        File.WriteAllBytes(source, original);
+        var encoded = Runner().Run(source, "audio.m4a", "m4a", new Dictionary<string, string> { ["bitrate"] = "lossless" });
+        Assert.Null(encoded.ErrorCode);
+
+        var encodedPath = Path.Combine(_folder, encoded.OutputName!);
+        var encodedBefore = File.ReadAllBytes(encodedPath);
+        var decoded = Runner().Run(encodedPath, "audio.wav", "wav");
+
+        Assert.Null(decoded.ErrorCode);
+        Assert.Equal(original, File.ReadAllBytes(source));
+        Assert.Equal(encodedBefore, File.ReadAllBytes(encodedPath));
+        Assert.Equal(Pcm(original), Pcm(File.ReadAllBytes(Path.Combine(_folder, decoded.OutputName!))));
+        Assert.Empty(Directory.GetFiles(_folder, ".~pizza-*", new EnumerationOptions { AttributesToSkip = 0 }));
+    }
+
+    [MediaFact]
+    public void Alac_de_uma_hora_respeita_prazo_e_preserva_PCM()
+    {
+        // ADR-035 / SEC-43: uma hora real de PCM sintético, em fluxo; não é um cabeçalho com duração falsa.
+        var source = Path.Combine(_folder, "uma-hora.wav");
+        var second = Wav(1);
+        var header = second.AsSpan(0, 44).ToArray();
+        var dataLength = checked((second.Length - 44) * 3600);
+        BinaryPrimitives.WriteInt32LittleEndian(header.AsSpan(4, 4), 36 + dataLength);
+        BinaryPrimitives.WriteInt32LittleEndian(header.AsSpan(40, 4), dataLength);
+        using (var file = File.Create(source))
+        {
+            file.Write(header);
+            for (var index = 0; index < 3600; index++) file.Write(second.AsSpan(44));
+        }
+
+        var before = FileHash(source);
+        var runner = new ConversionRunner(fixture.WorkerPath, SandboxFixture.Profile, new TempJournal(_folder + ".journal"), TimeSpan.FromMinutes(2));
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var encoded = runner.Run(source, "audio.m4a", "m4a", new Dictionary<string, string> { ["bitrate"] = "lossless" });
+        output.WriteLine($"ALAC de uma hora: {clock.Elapsed.TotalSeconds:F2} s.");
+        Assert.Null(encoded.ErrorCode);
+        var decoded = runner.Run(Path.Combine(_folder, encoded.OutputName!), "audio.wav", "wav");
+        Assert.Null(decoded.ErrorCode);
+        Assert.Equal(PcmHash(source), PcmHash(Path.Combine(_folder, decoded.OutputName!)));
+        Assert.Equal(before, FileHash(source));
+        Assert.Empty(Directory.GetFiles(_folder, ".~pizza-*", new EnumerationOptions { AttributesToSkip = 0 }));
+    }
+
+    [MediaFact]
+    public void Taxa_menor_so_converte_depois_de_confirmada()
+    {
+        // TST-02/TST-10: Worker real, sem saída final ou temporário enquanto a oferta aguarda o usuário.
+        var source = Path.Combine(_folder, "voz.wav");
+        File.WriteAllBytes(source, Wav(seconds: 1));
+        var before = SHA256.HashData(File.ReadAllBytes(source));
+        var options = new Dictionary<string, string> { ["bitrate"] = "320", ["channels"] = "mono" };
+
+        var offer = Runner().Run(source, "audio.mp3", "mp3", options);
+
+        Assert.Equal(Pizza.Core.Conversions.BitrateOffer.Required, offer.ErrorCode);
+        Assert.Null(offer.OutputName);
+        Assert.NotNull(offer.SuggestedBitrate);
+        Assert.Single(Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }));
+        var accepted = Pizza.Core.Conversions.BitrateOffer.Accept("audio.mp3", options, offer.SuggestedBitrate.Value);
+        Assert.NotNull(accepted);
+
+        var converted = Runner().Run(source, "audio.mp3", "mp3", accepted);
+
+        Assert.Null(converted.ErrorCode);
+        Assert.Equal("voz.mp3", converted.OutputName);
         Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
         Assert.Empty(Directory.GetFiles(_folder, ".~pizza-*", new EnumerationOptions { AttributesToSkip = 0 }));
     }
@@ -106,6 +183,59 @@ public sealed class AudioConversionTests(SandboxFixture fixture) : IDisposable
 
     private ConversionRunner Runner() =>
         new(fixture.WorkerPath, SandboxFixture.Profile, new TempJournal(_folder + ".journal"), TimeSpan.FromSeconds(60));
+
+    private static byte[] FileHash(string path)
+    {
+        using var file = File.OpenRead(path);
+        return SHA256.HashData(file);
+    }
+
+    private static (long Bytes, string Hash) PcmHash(string path)
+    {
+        using var file = File.OpenRead(path);
+        using var reader = new BinaryReader(file);
+        Assert.Equal("RIFF", System.Text.Encoding.ASCII.GetString(reader.ReadBytes(4)));
+        file.Position = 12;
+        while (file.Position + 8 <= file.Length)
+        {
+            var name = System.Text.Encoding.ASCII.GetString(reader.ReadBytes(4));
+            var size = reader.ReadUInt32();
+            Assert.InRange((long)size, 0, file.Length - file.Position);
+            if (name != "data")
+            {
+                file.Position += size + (size & 1);
+                continue;
+            }
+
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            var buffer = new byte[65536];
+            long remaining = size;
+            while (remaining > 0)
+            {
+                var count = file.Read(buffer, 0, (int)Math.Min(buffer.Length, remaining));
+                Assert.True(count > 0);
+                hash.AppendData(buffer, 0, count);
+                remaining -= count;
+            }
+
+            return (size, Convert.ToHexString(hash.GetHashAndReset()));
+        }
+
+        throw new InvalidDataException("WAV de teste sem PCM.");
+    }
+
+    private static byte[] Pcm(byte[] wav)
+    {
+        Assert.True(wav.AsSpan(0, 4).SequenceEqual("RIFF"u8));
+        for (var offset = 12; offset + 8 <= wav.Length;)
+        {
+            var length = checked((int)BinaryPrimitives.ReadUInt32LittleEndian(wav.AsSpan(offset + 4, 4)));
+            Assert.InRange(length, 0, wav.Length - offset - 8);
+            if (wav.AsSpan(offset, 4).SequenceEqual("data"u8)) return wav.AsSpan(offset + 8, length).ToArray();
+            offset = checked(offset + 8 + length + (length & 1));
+        }
+        throw new InvalidDataException("WAV de teste sem chunk data.");
+    }
 
     private static byte[] Wav(int seconds)
     {

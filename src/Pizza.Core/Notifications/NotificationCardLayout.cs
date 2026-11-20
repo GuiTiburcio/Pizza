@@ -12,6 +12,8 @@ public enum NotificationAction
     Close,
     Pause,
     Resume,
+    AcceptBitrate,
+    Undo,
 }
 
 public readonly record struct NotificationButton(NotificationAction Action, string Label, PanelRect Bounds);
@@ -46,12 +48,22 @@ public static class NotificationCardLayout
         new(NotificationAction.Cancel, "Parar", Control(0)),
     ];
 
+    // Sucesso: três botões na mesma linha (Abrir, Mostrar na pasta, Desfazer).
+    private const int OpenWidth = 84;
+    private const int FolderWidth = 148;
+    private static readonly PanelRect OpenBox = new(Margin, ButtonTop, Margin + OpenWidth, ButtonTop + ButtonHeight);
+    private static readonly PanelRect FolderBox = new(OpenBox.Right + Gap, ButtonTop, OpenBox.Right + Gap + FolderWidth, ButtonTop + ButtonHeight);
+    private static readonly PanelRect UndoBox = new(FolderBox.Right + Gap, ButtonTop, Width - Margin, ButtonTop + ButtonHeight);
+
     private static readonly NotificationButton[] SuccessButtons =
     [
-        new(NotificationAction.Open, "Abrir", Left),
-        new(NotificationAction.ShowInFolder, "Mostrar na pasta", Right),
+        new(NotificationAction.Open, "Abrir", OpenBox),
+        new(NotificationAction.ShowInFolder, "Mostrar na pasta", FolderBox),
+        new(NotificationAction.Undo, "Desfazer", UndoBox),
         new(NotificationAction.Close, "×", CloseBox),
     ];
+
+    private static readonly NotificationButton[] NoticeButtons = [new(NotificationAction.Close, "×", CloseBox)];
 
     private static readonly NotificationButton[] ErrorButtons =
     [
@@ -60,10 +72,19 @@ public static class NotificationCardLayout
         new(NotificationAction.Close, "×", CloseBox),
     ];
 
+    private static readonly NotificationButton[] ConfirmationButtons =
+    [
+        new(NotificationAction.AcceptBitrate, "Usar taxa menor", Left),
+        new(NotificationAction.Cancel, "Cancelar", Right),
+        new(NotificationAction.Close, "×", CloseBox),
+    ];
+
     public static IReadOnlyList<NotificationButton> Buttons(NotificationKind kind) => kind switch
     {
         NotificationKind.Progress => ProgressButtons,
         NotificationKind.Success => SuccessButtons,
+        NotificationKind.Confirmation => ConfirmationButtons,
+        NotificationKind.Notice => NoticeButtons,
         _ => ErrorButtons,
     };
 

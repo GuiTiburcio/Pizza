@@ -100,7 +100,7 @@ internal static unsafe partial class DiscRenderer
 
         var textWidth = kind == NotificationKind.Progress ? NotificationCardLayout.Buttons(kind)[0].Bounds.Left - 56 : width - 96;
         Text(g, frame.Title, _semibold, 14, StyleBold, _palette.Ink, 50, 12, textWidth, 24, AlignNear);
-        Text(g, frame.Detail, _regular, 12, StyleRegular, _palette.SliceInk, 50, 38, kind == NotificationKind.Progress ? textWidth : width - 66, 20, AlignNear);
+        Text(g, frame.Detail, _regular, 12, StyleRegular, _palette.SliceInk, 50, 38, kind == NotificationKind.Progress ? textWidth : width - 66, kind == NotificationKind.Confirmation ? 40 : 20, AlignNear);
 
         if (kind == NotificationKind.Progress)
         {
@@ -111,7 +111,7 @@ internal static unsafe partial class DiscRenderer
         foreach (var button in NotificationCardLayout.Buttons(kind))
         {
             var bounds = button.Bounds;
-            if (button.Action is NotificationAction.Resume or NotificationAction.Pause or NotificationAction.Cancel)
+            if (kind == NotificationKind.Progress && button.Action is (NotificationAction.Resume or NotificationAction.Pause or NotificationAction.Cancel))
             {
                 DrawControl(g, button.Action, bounds, frame.Paused);
                 continue;

@@ -5,6 +5,10 @@ public enum NotificationKind
     Progress,
     Success,
     Error,
+    Confirmation,
+
+    /// <summary>Aviso curto sem botões de ação, como "Conversão desfeita"; some sozinho como o sucesso.</summary>
+    Notice,
 }
 
 public sealed class Notification(long id)
@@ -44,7 +48,7 @@ public sealed class NotificationStack
 
     /// <summary>Falso quando nada depende do tempo: em repouso, o residente não usa temporizador (NFR-02).</summary>
     public bool NeedsClock =>
-        _items.Exists(item => item.DelayMs > 0) || (!Paused && Visible.Any(item => item.Kind == NotificationKind.Success));
+        _items.Exists(item => item.DelayMs > 0) || (!Paused && Visible.Any(item => item.Kind is NotificationKind.Success or NotificationKind.Notice));
 
     public bool IsEmpty => _items.Count == 0;
 
@@ -82,12 +86,12 @@ public sealed class NotificationStack
             return;
         }
 
-        foreach (var item in Visible.Where(item => item.Kind == NotificationKind.Success))
+        foreach (var item in Visible.Where(item => item.Kind is NotificationKind.Success or NotificationKind.Notice))
         {
             item.RemainingMs -= elapsedMs;
         }
 
-        _items.RemoveAll(item => item.Kind == NotificationKind.Success && item.RemainingMs <= 0);
+        _items.RemoveAll(item => item.Kind is NotificationKind.Success or NotificationKind.Notice && item.RemainingMs <= 0);
     }
 
     private IEnumerable<Notification> Eligible() =>

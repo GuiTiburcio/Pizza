@@ -14,7 +14,7 @@
 
 *"A perfeição não é alcançada quando não há mais nada a ser incluído. A perfeição é alcançada quando não há mais nada a ser retirado."* — Antoine de Saint-Exupéry
 
-Conversor de imagens para Windows com menu circular, processamento local e arquivo original preservado.
+Conversor de arquivos para Windows com menu circular, processamento local e arquivo original preservado.
 
 [![Baixar a prévia](https://img.shields.io/github/v/release/GuiTiburcio/Pizza?include_prereleases&label=baixar%20pr%C3%A9via&color=2F6BFF&style=for-the-badge)](https://github.com/GuiTiburcio/Pizza/releases)
 
@@ -26,7 +26,7 @@ Conversor de imagens para Windows com menu circular, processamento local e arqui
 
 O Pizza abre um menu de formatos quando você começa a arrastar um arquivo segurando Ctrl. Você pode soltar o mouse em qualquer posição e escolher com um clique, ou arrastar diretamente até uma fatia. A saída fica ao lado do original.
 
-O projeto está em **prévia de desenvolvimento**. Imagens e Imagem → PDF estão implementados. Operações em PDF, documentos e áudio fazem parte do roteiro. Instaladores assinados e atualização automática ainda não estão disponíveis.
+O projeto está em **prévia de desenvolvimento**. Há conversores de Imagem, operações de PDF, documentos e áudio implementados; isso não significa que as quatro abas já tenham aceite de lançamento. Consulte os [critérios e as pendências do Brotinho](docs/BROTINHO-LANCAMENTO.md). Instaladores assinados e atualização automática ainda não estão disponíveis.
 
 ## Como funciona
 
@@ -45,8 +45,16 @@ O cartão de resultado permite abrir a saída ou mostrá-la na pasta. O menu do 
 | Entrada | Saída |
 | --- | --- |
 | JPG/JPEG, PNG, WEBP, AVIF, TIFF/TIF e GIF | JPG, PNG, WEBP, AVIF, PDF, TIFF, ICO e GIF |
+| PDF | Juntar, dividir e girar páginas |
+| DOCX | TXT e HTML |
+| XLSX | CSV, um arquivo por planilha |
+| MP3, M4A, AAC, FLAC e WAV | MP3, M4A/AAC ou ALAC, FLAC e WAV |
 
-O formato de origem é omitido. GIFs são tratados como imagem estática nesta etapa. HEIC, BMP, vídeo, áudio e conversões de documentos ainda não estão disponíveis. Por enquanto, um arquivo por vez.
+O catálogo omite conversões para o mesmo formato quando não há operação correspondente. GIFs são tratados como imagem estática nesta etapa. HEIC, BMP e vídeo ficam fora desta prévia. Juntar PDFs aceita várias entradas; isso não representa conversão genérica em lote. DOCX → Markdown continua planejado. DOCX/XLSX/PPTX → PDF depende do motor opcional do Pizza Jumbo, separado do Brotinho.
+
+**Validação de Áudio:** os [testes do PR #84](https://github.com/GuiTiburcio/Pizza/pull/84) preservam integralmente o PCM ALAC nos casos de pacote completo/parcial, silêncio final, 16/24 bits e mono/estéreo/seis canais. Uma hora de áudio converteu em 94,77 s na CI, com hash do PCM preservado na releitura. O [PR #95](https://github.com/GuiTiburcio/Pizza/pull/95) exige confirmação antes de usar bitrate menor. Isso não substitui a matriz manual do candidato de lançamento nem valida todas as combinações de efeitos e conversões com perda; ver [critérios do Brotinho](docs/BROTINHO-LANCAMENTO.md).
+
+**Portfólio:** o código, os testes, o [dossiê](docs/dossie/README.md) e os PRs mostram a evolução do projeto. Recursos planejados não são apresentados como entregues. As versões para [macOS e Linux](docs/PORTABILIDADE.md) ainda estão no roteiro, sem data prometida.
 
 ## Processamento local
 

@@ -9,15 +9,15 @@ public class MenuPagesTests
     public void Jpg_tem_duas_voltas_antes_da_aba_pdf()
     {
         Assert.Equal([new MenuPage(0, 0), new MenuPage(0, 1), new MenuPage(1, 0), new MenuPage(2, 0), new MenuPage(3, 0)], RadialMenu.Pages("a.jpg"));
-        Assert.Equal("GIF", Assert.Single(RadialMenu.Slices(0, "a.jpg", 1)).Label);
+        Assert.Equal(["GIF", "JXL"], RadialMenu.Slices(0, "a.jpg", 1).Select(slice => slice.Label)); // ADR-040: JXL fecha a ordem.
     }
 
     [Theory]
     [InlineData("a.jpg", 0, 0)]
-    [InlineData("escritura.PDF", 1, 1)]
+    [InlineData("escritura.PDF", 2, 1)]
     public void Menu_abre_na_aba_do_tipo_do_arquivo(string path, int page, int tab)
     {
-        // FR-03: o PDF não tem conversão de imagem, então a aba Imagem tem uma página só e a PDF é a segunda.
+        // FR-03: a aba Imagem mostra as oito fatias apagadas para o PDF (ADR-039), em duas voltas antes da aba PDF.
         Assert.Equal(page, RadialMenu.FirstPage(path));
         Assert.Equal(tab, RadialMenu.Pages(path)[page].Tab);
     }
@@ -27,13 +27,12 @@ public class MenuPagesTests
     {
         // Ordem da prancha 6A-1 (Comprimir, Juntar, Dividir, Imagens, Word, Girar), só com as que já existem.
         Assert.Equal(["Juntar", "Dividir", "Girar"], RadialMenu.Slices(1, "escritura.pdf").Select(slice => slice.Label));
-        Assert.Empty(RadialMenu.Slices(0, "escritura.pdf"));
     }
 
     [Theory]
-    [InlineData("a.jpg", 7)]
-    [InlineData("a.avif", 7)]
-    [InlineData("a.tiff", 7)]
+    [InlineData("a.jpg", 8)]
+    [InlineData("a.avif", 8)]
+    [InlineData("a.tiff", 8)]
     public void Nenhum_formato_da_aba_fica_de_fora(string path, int count)
     {
         var slices = RadialMenu.Pages(path).Where(page => page.Tab == 0).SelectMany(page => RadialMenu.Slices(page.Tab, path, page.Turn)).ToArray();
