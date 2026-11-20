@@ -357,7 +357,7 @@ O teto de saída é conferido também pelo residente, inclusive após o encerram
 
 | ID | Requisito | Critério de aceite |
 | --- | --- | --- |
-| SEC-45 | O libvips DEVE rodar com o bloqueio de operações não confiáveis ligado e com uma lista explícita de decodificadores: JPEG, PNG, WEBP, TIFF, GIF, HEIF/AVIF. O formato real, detectado pelo conteúdo, DEVE estar na lista e corresponder à aba | `.jpg` que é SVG é recusado com `UNSUPPORTED` (TST-25) |
+| SEC-45 | O libvips DEVE rodar com o bloqueio de operações não confiáveis ligado e com uma lista explícita de decodificadores: JPEG, PNG, WEBP, TIFF, GIF, HEIF/AVIF. O formato real, detectado pelo conteúdo, DEVE estar na lista e corresponder à aba. Adendo (ADR-040, proposta): o JPEG XL não passa pelo libvips; a libjxl o decodifica no Worker, com os limites da SEC-40 e da SEC-41 conferidos antes de alocar | `.jpg` que é SVG é recusado com `UNSUPPORTED` (TST-25) |
 | SEC-46 | DEVERIA limitar a 500 arquivos por arraste, com fila de no máximo 2 jobs por núcleo | Arraste de 600 arquivos mostra aviso |
 
 ### 6.6 Office (Word / LibreOffice)
@@ -450,7 +450,7 @@ O teto de saída é conferido também pelo residente, inclusive após o encerram
 
 | ID | Requisito | Critério de aceite |
 | --- | --- | --- |
-| PRIV-30 | Por padrão, a saída NÃO DEVE conter: GPS e dados de câmera (EXIF), autor, empresa, última pessoa que salvou, comentários e revisões ocultas, XMP com dados pessoais | Ferramenta de leitura de metadados na saída não mostra esses campos |
+| PRIV-30 | Por padrão, a saída NÃO DEVE conter: GPS e dados de câmera (EXIF), autor, empresa, última pessoa que salvou, comentários e revisões ocultas, XMP com dados pessoais. Exceção (ADR-040): JPEG → JPEG XL com a qualidade "Sem perda", escolhida pelo usuário, guarda o JPEG original inteiro, com seus metadados, para devolvê-lo byte a byte | Ferramenta de leitura de metadados na saída não mostra esses campos |
 | PRIV-31 | DEVEM ser preservados os metadados técnicos necessários: orientação, perfil de cor, DPI, título do documento | A imagem não gira nem muda de cor |
 | PRIV-32 | "Manter metadados" no painel DEVE preservar tudo o que o formato de destino suporta | Teste comparando origem e saída |
 

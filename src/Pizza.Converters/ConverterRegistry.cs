@@ -11,7 +11,7 @@ public static class ConverterRegistry
         "image.jpg" => new ImageJpegConverter(), "image.png" => new ImagePngConverter(),
         "image.webp" => new ImageWebpConverter(), "image.avif" => new ImageAvifConverter(),
         "image.pdf" => new ImagePdfConverter(), "image.tiff" => new ImageTiffConverter(),
-        "image.ico" => new ImageIcoConverter(), "image.gif" => new ImageGifConverter(),
+        "image.ico" => new ImageIcoConverter(), "image.gif" => new ImageGifConverter(), "image.jxl" => new ImageJxlConverter(),
         "pdf.merge" => new Pdf.PdfMergeConverter(), "pdf.split" => new Pdf.PdfSplitConverter(),
         "pdf.rotate" => new Pdf.PdfRotateConverter(),
         "document.txt" => new Docs.DocxTextConverter(), "document.csv" => new Docs.XlsxCsvConverter(),

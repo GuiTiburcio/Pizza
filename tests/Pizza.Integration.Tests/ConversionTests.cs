@@ -151,6 +151,22 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
         AssertNoTemporaries();
     }
 
+    [Fact]
+    public void Jxl_sem_perdas_funciona_no_worker_sem_alterar_a_origem()
+    {
+        // ADR-040: a libjxl carrega dentro do AppContainer e o JPEG original cabe inteiro no JXL.
+        var source = CopySample();
+        var before = SHA256.HashData(File.ReadAllBytes(source));
+
+        var result = Runner().Run(source, "image.jxl", "jxl", new Dictionary<string, string> { ["distance"] = "0" });
+
+        Assert.Null(result.ErrorCode);
+        var output = File.ReadAllBytes(Path.Combine(_folder, "fachada.jxl"));
+        Assert.StartsWith("0000000C4A584C20", Convert.ToHexString(output), StringComparison.Ordinal);
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
+        AssertNoTemporaries();
+    }
+
     [Theory]
     [InlineData("image.pdf", "pdf", "25504446")]
     [InlineData("image.webp", "webp", "52494646")]
