@@ -10,8 +10,11 @@ namespace Pizza.Core.Ipc;
 /// Resultado de uma conversão: o nome do arquivo criado, ou o código de erro da SPECS §10.4. Com várias saídas
 /// (Dividir), o nome é o da primeira e <paramref name="Count"/> diz quantas foram.
 /// </summary>
-public sealed record ConversionResult(string? OutputName, string? ErrorCode, int Count = 1)
+public sealed record ConversionResult(string? OutputName, string? ErrorCode, int Count = 1, int? SuggestedBitrate = null, IReadOnlyList<string>? OutputNames = null)
 {
+    /// <summary>Todos os arquivos criados por esta conversão, para o Desfazer; nunca inclui o original.</summary>
+    public IReadOnlyList<string> CreatedNames => OutputNames ?? (OutputName is null ? [] : [OutputName]);
+
     /// <summary>SEC-42: no máximo uma parte por página.</summary>
     public const int MaxParts = 2000;
 
@@ -141,10 +144,11 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
 
             var active = new Stopwatch();
             var limit = OutputBudget.ContainerBytes(parts is not null);
-            var error = RunWorker(source, others, output.Handle, converterId, options ?? new Dictionary<string, string>(), cancellation, control, limit, active, reuse?.Take());
+            int? suggestion = null;
+            var error = RunWorker(source, others, output.Handle, converterId, options ?? new Dictionary<string, string>(), cancellation, control, limit, active, reuse?.Take(), value => suggestion = value);
             if (error is not null)
             {
-                return ConversionResult.Failed(error);
+                return new ConversionResult(null, error, SuggestedBitrate: error == Conversions.BitrateOffer.Required ? suggestion : null);
             }
 
             OutputBudget.Check(RandomAccess.GetLength(output.Handle), limit);
@@ -226,7 +230,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
                 CheckFinalization(cancellation, active, control);
                 return OutputNaming.Candidates(sourcePath, extension, suffix(index + 1, pending.Count));
             }, committed);
-            return new ConversionResult(committed[0], null, committed.Count);
+            return new ConversionResult(committed[0], null, committed.Count, OutputNames: [.. committed]);
         }
         catch
         {
@@ -384,7 +388,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         cancellation.ThrowIfCancellationRequested();
     }
 
-    private string? RunWorker(SafeFileHandle source, IReadOnlyList<SafeFileHandle> others, SafeFileHandle destination, string converterId, IReadOnlyDictionary<string, string> options, CancellationToken cancellation, ConversionControl? control, long limit, Stopwatch active, SandboxedProcess? probed)
+    private string? RunWorker(SafeFileHandle source, IReadOnlyList<SafeFileHandle> others, SafeFileHandle destination, string converterId, IReadOnlyDictionary<string, string> options, CancellationToken cancellation, ConversionControl? control, long limit, Stopwatch active, SandboxedProcess? probed, Action<int> offer)
     {
         // ADR-034: o motor de documentos pode chegar já aquecido; nenhum outro arquivo passou por ele.
         // Adendo do ADR-035: no áudio, o Worker que respondeu ao probe deste mesmo arquivo.
@@ -401,7 +405,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         }));
 
         // A leitura bloqueia; encerrar o Worker fecha o canal e a libera.
-        var reply = Task.Run(() => ReadOutcome(worker.Output, jobId, control?.Progress));
+        var reply = Task.Run(() => ReadOutcome(worker.Output, jobId, control?.Progress, converterId, options, offer));
         // ADR-029: pausar congela o Worker, e o prazo do SEC-43 conta só o tempo ativo.
         active.Start();
         var suspended = false;
@@ -492,7 +496,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     }
 
     /// <summary>Lê até o resultado. Tudo que vem do Worker é não confiável (SEC-13, SEC-24).</summary>
-    private static string? ReadOutcome(Stream output, string jobId, Action<int>? progress)
+    private static string? ReadOutcome(Stream output, string jobId, Action<int>? progress, string converterId, IReadOnlyDictionary<string, string> options, Action<int> offer)
     {
         // Só a porcentagem que avança chega à interface: um Worker comprometido não enche a fila de mensagens.
         var last = -1;
@@ -512,6 +516,14 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
                         return null;
                     case IpcType.Error:
                         return message.Code;
+                    case IpcType.QualityOffer:
+                        if (message.Bitrate is not { } suggested || !Conversions.BitrateOffer.IsValid(converterId, options, suggested))
+                        {
+                            return "WORKER_CRASHED";
+                        }
+
+                        offer(suggested);
+                        return Conversions.BitrateOffer.Required;
                     case IpcType.Progress:
                         if (message.Percent!.Value > last)
                         {

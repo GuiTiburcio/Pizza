@@ -52,7 +52,7 @@ public static class AudioPlan
             "stereo" => 2,
             _ => Math.Max(1, sourceChannels),
         };
-        if (format == "m4a" || compressed)
+        if (compressed)
         {
             channels = Math.Min(channels, 2);
         }

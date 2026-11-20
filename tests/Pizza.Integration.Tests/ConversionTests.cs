@@ -9,6 +9,26 @@ namespace Pizza.Integration.Tests;
 [Collection(SandboxCollection.Name)]
 public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
 {
+    [Theory]
+    [InlineData("audio.mp3", "320", 192, "QUALITY_UNAVAILABLE")]
+    [InlineData("audio.mp3", "320", 319, "WORKER_CRASHED")]
+    [InlineData("audio.mp3", "320", 320, "WORKER_CRASHED")]
+    [InlineData("audio.mp3", "320", 0, "WORKER_CRASHED")]
+    [InlineData("audio.m4a", "lossless", 192, "WORKER_CRASHED")]
+    [InlineData("image.png", "320", 192, "WORKER_CRASHED")]
+    public void Oferta_do_worker_nao_publica_e_residente_confere_o_catalogo(string id, string requested, int suggested, string code)
+    {
+        var source = CopySample();
+        var before = SHA256.HashData(File.ReadAllBytes(source));
+        var result = Runner(fixture.ProbePath, "--act quality-offer --suggested " + suggested, TimeSpan.FromSeconds(60))
+            .Run(source, id, "mp3", new Dictionary<string, string> { ["bitrate"] = requested });
+        Assert.Equal(code, result.ErrorCode);
+        Assert.Equal(code == "QUALITY_UNAVAILABLE" ? suggested : (int?)null, result.SuggestedBitrate);
+        Assert.Null(result.OutputName);
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
+        Assert.Single(Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }));
+    }
+
     private readonly string _folder = CreateFolder();
 
     public void Dispose()
@@ -127,6 +147,22 @@ public sealed class ConversionTests(SandboxFixture fixture) : IDisposable
         var output = File.ReadAllBytes(Path.Combine(_folder, "fachada.avif"));
         Assert.Equal("ftyp", System.Text.Encoding.ASCII.GetString(output, 4, 4));
         Assert.Contains("avif", System.Text.Encoding.ASCII.GetString(output, 8, 24));
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
+        AssertNoTemporaries();
+    }
+
+    [Fact]
+    public void Jxl_sem_perdas_funciona_no_worker_sem_alterar_a_origem()
+    {
+        // ADR-040: a libjxl carrega dentro do AppContainer e o JPEG original cabe inteiro no JXL.
+        var source = CopySample();
+        var before = SHA256.HashData(File.ReadAllBytes(source));
+
+        var result = Runner().Run(source, "image.jxl", "jxl", new Dictionary<string, string> { ["distance"] = "0" });
+
+        Assert.Null(result.ErrorCode);
+        var output = File.ReadAllBytes(Path.Combine(_folder, "fachada.jxl"));
+        Assert.StartsWith("0000000C4A584C20", Convert.ToHexString(output), StringComparison.Ordinal);
         Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(source)));
         AssertNoTemporaries();
     }

@@ -28,6 +28,11 @@ if (act >= 0)
     var jobId = Regex.Match(request, "\"jobId\":\"([0-9a-f]{12})\"").Groups[1].Value;
     switch (args[act + 1])
     {
+        case "quality-offer":
+            var suggestedIndex = Array.IndexOf(args, "--suggested");
+            var suggested = int.Parse(args[suggestedIndex + 1], System.Globalization.CultureInfo.InvariantCulture);
+            writer.Write("{\"v\":1,\"type\":\"qualityoffer\",\"jobId\":\"" + jobId + "\",\"bitrate\":" + suggested + "}\n");
+            return 0;
         case "valid-bundle":
             using (var destination = OpenHandle(Regex.Match(request, "\"dstHandle\":(\\d+)").Groups[1].Value, FileAccess.Write))
             {

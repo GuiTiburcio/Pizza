@@ -8,8 +8,8 @@ namespace Pizza.Converters;
 /// <summary>Base das conversões de imagem: decodifica com a lista e os limites da SPECS. O arquivo de entrada não é confiável.</summary>
 public abstract class ImageConverter : IConverter
 {
-    private const long MaxSourceBytes = 2L * 1024 * 1024 * 1024; // SEC-40
-    private const long MaxPixels = 100_000_000; // SEC-41
+    internal const long MaxSourceBytes = 2L * 1024 * 1024 * 1024; // SEC-40
+    internal const long MaxPixels = 100_000_000; // SEC-41
 
     private static readonly string[] AllowedLoaders =
     [
@@ -39,6 +39,12 @@ public abstract class ImageConverter : IConverter
 
         try
         {
+            // ADR-040: o libvips empacotado não lê JPEG XL; a libjxl decodifica e entrega pixels sRGB.
+            if (StartsWithJxl(source))
+            {
+                return ConvertJxl(source, destination, options, progress);
+            }
+
             if (Image.FindLoadStream(source) is null)
             {
                 return "UNSUPPORTED";
@@ -51,6 +57,11 @@ public abstract class ImageConverter : IConverter
                 return "LIMIT_EXCEEDED";
             }
 
+            if (TryTranscode(source, destination, options, out var transcodeError))
+            {
+                return transcodeError;
+            }
+
             // ADR-029: as etapas seguintes herdam o aviso de andamento da imagem de entrada.
             Track(header, progress);
             WriteUpright(header, source, destination, options, progress);
@@ -60,6 +71,13 @@ public abstract class ImageConverter : IConverter
         {
             return "CORRUPTED";
         }
+    }
+
+    /// <summary>Gancho para formatos que convertem sem passar pelos pixels (ADR-040). Devolve false quando não se aplica.</summary>
+    protected virtual bool TryTranscode(Stream source, Stream destination, IReadOnlyDictionary<string, string> options, out string? error)
+    {
+        error = null;
+        return false;
     }
 
     /// <summary>Grava a imagem já na posição certa. PRIV-30 e PRIV-31: só o perfil de cor pode ser mantido.</summary>
@@ -75,6 +93,38 @@ public abstract class ImageConverter : IConverter
 
     protected static int Number(IReadOnlyDictionary<string, string> options, string key) =>
         int.Parse(options[key], CultureInfo.InvariantCulture);
+
+    private static bool StartsWithJxl(Stream source)
+    {
+        Span<byte> head = stackalloc byte[12];
+        var read = source.Read(head);
+        source.Seek(0, SeekOrigin.Begin);
+        return Jxl.JxlCodec.IsJxl(head[..read]);
+    }
+
+    private string? ConvertJxl(Stream source, Stream destination, IReadOnlyDictionary<string, string> options, IProgress<int>? progress)
+    {
+        if (source.Length > Array.MaxLength)
+        {
+            return "LIMIT_EXCEEDED";
+        }
+
+        var data = new byte[source.Length];
+        source.ReadExactly(data);
+        var error = Jxl.JxlCodec.Decode(data, MaxPixels, out var pixels);
+        if (pixels is null)
+        {
+            return error;
+        }
+
+        using var raw = Image.NewFromMemory(pixels.Data, pixels.Width, pixels.Height, pixels.Channels, Enums.BandFormat.Uchar);
+        using var image = raw.Copy(interpretation: Enums.Interpretation.Srgb);
+        using var tagged = pixels.Orientation > 1 ? image.Mutate(m => m.Set(GValue.GIntType, "orientation", pixels.Orientation)) : image.Copy();
+        using var upright = pixels.Orientation > 1 ? tagged.Autorot() : tagged.Copy();
+        Encode(upright, destination, options);
+        GC.KeepAlive(pixels);
+        return null;
+    }
 
     private static void Track(Image image, IProgress<int>? progress)
     {

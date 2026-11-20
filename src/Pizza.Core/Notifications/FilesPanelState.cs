@@ -33,6 +33,11 @@ public sealed class FilesPanelState(ConversionHistory history)
     ];
 
     private static readonly NotificationButton[] FailedButtons = [new(NotificationAction.Retry, "Tentar de novo", Left)];
+    private static readonly NotificationButton[] ConfirmationButtons =
+    [
+        new(NotificationAction.AcceptBitrate, "Usar taxa menor", Left),
+        new(NotificationAction.Cancel, "Cancelar", Right),
+    ];
 
     private int _focus;
 
@@ -65,6 +70,7 @@ public sealed class FilesPanelState(ConversionHistory history)
     {
         HistoryState.Done => DoneButtons,
         HistoryState.Failed => FailedButtons,
+        HistoryState.AwaitingConfirmation => ConfirmationButtons,
         _ => [],
     };
 
@@ -72,6 +78,7 @@ public sealed class FilesPanelState(ConversionHistory history)
     {
         HistoryState.Running => "Convertendo…",
         HistoryState.Failed => $"Erro · {entry.Message}",
+        HistoryState.AwaitingConfirmation => entry.Message ?? "Aguardando confirmação",
         _ => entry.Missing ? "Arquivo não encontrado" : $"Concluído · {entry.Converter.Label}",
     };
 

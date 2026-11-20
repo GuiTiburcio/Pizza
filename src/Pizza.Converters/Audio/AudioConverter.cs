@@ -120,6 +120,10 @@ public sealed class AudioConverter(string id) : IConverter
         // A mesma regra que o painel usa para o tamanho previsto (adendo do ADR-035).
         var target = Core.Conversions.AudioPlan.Target(Format, options, reader.Info.SampleRate, reader.Info.Channels, reader.Info.Bits);
         var (rate, channels, bits) = ((uint)target.Rate, (uint)target.Channels, (uint)target.Bits);
+        var alac = Format == "m4a" && options["bitrate"] == "lossless"
+            ? new AlacTailStream(destination, (int)channels, (int)bits, (int)rate) : null;
+        var wave = Format == "wav" ? new WaveHeaderStream(destination) : null;
+        long pcmBytes = 0;
 
         // O leitor entrega PCM já no formato da saída: ele mesmo reamostra e mistura os canais.
         var pcm = MediaFoundation.CreateMediaType();
@@ -130,7 +134,7 @@ public sealed class AudioConverter(string id) : IConverter
             MediaFoundation.SetCurrentMediaType(reader.Handle, MediaFoundation.FirstAudioStream, pcm);
             current = MediaFoundation.CurrentMediaType(reader.Handle, MediaFoundation.FirstAudioStream);
 
-            outStream = HandleStream.Create(destination);
+            outStream = HandleStream.Create((Stream?)alac ?? wave ?? destination);
             outBytes = MediaFoundation.ByteStream(outStream);
             if (OpenWriter(outBytes, current, options, rate, channels, bits) is not { } opened)
             {
@@ -170,13 +174,33 @@ public sealed class AudioConverter(string id) : IConverter
                     Edit(sample, format, samples => applying.Apply(samples, format.Channels), write: true);
                 }
 
+                alac?.Record(sample);
+                pcmBytes = checked(pcmBytes + MediaFoundation.TotalLength(sample));
                 MediaFoundation.WriteSample(writer, stream, sample);
             }) is { } error)
             {
                 return error;
             }
 
-            MediaFoundation.FinalizeWriting(writer);
+            alac?.BeginFinalization();
+            try
+            {
+                MediaFoundation.FinalizeWriting(writer);
+            }
+            finally
+            {
+                alac?.CheckLimit();
+            }
+
+            // Fecha todas as referências do gravador antes de reparar os cabeçalhos observados.
+            MediaFoundation.Release(writer);
+            writer = 0;
+            MediaFoundation.Release(outBytes);
+            outBytes = 0;
+            MediaFoundation.Release(outStream);
+            outStream = 0;
+            alac?.Complete();
+            wave?.Complete(pcmBytes);
             progress?.Report(ProgressSteps);
             return null;
         }
@@ -200,8 +224,8 @@ public sealed class AudioConverter(string id) : IConverter
 
     /// <summary>
     /// Gravador com o fluxo de saída já ligado ao codificador. Se o codificador recusar a taxa pedida para esta
-    /// combinação de canais (mono não chega a 320 kbps, por exemplo), tenta o valor aceito logo abaixo, com um gravador
-    /// novo: nada é escrito antes de BeginWriting. Null quando o Windows não tem o codificador.
+    /// combinação de canais, procura uma alternativa para oferecer. A alternativa não inicia a escrita: precisa de
+    /// confirmação e nova conversão. Null quando o Windows não tem o codificador.
     /// </summary>
     private (nint Writer, uint Stream)? OpenWriter(nint byteStream, nint input, IReadOnlyDictionary<string, string> options, uint rate, uint channels, uint bits)
     {
@@ -245,6 +269,11 @@ public sealed class AudioConverter(string id) : IConverter
                 var hr = MediaFoundation.SetInputMediaType(writer, stream, input);
                 if (hr >= 0)
                 {
+                    if (kbps > 0 && options["bitrate"] != kbps.ToString(CultureInfo.InvariantCulture))
+                    {
+                        throw new BitrateUnavailableException((int)kbps);
+                    }
+
                     (var opened, writer) = (writer, 0);
                     return (opened, stream);
                 }
