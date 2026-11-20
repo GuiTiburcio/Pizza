@@ -59,7 +59,7 @@ public sealed class QuickOptionsState
             ("size", var size) => $"{size} px",
             ("rotation", "270") => "90°",
             ("rotation", var degrees) => $"{degrees}°",
-            ("resolution", var dpi) when Converter!.Extension == "pdf" && dpi != "original" => $"{dpi} dpi",
+            ("resolution", var dpi) when (Converter!.Extension == "pdf" || Converter.Id == "pdf.images") && dpi != "original" => $"{dpi} dpi",
             _ => null,
         };
 

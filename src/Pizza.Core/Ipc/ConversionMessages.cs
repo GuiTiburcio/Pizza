@@ -14,6 +14,7 @@ public static class ConversionMessages
         "PASSWORD" => "O PDF está protegido por senha; por enquanto o Pizza não abre PDF protegido",
         "UNSUPPORTED" =>"Este tipo de conversão não é suportado para este arquivo",
         "MEDIA_UNAVAILABLE" => "Este Windows não tem os recursos de mídia. Instale o Media Feature Pack",
+        "NO_TEXT" => "Este PDF é uma imagem: não há texto para tirar",
         _ => "O conversor parou inesperadamente; o original não foi alterado",
     };
 }

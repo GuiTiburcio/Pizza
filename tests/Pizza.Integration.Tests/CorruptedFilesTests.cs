@@ -99,6 +99,70 @@ public sealed class CorruptedFilesTests(SandboxFixture fixture) : IDisposable
         Assert.True(failures.Count == 0, $"{failures.Count} de {cases} casos reprovados:\n" + string.Join('\n', failures));
     }
 
+    [Fact]
+    public void Pdf_corrompido_no_pdfium_nunca_derruba_trava_nem_deixa_resto()
+    {
+        // Adendo da ADR-033: o PDFium interpreta o PDF não confiável. Sem texto ou com senha também são respostas válidas.
+        var runner = new ConversionRunner(fixture.WorkerPath, SandboxFixture.Profile, new TempJournal(_folder + ".journal"), TimeSpan.FromSeconds(30));
+        byte[][] corpus = [Pdf("Pizza", pages: 3), Pdf(null, pages: 2)];
+        string[] accepted = [.. AcceptedErrors, "NO_TEXT", "PASSWORD"];
+        var options = new Dictionary<string, string> { ["resolution"] = "96", ["format"] = "jpg", ["quality"] = "85" };
+        var cases = Number("PIZZA_FUZZ_CASES", DefaultCases) / 2;
+        var firstSeed = Number("PIZZA_FUZZ_SEED", 0) * SeedStep;
+        var failures = new List<string>();
+
+        for (long index = 0; index < cases; index++)
+        {
+            var seed = firstSeed + index;
+            var random = new Random((int)(seed % int.MaxValue));
+            var bytes = Mutate(corpus[index % corpus.Length], random);
+            var path = Path.Combine(_folder, "caso.pdf");
+            File.WriteAllBytes(path, bytes);
+
+            var images = random.Next(2) == 0;
+            var result = images
+                ? runner.Run(path, "pdf.images", "jpg", options, parts: (part, count) => OutputNaming.PartSuffix("images", part, count))
+                : runner.Run(path, "pdf.text", "txt");
+            var problem = Check(result, path, bytes, accepted, allowMany: images);
+            if (problem is not null)
+            {
+                failures.Add($"semente {seed}, PDF para {(images ? "pdf.images" : "pdf.text")}: {problem}");
+                Keep(RepositoryRoot(), path, seed);
+            }
+
+            Clear();
+        }
+
+        Assert.True(failures.Count == 0, $"{failures.Count} de {cases} casos reprovados:\n" + string.Join('\n', failures));
+    }
+
+    private static byte[] Pdf(string? text, int pages)
+    {
+        var content = text is null ? "0 0 0 rg 10 10 50 50 re f" : $"BT /F1 18 Tf 20 150 Td ({text}) Tj ET";
+        var kids = string.Join(" ", Enumerable.Range(0, pages).Select(i => $"{i + 5} 0 R"));
+        string[] objects =
+        [
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            $"<< /Type /Pages /Kids [{kids}] /Count {pages} >>",
+            $"<< /Length {content.Length} >>\nstream\n{content}\nendstream",
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+            .. Enumerable.Range(0, pages).Select(_ => "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] /Contents 3 0 R /Resources << /Font << /F1 4 0 R >> >> >>"),
+        ];
+        var pdf = new System.Text.StringBuilder("%PDF-1.7\n");
+        var offsets = new List<int>();
+        for (var i = 0; i < objects.Length; i++)
+        {
+            offsets.Add(pdf.Length);
+            pdf.Append(CultureInfo.InvariantCulture, $"{i + 1} 0 obj\n{objects[i]}\nendobj\n");
+        }
+
+        var start = pdf.Length;
+        pdf.Append(CultureInfo.InvariantCulture, $"xref\n0 {objects.Length + 1}\n0000000000 65535 f \n");
+        offsets.ForEach(offset => pdf.Append(CultureInfo.InvariantCulture, $"{offset:D10} 00000 n \n"));
+        pdf.Append(CultureInfo.InvariantCulture, $"trailer\n<< /Size {objects.Length + 1} /Root 1 0 R >>\nstartxref\n{start}\n%%EOF\n");
+        return System.Text.Encoding.ASCII.GetBytes(pdf.ToString());
+    }
+
     private (string Extension, byte[] Bytes)[] AudioCorpus(ConversionRunner runner)
     {
         var wav = Path.Combine(_folder, "base.wav");
@@ -146,7 +210,7 @@ public sealed class CorruptedFilesTests(SandboxFixture fixture) : IDisposable
         return memory.ToArray();
     }
 
-    private string? Check(ConversionResult result, string path, byte[] bytes)
+    private string? Check(ConversionResult result, string path, byte[] bytes, string[]? accepted = null, bool allowMany = false)
     {
         if (!bytes.AsSpan().SequenceEqual(File.ReadAllBytes(path)))
         {
@@ -161,11 +225,12 @@ public sealed class CorruptedFilesTests(SandboxFixture fixture) : IDisposable
 
         if (result.ErrorCode is { } code)
         {
-            return AcceptedErrors.Contains(code) ? null : code;
+            return (accepted ?? AcceptedErrors).Contains(code) ? null : code;
         }
 
         var produced = Directory.GetFiles(_folder).Where(file => !string.Equals(file, path, StringComparison.OrdinalIgnoreCase)).ToArray();
-        return produced.Length == 1 && new FileInfo(produced[0]).Length > 0 ? null : "conversão sem arquivo de saída";
+        var count = allowMany ? produced.Length >= 1 : produced.Length == 1;
+        return count && produced.All(file => new FileInfo(file).Length > 0) ? null : "conversão sem arquivo de saída";
     }
 
     private void Clear()

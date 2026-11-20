@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <!-- IConverter e as implementações por família (Imagem, PDF, Office, Mídia). Não fala com a UI. -->
   <PropertyGroup>
@@ -38,6 +38,29 @@
     <VerifyFileHash File="$(QpdfCache)$(QpdfZip)" Hash="$(QpdfSha256)" Algorithm="SHA256" />
     <Unzip SourceFiles="$(QpdfCache)$(QpdfZip)" DestinationFolder="$(QpdfCache)" />
     <Delete Files="$(QpdfCache)$(QpdfZip)" />
+  </Target>
+
+  <!--
+    ADR-033 (adendo de 15/11/2026): PDFium (BSD-3 e Apache-2.0) desenha as páginas e tira o texto. Vem do
+    empacotamento pdfium-binaries (MIT), compilado sem V8 e sem XFA: nenhum JavaScript de PDF roda. Versão e
+    SHA-256 fixados; o hash é o mesmo que o GitHub publica para o arquivo da release.
+  -->
+  <PropertyGroup>
+    <PdfiumVersion>8152</PdfiumVersion>
+    <PdfiumSha256>cee2b0e9990bc67c0721774932961b9dbf2766046c10eec925acd4cfba6fdfe3</PdfiumSha256>
+    <PdfiumArchive>pdfium-win-x64.tgz</PdfiumArchive>
+    <PdfiumCache>$(MSBuildThisFileDirectory)..\..\artifacts\deps\pdfium-chromium-$(PdfiumVersion)\</PdfiumCache>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(PdfiumCache)bin\pdfium.dll" Link="pdfium.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
+  <Target Name="FetchPdfium" BeforeTargets="BeforeBuild;AssignTargetPaths" Condition="!Exists('$(PdfiumCache)bin\pdfium.dll')">
+    <DownloadFile SourceUrl="https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/$(PdfiumVersion)/$(PdfiumArchive)" DestinationFolder="$(PdfiumCache)" Retries="2" />
+    <VerifyFileHash File="$(PdfiumCache)$(PdfiumArchive)" Hash="$(PdfiumSha256)" Algorithm="SHA256" />
+    <Exec Command="tar -xzf &quot;$(PdfiumCache)$(PdfiumArchive)&quot; -C &quot;$(PdfiumCache).&quot; bin/pdfium.dll LICENSE" />
+    <Delete Files="$(PdfiumCache)$(PdfiumArchive)" />
   </Target>
 
   <!--

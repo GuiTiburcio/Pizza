@@ -37,6 +37,8 @@ public class OutputNamingTests
     [InlineData("half", 2, 2, " - parte 2")]
     [InlineData("sheets", 1, 1, "")]
     [InlineData("sheets", 2, 3, " - planilha 2")]
+    [InlineData("images", 1, 1, "")]
+    [InlineData("images", 3, 12, " - pág 03")]
     public void Partes_do_dividir_ficam_em_ordem_no_explorer(string mode, int part, int count, string expected)
     {
         // Prancha 6A-1: "escritura - pág 01.pdf" e "escritura - parte 1.pdf".

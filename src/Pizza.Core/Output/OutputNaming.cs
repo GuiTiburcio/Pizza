@@ -25,11 +25,13 @@ public static class OutputNaming
     /// Sufixo de cada parte do Dividir (prancha 6A-1), com a parte contada a partir de 1: "Cada página" vira
     /// <c> - pág 01</c> (zeros à esquerda para a ordem no Explorer, pelo menos dois dígitos); "Pela metade",
     /// <c> - parte 1</c>. No CSV do Brotinho (ADR-034), cada planilha vira <c> - planilha 1</c>, e com uma
-    /// planilha só o nome fica igual ao do original.
+    /// planilha só o nome fica igual ao do original. Nas Imagens do PDF (prancha 6B-1), cada página vira
+    /// <c> - pág 01</c>, e um PDF de uma página dá uma imagem com o nome do original.
     /// </summary>
     public static string PartSuffix(string mode, int part, int count) => mode switch
     {
         "sheets" => count == 1 ? "" : $" - planilha {part}",
+        "images" => count == 1 ? "" : PartSuffix("pages", part, count),
         "pages" => $" - pág {part.ToString(new string('0', Math.Max(2, count.ToString(System.Globalization.CultureInfo.InvariantCulture).Length)), System.Globalization.CultureInfo.InvariantCulture)}",
         _ => $" - parte {part}",
     };

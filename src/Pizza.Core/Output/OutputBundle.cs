@@ -31,6 +31,8 @@ public static class OutputBundle
     private static readonly byte[] Magic = "PZB1"u8.ToArray();
     private static readonly byte[] FormattedMagic = "PZB2"u8.ToArray();
     private static readonly byte[] PdfStart = "%PDF-"u8.ToArray();
+    private static readonly byte[] JpgStart = [0xFF, 0xD8, 0xFF];
+    private static readonly byte[] PngStart = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
     private static readonly byte[] Utf8Bom = [0xEF, 0xBB, 0xBF];
 
     public readonly record struct Part(long Offset, long Length);
@@ -47,6 +49,8 @@ public static class OutputBundle
         {
             "pdf" => PdfStart,
             "csv" => Utf8Bom,
+            "jpg" => JpgStart,
+            "png" => PngStart,
             _ => throw new InvalidDataException("Formato sem pacote de partes."),
         };
 

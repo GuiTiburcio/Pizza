@@ -79,6 +79,7 @@ public class IpcCodecTests
     [InlineData("""{"type":"progress","percent":50}""", IpcType.Progress)]
     [InlineData("""{"type":"done","elapsedMs":182}""", IpcType.Done)]
     [InlineData("""{"type":"error","code":"UNSUPPORTED"}""", IpcType.Error)]
+    [InlineData("""{"type":"error","code":"NO_TEXT"}""", IpcType.Error)]
     [InlineData("""{"type":"cancel"}""", IpcType.Cancel)]
     [InlineData("""{"type":"warmup","category":"image"}""", IpcType.Warmup)]
     public void Le_os_demais_tipos(string body, IpcType expected)
