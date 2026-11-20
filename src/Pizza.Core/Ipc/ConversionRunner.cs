@@ -10,8 +10,11 @@ namespace Pizza.Core.Ipc;
 /// Resultado de uma conversão: o nome do arquivo criado, ou o código de erro da SPECS §10.4. Com várias saídas
 /// (Dividir), o nome é o da primeira e <paramref name="Count"/> diz quantas foram.
 /// </summary>
-public sealed record ConversionResult(string? OutputName, string? ErrorCode, int Count = 1, int? SuggestedBitrate = null)
+public sealed record ConversionResult(string? OutputName, string? ErrorCode, int Count = 1, int? SuggestedBitrate = null, IReadOnlyList<string>? OutputNames = null)
 {
+    /// <summary>Todos os arquivos criados por esta conversão, para o Desfazer; nunca inclui o original.</summary>
+    public IReadOnlyList<string> CreatedNames => OutputNames ?? (OutputName is null ? [] : [OutputName]);
+
     /// <summary>SEC-42: no máximo uma parte por página.</summary>
     public const int MaxParts = 2000;
 
@@ -227,7 +230,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
                 CheckFinalization(cancellation, active, control);
                 return OutputNaming.Candidates(sourcePath, extension, suffix(index + 1, pending.Count));
             }, committed);
-            return new ConversionResult(committed[0], null, committed.Count);
+            return new ConversionResult(committed[0], null, committed.Count, OutputNames: [.. committed]);
         }
         catch
         {
