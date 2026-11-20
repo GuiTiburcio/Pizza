@@ -1,6 +1,6 @@
 # ADR-040 — JPEG XL com a libjxl no Worker
 
-- **Status:** Proposta. Precisa da aprovação do mantenedor antes de ir para a `main`.
+- **Status:** Aceita pelo mantenedor em 20/11/2026, junto com a exceção ao PRIV-30 descrita abaixo. A implementação depende dos testes, da revisão do PR e da validação no app.
 - **Data:** 2026-11-20
 
 ## Contexto
@@ -13,7 +13,7 @@ A aba Imagem não grava nem lê JPEG XL (`.jxl`). O libvips empacotado (NetVips.
 - **Só no Worker em AppContainer, sem rede (SEC-20).** O Worker lê a origem pelo handle (SEC-15) e entrega os bytes à libjxl em memória, fixados enquanto ela os usa (`fixed` e `GCHandle`). Nenhum caminho chega à biblioteca.
 - **Limites iguais aos da aba Imagem:** origem até 2 GB (SEC-40; acima de `Array.MaxLength` o JXL recebe `LIMIT_EXCEEDED`) e 100 megapixels (SEC-41), conferidos nas informações básicas do arquivo antes de alocar a imagem decodificada. A libjxl não vem pelo carregador do libvips, então a lista de decodificadores da SEC-45 ganha o JXL, reconhecido pela assinatura do conteúdo e não pela extensão.
 - **Opção "Qualidade" (distância):** Sem perda (0), Alta (1, padrão), Equilibrada (2), Compacta (3).
-  - JPEG com distância 0: recompressão reversível (`JxlEncoderAddJPEGFrame` com os metadados de reconstrução). O JPEG original, com seu EXIF e XMP, fica dentro do JXL, porque é isso que o devolve byte a byte. Quem escolhe "Sem perda" num JPEG recebe um arquivo que guarda os metadados dele (exceção explícita ao PRIV-30, a ser confirmada).
+  - JPEG com distância 0: recompressão reversível (`JxlEncoderAddJPEGFrame` com os metadados de reconstrução). O JPEG original, com seu EXIF e XMP, fica dentro do JXL, porque é isso que o devolve byte a byte. Quem escolhe "Sem perda" num JPEG recebe um arquivo que guarda os metadados dele (exceção explícita ao PRIV-30, aceita pelo mantenedor em 20/11/2026; vale só para "Sem perda" com origem JPEG, que não é o padrão).
   - Qualquer outro caso: pixels sRGB de 8 bits (RGB ou RGBA), orientação aplicada, sem metadados (PRIV-30). Distância 0 é sem perdas nos pixels.
 - **Entrada:** `.jxl` passa a ser aceito como origem de todas as saídas da aba (PNG, JPG, WEBP…). O primeiro quadro é decodificado para sRGB de 8 bits. A fatia JXL fica no fim da ordem, depois do GIF, para não mexer nas primeiras seis fatias.
 - Log sem nome de arquivo nem conteúdo (PRIV-16): a libjxl não escreve log, e os erros viram `CORRUPTED`, `UNSUPPORTED` ou `LIMIT_EXCEEDED`.

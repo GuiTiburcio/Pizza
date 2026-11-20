@@ -450,7 +450,7 @@ O teto de saída é conferido também pelo residente, inclusive após o encerram
 
 | ID | Requisito | Critério de aceite |
 | --- | --- | --- |
-| PRIV-30 | Por padrão, a saída NÃO DEVE conter: GPS e dados de câmera (EXIF), autor, empresa, última pessoa que salvou, comentários e revisões ocultas, XMP com dados pessoais | Ferramenta de leitura de metadados na saída não mostra esses campos |
+| PRIV-30 | Por padrão, a saída NÃO DEVE conter: GPS e dados de câmera (EXIF), autor, empresa, última pessoa que salvou, comentários e revisões ocultas, XMP com dados pessoais. Exceção (ADR-040): JPEG → JPEG XL com a qualidade "Sem perda", escolhida pelo usuário, guarda o JPEG original inteiro, com seus metadados, para devolvê-lo byte a byte | Ferramenta de leitura de metadados na saída não mostra esses campos |
 | PRIV-31 | DEVEM ser preservados os metadados técnicos necessários: orientação, perfil de cor, DPI, título do documento | A imagem não gira nem muda de cor |
 | PRIV-32 | "Manter metadados" no painel DEVE preservar tudo o que o formato de destino suporta | Teste comparando origem e saída |
 
