@@ -66,8 +66,8 @@ internal static partial class TestPdf
         "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
         $"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {width} {height}] >>");
 
-    /// <summary>Protege um PDF com senha de usuário, em AES-256, usando a própria QPDF.</summary>
-    public static unsafe byte[] Encrypt(byte[] pdf, string password)
+    /// <summary>Protege um PDF em AES-256 com a própria QPDF: senha de usuário ou, com <paramref name="ownerOnly"/>, só de dono.</summary>
+    public static unsafe byte[] Encrypt(byte[] pdf, string password, bool ownerOnly = false)
     {
         // A QPDF lê do buffer até o fim, não só na abertura: ele fica fixado até o Cleanup.
         var pinned = GCHandle.Alloc(pdf, GCHandleType.Pinned);
@@ -78,7 +78,7 @@ internal static partial class TestPdf
             Assert.Equal(0, Qpdf.ReadMemory(qpdf, "teste", (byte*)pinned.AddrOfPinnedObject(), (ulong)pdf.Length, &empty) & Qpdf.Errors);
 
             Assert.Equal(0, Qpdf.InitWriteMemory(qpdf) & Qpdf.Errors);
-            Native.SetR6(qpdf, password, password + "-dono", 1, 1, 1, 1, 1, 1, 0, 1);
+            Native.SetR6(qpdf, ownerOnly ? "" : password, ownerOnly ? password : password + "-dono", 1, 1, 1, 1, 1, 1, 0, 1);
             Assert.Equal(0, Qpdf.Write(qpdf) & Qpdf.Errors);
             return new ReadOnlySpan<byte>(Qpdf.Buffer(qpdf), (int)Qpdf.BufferLength(qpdf)).ToArray();
         }

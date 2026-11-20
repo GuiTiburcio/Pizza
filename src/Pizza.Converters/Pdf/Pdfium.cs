@@ -28,6 +28,9 @@ internal static partial class Pdfium
     [LibraryImport(Library, EntryPoint = "FPDF_CloseDocument")]
     public static partial void CloseDocument(nint document);
 
+    [LibraryImport(Library, EntryPoint = "FPDF_GetSecurityHandlerRevision")]
+    public static partial int GetSecurityHandlerRevision(nint document);
+
     [LibraryImport(Library, EntryPoint = "FPDF_GetPageCount")]
     public static partial int GetPageCount(nint document);
 

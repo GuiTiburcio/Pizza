@@ -85,6 +85,16 @@ public sealed class PdfImagesConverterTests : IDisposable
     }
 
     [Fact]
+    public void Pdf_so_com_senha_de_dono_tambem_recebe_password()
+    {
+        // Decisão do mantenedor: qualquer PDF criptografado é recusado, como na QPDF, até existir o FR-24.
+        var (error, parts) = Render(TestPdf.Encrypt(TestPdf.Drawn(1, "Aberto"), "dono", ownerOnly: true));
+
+        Assert.Equal("PASSWORD", error);
+        Assert.Empty(parts);
+    }
+
+    [Fact]
     public void Arquivo_que_nao_e_pdf_recebe_corrupted()
     {
         Assert.Equal("CORRUPTED", Render("isto não é um PDF"u8.ToArray()).Error);

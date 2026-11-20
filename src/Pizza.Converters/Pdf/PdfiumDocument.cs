@@ -45,13 +45,21 @@ internal sealed unsafe class PdfiumDocument : IDisposable
                     _initialized = true;
                 }
 
-                // Sem senha: abre o PDF que só tem senha de dono. Com senha de usuário, cai em PASSWORD (FR-24 vem depois).
+                // Abre sem senha só para descobrir: com senha de usuário o PDFium falha e cai em PASSWORD.
                 var handle = Pdfium.LoadMemDocument(buffer, length, null);
                 if (handle == 0)
                 {
                     var code = Pdfium.GetLastError() == Pdfium.ErrorPassword ? "PASSWORD" : "CORRUPTED";
                     NativeMemory.Free(buffer);
                     return code;
+                }
+
+                // Como na QPDF, qualquer PDF criptografado é recusado, até o de senha só de dono (FR-24 vem depois).
+                if (Pdfium.GetSecurityHandlerRevision(handle) != -1)
+                {
+                    Pdfium.CloseDocument(handle);
+                    NativeMemory.Free(buffer);
+                    return "PASSWORD";
                 }
 
                 var pages = Pdfium.GetPageCount(handle);
