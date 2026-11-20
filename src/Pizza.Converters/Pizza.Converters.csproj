@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <!-- IConverter e as implementações por família (Imagem, PDF, Office, Mídia). Não fala com a UI. -->
   <PropertyGroup>
@@ -61,6 +61,31 @@
     <VerifyFileHash File="$(PdfiumCache)$(PdfiumArchive)" Hash="$(PdfiumSha256)" Algorithm="SHA256" />
     <Exec Command="tar -xzf &quot;$(PdfiumCache)$(PdfiumArchive)&quot; -C &quot;$(PdfiumCache).&quot; bin/pdfium.dll LICENSE" />
     <Delete Files="$(PdfiumCache)$(PdfiumArchive)" />
+  </Target>
+
+  <!--
+    ADR-040: libjxl (BSD-3-Clause) para o formato JPEG XL, só no Worker. Release oficial, build x64 com DLLs
+    dinâmicas e SHA-256 fixado; só as DLLs que a jxl.dll importa vão para a pasta do Worker. O runtime do
+    Visual C++ já vem junto com a QPDF.
+  -->
+  <PropertyGroup>
+    <JxlVersion>0.11.2</JxlVersion>
+    <JxlSha256>54886b2d7a9ef625bc2b2e7b2b81b186f5b310376fd67d2fbbb3fcf3be01ad7a</JxlSha256>
+    <JxlZip>jxl-x64-windows.zip</JxlZip>
+    <JxlCache>$(MSBuildThisFileDirectory)..\..\artifacts\deps\libjxl-$(JxlVersion)\</JxlCache>
+    <JxlBin>$(JxlCache)bin\</JxlBin>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <JxlRuntime Include="jxl.dll;jxl_cms.dll;jxl_threads.dll;brotlicommon.dll;brotlidec.dll;brotlienc.dll" />
+    <None Include="@(JxlRuntime->'$(JxlBin)%(Identity)')" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
+  <Target Name="FetchJxl" BeforeTargets="BeforeBuild;AssignTargetPaths" Condition="!Exists('$(JxlBin)jxl.dll')">
+    <DownloadFile SourceUrl="https://github.com/libjxl/libjxl/releases/download/v$(JxlVersion)/$(JxlZip)" DestinationFolder="$(JxlCache)" Retries="2" />
+    <VerifyFileHash File="$(JxlCache)$(JxlZip)" Hash="$(JxlSha256)" Algorithm="SHA256" />
+    <Unzip SourceFiles="$(JxlCache)$(JxlZip)" DestinationFolder="$(JxlCache)" />
+    <Delete Files="$(JxlCache)$(JxlZip)" />
   </Target>
 
   <ItemGroup>

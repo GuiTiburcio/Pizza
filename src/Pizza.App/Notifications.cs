@@ -4,6 +4,7 @@ using Pizza.Core.Diagnostics;
 using Pizza.Core.Gesture;
 using Pizza.Core.Ipc;
 using Pizza.Core.Notifications;
+using Pizza.Core.Output;
 using static Pizza.App.Interop.Native;
 
 namespace Pizza.App;
@@ -120,7 +121,10 @@ internal static unsafe class Notifications
         }
         else
         {
-            History.Complete(finished.Id, Path.Combine(Path.GetDirectoryName(entry.SourcePath)!, result.OutputName!));
+            var directory = Path.GetDirectoryName(entry.SourcePath)!;
+            History.Complete(finished.Id, Path.Combine(directory, result.OutputName!));
+            // Desfazer: só os nomes que esta conversão criou, nunca o original (SEC-05, SEC-31).
+            entry.Undo = OutputUndo.Capture(directory, result.CreatedNames, [entry.SourcePath, .. entry.MoreSources]);
             // Dividir: o primeiro arquivo e quantos vieram junto; "Abrir" abre o primeiro.
             var created = result.Count > 1 ? $"{result.OutputName} e mais {result.Count - 1}" : result.OutputName!;
             Stack.Set(finished.Id, NotificationKind.Success, "Conversão concluída", took is null ? created : $"{created} · {took}");
@@ -356,6 +360,10 @@ internal static unsafe class Notifications
                 OpenOutput(entry, output, () => ShowInFolder(output));
                 break;
 
+            case NotificationAction.Undo:
+                Undo(entry);
+                break;
+
             case NotificationAction.Retry:
                 Stack.Dismiss(id);
                 History.Remove(id);
@@ -384,6 +392,22 @@ internal static unsafe class Notifications
 
         Sync();
         FilesPanel.Refresh();
+    }
+
+    /// <summary>Manda para a Lixeira o que esta conversão criou, se nada mudou desde então; o original nunca entra.</summary>
+    private static void Undo(HistoryEntry entry)
+    {
+        var outcome = entry.Undo?.Undo(new RecycleBin()) ?? UndoOutcome.Failed;
+        entry.Undo = null;
+        if (outcome == UndoOutcome.Done)
+        {
+            entry.Missing = true; // O cartão e o painel continuam com o registro; o arquivo já não existe.
+            Stack.Set(entry.Id, NotificationKind.Notice, "Conversão desfeita", "O arquivo gerado foi para a Lixeira");
+        }
+        else
+        {
+            Stack.Set(entry.Id, NotificationKind.Notice, "Não foi possível desfazer", outcome == UndoOutcome.Changed ? "O arquivo mudou depois da conversão" : "Nada foi apagado");
+        }
     }
 
     /// <summary>Confere só na hora do clique: o arquivo pode ter sido movido ou apagado.</summary>
@@ -417,11 +441,10 @@ internal static unsafe class Notifications
     public static void ReadWorkArea()
     {
         var monitor = MonitorFromPoint(default, MONITOR_DEFAULTTOPRIMARY);
-        uint dpiX, dpiY;
-        _dpi = GetDpiForMonitor(monitor, 0, &dpiX, &dpiY) == S_OK ? (int)dpiX : 96;
         var info = new MONITORINFO { CbSize = (uint)sizeof(MONITORINFO) };
         GetMonitorInfoW(monitor, &info);
         _area = info.RcWork;
+        _dpi = MenuSettings.Dpi(_area); // ADR-037: 1/15 da tela, como o disco.
     }
 
     [System.Runtime.InteropServices.UnmanagedCallersOnly]

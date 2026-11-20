@@ -126,6 +126,7 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | Escolha por clique (detalhes) | O botão direito numa fatia também escolhe: abre o painel de opções e, em formato sem opções, converte direto. No disco, fora das fatias, nenhum botão faz nada. Depois de 10 s sem interação (mouse, roda ou teclado), a escolha fecha; cada interação reinicia a contagem | 025 |
 | FR-04 e FR-20 (Fase 4b) | Acima do disco, uma faixa mostra os níveis da fatia em hover, em todas as abas (exemplo: "Nível de compressão: Impressão, Escritório, Tela"). A faixa mostra só a opção principal de cada formato (Qualidade em JPG, WEBP e AVIF; Resolução em PNG e PDF; Tamanho em ICO) e some em formato sem opções. Soltar ou clicar no nível escolhe; com o cursor sobre a faixa, a roda troca o nível, e no resto do menu continua trocando a aba. Soltar ou clicar na fatia usa o nível padrão, e o painel completo abre no botão direito. Soltar ou clicar na fatia converte com o nível padrão, sem abrir o painel (substitui o FR-20). Uma bolha de vidro com franjas coloridas (versão B) desliza entre abas, fatias, níveis e as opções do painel; se o quadro passar do orçamento, cai para a versão sem franjas. Aprovado nas pranchas 4b-1 a 4b-3 do Dossiê | 027 |
 | Barra de abas (Fase 4d) | Fica mais fina, entre 55% e 70% da altura atual, e cabe seis abas (com Vídeo e Web). Escolhida em 11/11/2026 a versão B: ícone com o nome curto embaixo, 44 px de altura (81% da atual, o mínimo de acessibilidade), alvos de cerca de 65 × 44 px e nome completo para o leitor de tela (prancha Ref-Barra-Abas) | 026 |
+| NFR-06, NFR-08, FR-04, ADR-026 (menus) | Disco, painel de opções, painel Arquivos, avisos e menu da bandeja nascem com 1/15 da área útil do monitor (pixels físicos), em escala uniforme; os alvos podem ficar abaixo de 44 px. Segurar o botão esquerdo fora dos alvos e arrastar move a janela; o disco só se move na escolha por clique e continua nascendo no cursor. Puxar a borda do círculo ou dos retângulos, ou Ctrl + roda sobre o disco, muda um fator único de 50% a 200% do padrão, com a seta do cursor apontando para fora do centro; a barra de abas e a faixa de níveis ficam numa janela própria que segue o disco com atraso suave e pode ser arrastada, com o deslocamento lembrado e duplo clique para voltar; a roda sem Ctrl continua trocando a aba e o Ctrl é lido no evento, sem hook (SEC-01). Movendo, a janela fica só translúcida; ao soltar, o vidro recopia o trecho uma vez (ADR-023). Fator e posição dos painéis (em fração da área útil) ficam em `%LOCALAPPDATA%\Pizza`, sem dados de arquivo. Aprovado na prancha MOV-1 do Dossiê | 037 |
 | Temas do vidro (Fase 8) | Na tela de Configuração, paletas opcionais em degradê pastel, no estilo do fundo das pranchas de referência do Dossiê | — |
 | Sobre (Fase 8) | A seção Sobre da Configuração mostra a frase do projeto, "Afinal, tudo acaba em pizza.", e a citação que guia o design: "A perfeição não é alcançada quando não há mais nada a ser incluído. A perfeição é alcançada quando não há mais nada a ser retirado." (Antoine de Saint-Exupéry) | — |
 | Faixa de níveis nas Configurações (Fase 8) | Opção "Mostrar faixa de níveis", ligada por padrão. Desligada, o menu mostra só as fatias e soltar ou clicar na fatia converte com o padrão. Pedido em 11/11/2026; prancha e ADR antes do código | — |
@@ -133,6 +134,8 @@ Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta
 | FR-40, FR-29 e FR-51 (Fase 4c) | O aviso de conversão mostra a porcentagem real informada pelo Worker numa linha no azul do "Abrir", o tempo decorrido e o estimado acima dela e, ao concluir, quanto levou. Três botões pequenos: continuar, pausar e parar (cancela). Pausar uma conversão sai da v1.x e entra agora; pausar a fila continua na v1.x. O prazo do SEC-43 conta só o tempo ativo | 029 |
 | FR-44 (Fase 4c) | Arquivos em vidro translúcido, com linhas compactas (ícone, nome e status). Só a linha em foco abre e mostra os botões; a bolha marca o botão em foco | 028 |
 | FR-20 (Fase 4d) | Na Resolução em porcentagem, o painel usa uma régua de 20% a 100% (100% é o original), com qualquer valor inteiro e uma caixa editável ao lado do título; o pino é a bolha de vidro. O esquema aceita "original" ou de "20" a "99", validado também no Worker. A faixa de níveis mantém Original, 75% e 50% | 030 |
+| FR-03, FR-30 (menu por arquivo) | Numa aba com alguma conversão para o arquivo, aparecem só as fatias que servem a ele, em voltas de seis; a aba Docs é única. As demais abas seguem no scroll com as fatias apagadas; escolher uma delas não converte e a descrição da fatia vira "Experimente a aba Y", com a primeira aba que converte o arquivo, e o menu continua aberto. No Pizza Brotinho, fatias do motor de documentos não aparecem. Substitui o pedido de 13/11/2026 de mostrar tudo desabilitado | 039 |
+| Personalizar a pizza (Fase 8) | Em Configurações, nos dois pacotes: ligar e desligar abas e fatias e mudar a ordem. Padrão: tudo ligado | 039 |
 | NFR-01 | A meta de 20 MB vale para a **memória privada** do residente, a coluna Memória do Gerenciador de Tarefas. O conjunto de trabalho total também conta DLLs do Windows compartilhadas com o Explorer (shell32, windows.storage, combase), exigidas pelo arrastar e soltar em qualquer linguagem. Medição de 10/11/2026, em repouso: 7,8 MB privados e 24 MB de conjunto de trabalho. A Fase 5 mede também com o menu aberto | — |
 
 ---
@@ -258,7 +261,10 @@ O Pizza é uma **ferramenta** que roda no computador do cliente. Quem decide con
 | v0.1 | Imagem: JPG, PNG, WEBP, AVIF, TIFF, ICO, GIF, Imagem → PDF |
 | v0.2 | PDF: Comprimir, Juntar, Dividir, Imagens, Word, Girar |
 | v0.3 | Documento: DOCX/XLSX/PPTX → PDF no Pizza Jumbo; conversões simples (DOCX → TXT/HTML/MD, XLSX → CSV) também no Pizza Brotinho (ADR-034) |
-| v1.x | Áudio e vídeo (FFmpeg LGPL) e aba Web |
+| v0.4 | Áudio (Media Foundation, ADR-035) e aba Web: dados, legendas, Markdown/HTML, fontes e compressão; nos dois pacotes (ADR-039) |
+| v1.x | Vídeo (FFmpeg LGPL), só no Pizza Jumbo |
+
+**O que vai em cada pacote (ADR-039).** O Pizza Brotinho faz tudo com o próprio código, o libvips, o QPDF, o PDFium e o Media Foundation: Imagem, PDF (menos PDF → DOCX), Docs simples, Áudio e Web. O Pizza Jumbo acrescenta o que precisa do motor de documentos (formatos de escritório entre si e para PDF, PPTX → PNG, MD/EPUB → PDF, PDF → DOCX) e, na v1.x, o Vídeo. A lista por formato está em `docs/propostas/plano-formatos-pacotes.md`.
 
 Os níveis de qualidade de cada conversão estão na Parte 7 do `PIZZA-PROJETO.md`.
 
@@ -357,7 +363,7 @@ O teto de saída é conferido também pelo residente, inclusive após o encerram
 
 | ID | Requisito | Critério de aceite |
 | --- | --- | --- |
-| SEC-45 | O libvips DEVE rodar com o bloqueio de operações não confiáveis ligado e com uma lista explícita de decodificadores: JPEG, PNG, WEBP, TIFF, GIF, HEIF/AVIF. O formato real, detectado pelo conteúdo, DEVE estar na lista e corresponder à aba | `.jpg` que é SVG é recusado com `UNSUPPORTED` (TST-25) |
+| SEC-45 | O libvips DEVE rodar com o bloqueio de operações não confiáveis ligado e com uma lista explícita de decodificadores: JPEG, PNG, WEBP, TIFF, GIF, HEIF/AVIF. O formato real, detectado pelo conteúdo, DEVE estar na lista e corresponder à aba. Adendo (ADR-040, proposta): o JPEG XL não passa pelo libvips; a libjxl o decodifica no Worker, com os limites da SEC-40 e da SEC-41 conferidos antes de alocar | `.jpg` que é SVG é recusado com `UNSUPPORTED` (TST-25) |
 | SEC-46 | DEVERIA limitar a 500 arquivos por arraste, com fila de no máximo 2 jobs por núcleo | Arraste de 600 arquivos mostra aviso |
 
 ### 6.6 Office (Word / LibreOffice)
@@ -450,7 +456,7 @@ O teto de saída é conferido também pelo residente, inclusive após o encerram
 
 | ID | Requisito | Critério de aceite |
 | --- | --- | --- |
-| PRIV-30 | Por padrão, a saída NÃO DEVE conter: GPS e dados de câmera (EXIF), autor, empresa, última pessoa que salvou, comentários e revisões ocultas, XMP com dados pessoais | Ferramenta de leitura de metadados na saída não mostra esses campos |
+| PRIV-30 | Por padrão, a saída NÃO DEVE conter: GPS e dados de câmera (EXIF), autor, empresa, última pessoa que salvou, comentários e revisões ocultas, XMP com dados pessoais. Exceção (ADR-040): JPEG → JPEG XL com a qualidade "Sem perda", escolhida pelo usuário, guarda o JPEG original inteiro, com seus metadados, para devolvê-lo byte a byte | Ferramenta de leitura de metadados na saída não mostra esses campos |
 | PRIV-31 | DEVEM ser preservados os metadados técnicos necessários: orientação, perfil de cor, DPI, título do documento | A imagem não gira nem muda de cor |
 | PRIV-32 | "Manter metadados" no painel DEVE preservar tudo o que o formato de destino suporta | Teste comparando origem e saída |
 

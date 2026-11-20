@@ -105,7 +105,7 @@ public static class ConverterCatalog
     public static bool DocumentEngineAvailable { get; set; }
 
     // SEC-45. HEIC fica de fora: o libvips empacotado não traz o codec HEVC.
-    private static readonly string[] ImageInputs = [".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".gif", ".avif"];
+    private static readonly string[] ImageInputs = [".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".gif", ".avif", ".jxl"];
 
     // FR-23 e PRIV-30: desmarcado por padrão. Só nos formatos em que o Pizza consegue guardar os metadados.
     private static readonly ConverterOption Metadata = new(MetadataKey, "Manter metadados", MetadataStrip, [new(MetadataStrip, "Não"), new(MetadataKeep, "Sim")]);
@@ -146,6 +146,9 @@ public static class ConverterCatalog
         Metadata,
     ];
 
+    // ADR-040: distância visual da libjxl. 0 é sem perdas (num JPEG, recompressão reversível); 1 é visualmente sem perdas.
+    private static readonly ConverterOption Distance = new("distance", "Qualidade", "1", [new("0", "Sem perda"), new("1", "Alta"), new("2", "Equilibrada"), new("3", "Compacta")]);
+
     public static IReadOnlyList<ConverterInfo> All { get; } =
     [
         new("image.jpg", ImageTab, "JPG", "Compacto", "jpg", ImagesExcept(".jpg", ".jpeg"), Quality),
@@ -181,6 +184,7 @@ public static class ConverterCatalog
             ImageInputs,
             [new("size", "Tamanho", "256", [new("256", "Grande"), new("128", "Médio"), new("48", "Pequeno")])]),
         new("image.gif", ImageTab, "GIF", "256 cores", "gif", ImagesExcept(".gif"), []),
+        new("image.jxl", ImageTab, "JXL", "Moderno e leve", "jxl", ImagesExcept(".jxl"), [Distance]),
 
         // ADR-033 e prancha 6A-1: a extensão não muda, então o nome ganha o sufixo.
         new("pdf.merge", PdfTab, "Juntar", "Vários em 1", "pdf", [".pdf"], [], Suffix: " - juntado", Merges: true),

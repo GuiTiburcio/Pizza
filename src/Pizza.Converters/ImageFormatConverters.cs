@@ -94,3 +94,50 @@ public sealed class ImageIcoConverter : ImageConverter
         destination.Write(png);
     }
 }
+
+/// <summary>
+/// ADR-040: JPEG XL pela libjxl. Distância 0 num JPEG recomprime sem perdas (o JPEG original volta byte a byte);
+/// nos demais casos a imagem vira pixels sRGB de 8 bits, e a distância é a da libjxl.
+/// </summary>
+public sealed class ImageJxlConverter : ImageConverter
+{
+    public override string Id => "image.jxl";
+
+    protected override bool TryTranscode(Stream source, Stream destination, IReadOnlyDictionary<string, string> options, out string? error)
+    {
+        error = null;
+        if (Distance(options) > 0)
+        {
+            return false;
+        }
+
+        source.Seek(0, SeekOrigin.Begin);
+        Span<byte> head = stackalloc byte[4];
+        var read = source.Read(head);
+        source.Seek(0, SeekOrigin.Begin);
+        if (!Jxl.JxlCodec.IsJpeg(head[..read]))
+        {
+            return false;
+        }
+
+        var jpeg = new byte[source.Length];
+        source.ReadExactly(jpeg);
+        error = Jxl.JxlCodec.EncodeJpeg(jpeg, destination);
+        return true;
+    }
+
+    protected override void Encode(Image image, Stream destination, IReadOnlyDictionary<string, string> options)
+    {
+        using var srgb = ToSrgb(image);
+        using var bytes = srgb.Format == Enums.BandFormat.Uchar ? srgb.Copy() : srgb.Cast(Enums.BandFormat.Uchar, shift: srgb.Format == Enums.BandFormat.Ushort);
+        var channels = bytes.Bands >= 4 ? 4 : 3;
+        using var picked = bytes.Bands == channels ? bytes.Copy() : bytes.ExtractBand(0, channels);
+        var error = Jxl.JxlCodec.EncodePixels(new Jxl.JxlPixels(picked.Width, picked.Height, channels, picked.WriteToMemory<byte>()), Distance(options), destination);
+        if (error is not null)
+        {
+            throw new VipsException(error);
+        }
+    }
+
+    private static float Distance(IReadOnlyDictionary<string, string> options) => Number(options, "distance");
+}

@@ -171,6 +171,46 @@ public sealed class OverlayDropTests
     }
 
     [Fact]
+    public void Clique_numa_fatia_de_outro_tipo_aponta_a_aba_e_mantem_a_escolha()
+    {
+        // ADR-039: a imagem na aba PDF vê Juntar, Dividir e Girar apagados; escolher um não converte.
+        PrepareChoice();
+        var pdfPage = OpenPage("entrada.jpg", ConverterCatalog.PdfTab);
+
+        Assert.False(ChooseAt(0, -130));
+        Assert.Equal(GestureState.Choosing, Session.State);
+        Assert.Null(Dropped);
+        Assert.Equal(pdfPage, (MenuPage?)Get("_hintPage"));
+        Assert.Equal(0, (int)Get("_hintSlot")!);
+        Assert.Equal("Experimente a aba Imagem", RadialMenu.Hint("entrada.jpg"));
+    }
+
+    [Fact]
+    public void Soltar_numa_fatia_de_outro_tipo_deixa_o_menu_aberto_com_o_aviso()
+    {
+        Prepare();
+        var pdfPage = OpenPage("entrada.jpg", ConverterCatalog.PdfTab);
+        var (x, y) = SliceCenter(1);
+
+        Assert.Null(TargetAt(x - DiscLayout.CenterX, y - DiscLayout.CenterY));
+        Overlay.OnDrop(Files("entrada.jpg"), x, y);
+
+        Assert.Equal(GestureState.Choosing, Session.State);
+        Assert.Null(Dropped);
+        Assert.Equal(pdfPage, (MenuPage?)Get("_hintPage"));
+        Assert.Equal(1, (int)Get("_hintSlot")!);
+    }
+
+    [Fact]
+    public void Clique_numa_fatia_que_serve_nao_mostra_aviso()
+    {
+        PrepareChoice();
+
+        Assert.True(ChooseAt(0, -130));
+        Assert.Null((MenuPage?)Get("_hintPage"));
+    }
+
+    [Fact]
     public void Prazo_sem_interacao_cancela_a_escolha()
     {
         // ADR-025: 10 s sem interação fecham o menu e descartam a cópia da tela.
@@ -326,6 +366,63 @@ public sealed class OverlayDropTests
         Assert.Equal(1, effect);
     }
 
+    // SEC-05 / SEC-31 (T-11): o alvo nunca devolve DROPEFFECT_MOVE, para qualquer máscara oferecida pela origem,
+    // em qualquer posição e com o menu em preparo, em escolha ou fechado. Bit 2 = MOVE.
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(1, 0)]
+    [InlineData(2, 0)]
+    [InlineData(3, 0)]
+    [InlineData(4, 0)]
+    [InlineData(7, 0)]
+    [InlineData(3, -130)]
+    [InlineData(7, -130)]
+    [InlineData(7, 4000)]
+    [Trait("Tipo", "Seguranca")]
+    public void Alvo_nunca_devolve_move_no_arraste_nem_na_soltura(int offered, int y)
+    {
+        foreach (var acceptsDrop in new[] { true, false })
+        {
+            foreach (var state in new[] { "menu", "choosing", "idle" })
+            {
+                Prepare();
+                if (state == "choosing")
+                {
+                    Assert.True(Overlay.OnDrop(Files("entrada.jpg"), 0, 0, selectSlice: false));
+                }
+                else if (state == "idle")
+                {
+                    Session.End();
+                }
+
+                var point = new Native.POINT { X = DiscLayout.CenterX, Y = DiscLayout.CenterY + y };
+                var target = new DropTarget(acceptsDrop);
+
+                var over = offered;
+                target.DragOver(0, point, ref over);
+                Assert.True(over is Native.DROPEFFECT_NONE or Native.DROPEFFECT_COPY, $"DragOver {state}: {over}");
+                Assert.Equal(0, over & 2);
+
+                var drop = offered;
+                target.Drop(0, 0, point, ref drop);
+                Assert.True(drop is Native.DROPEFFECT_NONE or Native.DROPEFFECT_COPY, $"Drop {state}: {drop}");
+                Assert.Equal(0, drop & 2);
+            }
+        }
+    }
+
+    // SEC-05: sem COPY oferecido (só MOVE), o drop é recusado e o original não é tocado.
+    [Fact]
+    [Trait("Tipo", "Seguranca")]
+    public void Origem_que_oferece_so_move_e_recusada()
+    {
+        Prepare();
+        var effect = 2;
+        new DropTarget(true).Drop(0, 0, new Native.POINT { X = DiscLayout.CenterX, Y = DiscLayout.CenterY - 130 }, ref effect);
+        Assert.Equal(Native.DROPEFFECT_NONE, effect);
+        Assert.Null(Dropped);
+    }
+
     private static GestureSession Session => (GestureSession)typeof(Overlay).GetField("Session", PrivateStatic)!.GetValue(null)!;
 
     [Fact]
@@ -363,6 +460,8 @@ public sealed class OverlayDropTests
         Set("_choiceDeadline", 0L);
         Set("_clickArmed", false);
         Set("_levelHover", null);
+        Set("_hintPage", null);
+        Set("_pages", RadialMenu.Pages("entrada.jpg"));
         Strip.Clear();
         LevelGlide.Snap(0);
         SliceGlide.Snap(0);
@@ -405,6 +504,16 @@ public sealed class OverlayDropTests
         var pages = RadialMenu.Pages(paths[0]);
         Set("_pages", pages);
         Carousel.Reset(pages.Count, RadialMenu.FirstPage(paths[0]));
+    }
+
+    /// <summary>Gira o menu até a primeira volta da aba pedida, como a roda faz.</summary>
+    private static MenuPage OpenPage(string path, int tab)
+    {
+        var pages = RadialMenu.Pages(path);
+        var index = pages.ToList().FindIndex(page => page.Tab == tab);
+        Set("_pages", pages);
+        Carousel.Reset(pages.Count, index);
+        return pages[index];
     }
 
     private static int LevelX(int level, int count)

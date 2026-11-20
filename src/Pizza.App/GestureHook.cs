@@ -55,8 +55,9 @@ internal static unsafe class GestureHook
 
                     break;
 
-                case WM_MOUSEWHEEL when Overlay.IsVisible:
-                    // Com o menu aberto, a roda é só nossa: a janela de baixo não rola.
+                case WM_MOUSEWHEEL when Overlay.IsVisible && !Overlay.IsChoosing:
+                    // Com o menu aberto, a roda é só nossa: a janela de baixo não rola. Na escolha por clique
+                    // ela passa, e a janela do menu a recebe com o Ctrl na mensagem (MK_CONTROL, SEC-02).
                     PostMessageW(Overlay.Disc, Overlay.WmWheel, 0, (short)(data->MouseData >> 16));
                     return 1;
             }
