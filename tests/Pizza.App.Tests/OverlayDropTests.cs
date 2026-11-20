@@ -326,6 +326,63 @@ public sealed class OverlayDropTests
         Assert.Equal(1, effect);
     }
 
+    // SEC-05 / SEC-31 (T-11): o alvo nunca devolve DROPEFFECT_MOVE, para qualquer máscara oferecida pela origem,
+    // em qualquer posição e com o menu em preparo, em escolha ou fechado. Bit 2 = MOVE.
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(1, 0)]
+    [InlineData(2, 0)]
+    [InlineData(3, 0)]
+    [InlineData(4, 0)]
+    [InlineData(7, 0)]
+    [InlineData(3, -130)]
+    [InlineData(7, -130)]
+    [InlineData(7, 4000)]
+    [Trait("Tipo", "Seguranca")]
+    public void Alvo_nunca_devolve_move_no_arraste_nem_na_soltura(int offered, int y)
+    {
+        foreach (var acceptsDrop in new[] { true, false })
+        {
+            foreach (var state in new[] { "menu", "choosing", "idle" })
+            {
+                Prepare();
+                if (state == "choosing")
+                {
+                    Assert.True(Overlay.OnDrop(Files("entrada.jpg"), 0, 0, selectSlice: false));
+                }
+                else if (state == "idle")
+                {
+                    Session.End();
+                }
+
+                var point = new Native.POINT { X = DiscLayout.CenterX, Y = DiscLayout.CenterY + y };
+                var target = new DropTarget(acceptsDrop);
+
+                var over = offered;
+                target.DragOver(0, point, ref over);
+                Assert.True(over is Native.DROPEFFECT_NONE or Native.DROPEFFECT_COPY, $"DragOver {state}: {over}");
+                Assert.Equal(0, over & 2);
+
+                var drop = offered;
+                target.Drop(0, 0, point, ref drop);
+                Assert.True(drop is Native.DROPEFFECT_NONE or Native.DROPEFFECT_COPY, $"Drop {state}: {drop}");
+                Assert.Equal(0, drop & 2);
+            }
+        }
+    }
+
+    // SEC-05: sem COPY oferecido (só MOVE), o drop é recusado e o original não é tocado.
+    [Fact]
+    [Trait("Tipo", "Seguranca")]
+    public void Origem_que_oferece_so_move_e_recusada()
+    {
+        Prepare();
+        var effect = 2;
+        new DropTarget(true).Drop(0, 0, new Native.POINT { X = DiscLayout.CenterX, Y = DiscLayout.CenterY - 130 }, ref effect);
+        Assert.Equal(Native.DROPEFFECT_NONE, effect);
+        Assert.Null(Dropped);
+    }
+
     private static GestureSession Session => (GestureSession)typeof(Overlay).GetField("Session", PrivateStatic)!.GetValue(null)!;
 
     [Fact]
