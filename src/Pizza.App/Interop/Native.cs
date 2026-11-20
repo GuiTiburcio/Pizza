@@ -23,6 +23,7 @@ internal static unsafe partial class Native
     public const int WM_RBUTTONDOWN = 0x0204;
     public const int WM_RBUTTONUP = 0x0205;
     public const int WM_MOUSEWHEEL = 0x020A;
+    public const int MK_CONTROL = 0x0008;
     public const int WM_MOUSELEAVE = 0x02A3;
     public const uint WM_WTSSESSION_CHANGE = 0x02B1;
     public const uint TME_LEAVE = 0x2;

@@ -68,6 +68,9 @@ internal static unsafe partial class Overlay
     /// <summary>Verdadeiro com o menu na tela; só a camada invisível não conta.</summary>
     public static bool IsVisible { get; private set; }
 
+    /// <summary>Verdadeiro na escolha por clique, quando a roda chega às janelas do menu em vez de passar pelo hook.</summary>
+    public static bool IsChoosing => Session.State == GestureState.Choosing;
+
     public static void Create()
     {
         var instance = GetModuleHandleW(null);
@@ -359,14 +362,19 @@ internal static unsafe partial class Overlay
                 OnDropOutside();
                 return 0;
 
-            case WmWheel when WheelResize((int)lParam):
+            case WM_MOUSEWHEEL when Session.State == GestureState.Choosing:
+                // Na escolha por clique a roda chega nativa (o hook a deixa passar): o Ctrl vem na própria
+                // mensagem (MK_CONTROL), sem ler o teclado (SEC-02).
+                if (!((wParam & MK_CONTROL) != 0 && WheelResize((short)(wParam >> 16))))
+                {
+                    OnWheelAtCursor((short)(wParam >> 16));
+                }
+
                 return 0;
 
             case WmWheel:
                 // O hook só manda o giro; a posição vem do cursor, sem dado novo do hook (SEC-01).
-                POINT cursor;
-                GetCursorPos(&cursor);
-                OnWheel((int)lParam, cursor.X, cursor.Y);
+                OnWheelAtCursor((int)lParam);
                 return 0;
 
             case WM_TIMER:
@@ -383,6 +391,13 @@ internal static unsafe partial class Overlay
             default:
                 return DefWindowProcW(hwnd, msg, wParam, lParam);
         }
+    }
+
+    private static void OnWheelAtCursor(int delta)
+    {
+        POINT cursor;
+        GetCursorPos(&cursor);
+        OnWheel(delta, cursor.X, cursor.Y);
     }
 
     /// <summary>Canto da janela que recebeu a mensagem: o disco ou a barra (ADR-037).</summary>

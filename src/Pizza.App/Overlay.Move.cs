@@ -226,10 +226,10 @@ internal static unsafe partial class Overlay
         return true;
     }
 
-    /// <summary>Ctrl + roda na escolha: 5% por entalhe. O Ctrl é lido no próprio evento, sem hook de teclado (SEC-01).</summary>
+    /// <summary>Ctrl + roda na escolha: 5% por entalhe. O chamador só a aciona com MK_CONTROL na mensagem da roda: o teclado não é lido (SEC-01, SEC-02).</summary>
     private static bool WheelResize(int delta)
     {
-        if (Session.State != GestureState.Choosing || _grip != GripZone.Target || GetKeyState(VK_CONTROL) >= 0)
+        if (Session.State != GestureState.Choosing || _grip != GripZone.Target)
         {
             return false;
         }

@@ -19,8 +19,9 @@ public class SecurityInvariantTests
     [Fact]
     public void Ctrl_e_lido_em_um_unico_lugar()
     {
-        // SEC-02: nenhuma outra leitura de teclado no código.
-        var reads = Sources.Sum(source => source.Text.Split("GetAsyncKeyState(VK_CONTROL)").Length - 1);
+        // SEC-02: nenhuma outra leitura do Ctrl no código, por qualquer caminho (Win32 ou WPF).
+        string[] readers = ["GetAsyncKeyState(VK_CONTROL)", "GetKeyState(VK_CONTROL)", "Keyboard.Modifiers", "Keyboard.IsKeyDown"];
+        var reads = Sources.Sum(source => readers.Sum(reader => source.Text.Split(reader).Length - 1));
 
         Assert.Equal(1, reads);
     }
