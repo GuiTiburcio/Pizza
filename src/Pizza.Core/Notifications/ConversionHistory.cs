@@ -28,6 +28,9 @@ public sealed class HistoryEntry(long id, string sourcePath, ConverterInfo conve
 
     public string? OutputPath { get; internal set; }
 
+    /// <summary>Os arquivos que esta conversão criou, para o Desfazer. Só em memória.</summary>
+    public Pizza.Core.Output.OutputUndo? Undo { get; set; }
+
     public string? Message { get; internal set; }
 
     public int? SuggestedBitrate { get; internal set; }
