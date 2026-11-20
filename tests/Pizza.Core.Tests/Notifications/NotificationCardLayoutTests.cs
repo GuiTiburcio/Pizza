@@ -7,7 +7,8 @@ public class NotificationCardLayoutTests
 {
     [Theory]
     [InlineData(NotificationKind.Progress, new[] { NotificationAction.Resume, NotificationAction.Pause, NotificationAction.Cancel })]
-    [InlineData(NotificationKind.Success, new[] { NotificationAction.Open, NotificationAction.ShowInFolder, NotificationAction.Close })]
+    [InlineData(NotificationKind.Success, new[] { NotificationAction.Open, NotificationAction.ShowInFolder, NotificationAction.Undo, NotificationAction.Close })]
+    [InlineData(NotificationKind.Notice, new[] { NotificationAction.Close })]
     [InlineData(NotificationKind.Error, new[] { NotificationAction.Retry, NotificationAction.Details, NotificationAction.Close })]
     [InlineData(NotificationKind.Confirmation, new[] { NotificationAction.AcceptBitrate, NotificationAction.Cancel, NotificationAction.Close })]
     public void Cada_tipo_tem_os_botoes_do_wireframe(NotificationKind kind, NotificationAction[] expected)
@@ -20,6 +21,7 @@ public class NotificationCardLayoutTests
     [InlineData(NotificationKind.Success)]
     [InlineData(NotificationKind.Error)]
     [InlineData(NotificationKind.Confirmation)]
+    [InlineData(NotificationKind.Notice)]
     public void Botoes_ficam_dentro_do_cartao_e_nao_se_sobrepoem(NotificationKind kind)
     {
         var buttons = NotificationCardLayout.Buttons(kind);

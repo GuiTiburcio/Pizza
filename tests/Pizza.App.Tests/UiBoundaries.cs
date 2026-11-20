@@ -13,7 +13,7 @@ internal readonly record struct DiscFrame(
     string? StripTitle = null, (string Label, string? Detail)[]? Levels = null, int Level = 0, int? LevelHover = null,
     double SliceGlide = 0, double SliceSwell = 0, double LevelGlide = 0, double LevelSwell = 0,
     bool[]? Unavailable = null, IReadOnlyList<(string Number, string Name)>? Order = null, bool Merging = false,
-    bool RimHover = false);
+    int? HintSlot = null, string? Hint = null, bool RimHover = false);
 
 internal static class DiscRenderer
 {
