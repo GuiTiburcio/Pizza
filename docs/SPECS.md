@@ -357,7 +357,7 @@ O teto de saída é conferido também pelo residente, inclusive após o encerram
 
 | ID | Requisito | Critério de aceite |
 | --- | --- | --- |
-| SEC-45 | O libvips DEVE rodar com o bloqueio de operações não confiáveis ligado e com uma lista explícita de decodificadores: JPEG, PNG, WEBP, TIFF, GIF, HEIF/AVIF. O formato real, detectado pelo conteúdo, DEVE estar na lista e corresponder à aba | `.jpg` que é SVG é recusado com `UNSUPPORTED` (TST-25) |
+| SEC-45 | O libvips DEVE rodar com o bloqueio de operações não confiáveis ligado e com uma lista explícita de decodificadores: JPEG, PNG, WEBP, TIFF, GIF, HEIF/AVIF. O formato real, detectado pelo conteúdo, DEVE estar na lista e corresponder à aba. Adendo (ADR-040, proposta): o JPEG XL não passa pelo libvips; a libjxl o decodifica no Worker, com os limites da SEC-40 e da SEC-41 conferidos antes de alocar | `.jpg` que é SVG é recusado com `UNSUPPORTED` (TST-25) |
 | SEC-46 | DEVERIA limitar a 500 arquivos por arraste, com fila de no máximo 2 jobs por núcleo | Arraste de 600 arquivos mostra aviso |
 
 ### 6.6 Office (Word / LibreOffice)

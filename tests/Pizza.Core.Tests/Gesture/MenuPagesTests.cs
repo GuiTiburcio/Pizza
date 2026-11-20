@@ -9,7 +9,7 @@ public class MenuPagesTests
     public void Jpg_tem_duas_voltas_antes_da_aba_pdf()
     {
         Assert.Equal([new MenuPage(0, 0), new MenuPage(0, 1), new MenuPage(1, 0), new MenuPage(2, 0), new MenuPage(3, 0)], RadialMenu.Pages("a.jpg"));
-        Assert.Equal("GIF", Assert.Single(RadialMenu.Slices(0, "a.jpg", 1)).Label);
+        Assert.Equal(["GIF", "JXL"], RadialMenu.Slices(0, "a.jpg", 1).Select(slice => slice.Label)); // ADR-040: JXL fecha a ordem.
     }
 
     [Theory]
@@ -31,9 +31,9 @@ public class MenuPagesTests
     }
 
     [Theory]
-    [InlineData("a.jpg", 7)]
-    [InlineData("a.avif", 7)]
-    [InlineData("a.tiff", 7)]
+    [InlineData("a.jpg", 8)]
+    [InlineData("a.avif", 8)]
+    [InlineData("a.tiff", 8)]
     public void Nenhum_formato_da_aba_fica_de_fora(string path, int count)
     {
         var slices = RadialMenu.Pages(path).Where(page => page.Tab == 0).SelectMany(page => RadialMenu.Slices(page.Tab, path, page.Turn)).ToArray();
