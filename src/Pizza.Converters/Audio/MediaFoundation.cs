@@ -211,6 +211,16 @@ internal static unsafe partial class MediaFoundation
     public static void WriteSample(nint writer, uint stream, nint sample) =>
         Check(((delegate* unmanaged[Stdcall]<nint, uint, nint, int>)Slot(writer, 6))(writer, stream, sample));
 
+    /// <summary>IMFSinkWriter::GetStatistics: amostras recebidas, codificadas e processadas pelo sink.</summary>
+    public static (long Received, long Encoded, long Processed) Statistics(nint writer, uint stream)
+    {
+        var stats = stackalloc byte[112];
+        new Span<byte>(stats, 112).Clear();
+        *(uint*)stats = 112; // cb
+        Check(((delegate* unmanaged[Stdcall]<nint, uint, byte*, int>)Slot(writer, 13))(writer, stream, stats));
+        return (*(long*)(stats + 48), *(long*)(stats + 56), *(long*)(stats + 64));
+    }
+
     public static void FinalizeWriting(nint writer) => Check(((delegate* unmanaged[Stdcall]<nint, int>)Slot(writer, 11))(writer));
 
     public static void Check(int hr)

@@ -192,6 +192,7 @@ public sealed class AudioConverter(string id) : IConverter
             }
 
             Diag.Stage = "finalize";
+            { var s = MediaFoundation.Statistics(writer, stream); Diag.Stats = $"rec={s.Received} enc={s.Encoded} proc={s.Processed}"; }
             alac?.BeginFinalization();
             try
             {
