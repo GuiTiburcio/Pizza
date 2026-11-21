@@ -7,7 +7,7 @@ Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste) (
 | Etapa | Entrega | Situação |
 | --- | --- | --- |
 | 5a — medições | NFR-01 a NFR-04 medidos e registrados | NFR-01, 02 e 03 dentro da meta; NFR-04 acima em PNG padrão, WEBP e AVIF (só registrado); fotos reais e memória retida pendentes |
-| 5b — endurecimento | Memória retida, PRIV-05 e TST-20 (sem dump e fora do WER), V-03 (ACL), V-04 (SVG renomeado), SBOM pelas dependências, alto contraste | Memória retida corrigida (17,7 → 11,2 MB depois do uso); PRIV-05 e TST-20 feitos (ADR-032); V-03 corrigido e V-04 confirmado; SBOM, alto contraste e primeiro gesto pendentes |
+| 5b — endurecimento | Memória retida, PRIV-05 e TST-20 (sem dump e fora do WER), V-03 (ACL), V-04 (SVG renomeado), SBOM pelas dependências (feito), alto contraste | Memória retida corrigida (17,7 → 11,2 MB depois do uso); PRIV-05 e TST-20 feitos (ADR-032); V-03 corrigido e V-04 confirmado; SBOM das DLLs nativas feito (uild/native-deps.json + 	ools/sbom-nativos.ps1 no previa.yml; QPDF, VC++, PDFium e libjxl com versão, licença e SHA-256, conferidos por NativeDepsTests); alto contraste e primeiro gesto pendentes |
 | TST-13 | Captura de tráfego por 24 h de uso | Pendente; roda no PC do mantenedor |
 | 5c — auditoria | TST-28 com a skill `security-audit` (completa, perfil standard, verificação independente) e o Strix | Pendente |
 
