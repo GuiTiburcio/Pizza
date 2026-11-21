@@ -49,7 +49,14 @@ Vale para o Antigravity e para os subagentes do Claude. As regras de [AGENTS.md]
 4. Faça commit no ramo do worktree com o autor `Guilherme Tiburcio <54161354+GuiTiburcio@users.noreply.github.com>`. Subagentes do Claude acrescentam a linha `Co-Authored-By` da plataforma.
 5. Rode `git push` do ramo. **Não** faça merge na `main` e **não** edite fora do worktree.
 6. Tela nova não fica "pronta": fica "aguardando validação do mantenedor no app".
-7. **Seiso** (limpeza): ao fechar a tarefa, depois do merge, remova o worktree (git worktree remove) e o ramo local, e confira que in/, obj/ e saídas de build não ficaram fora do .gitignore.
+7. **Seiso** (limpeza): Antes do Seiso, guarde as evidências duráveis: o conteúdo do `RESULTADO.md` vai para a descrição do PR ou para as notas do mantenedor, porque `TAREFA.md` e `RESULTADO.md` são ignorados pelo Git e somem com o worktree. Só então rode o Seiso e verifique antes de remover:
+
+   - commits que só existem neste ramo: `git log origin/main..HEAD` (tudo precisa estar no PR ou integrado);
+   - alterações não commitadas: `git status`;
+   - arquivos ignorados que ainda sejam úteis (`git status --ignored`);
+   - processos abertos que usem a pasta (terminal, app, editor).
+
+   Depois do merge, remova o worktree (`git worktree remove`) e o ramo local, e confira que `bin/`, `obj/` e saídas de build não ficaram fora do `.gitignore`. Proibido: `--force` e remover worktree ativo ou `locked`.
 
 ## Modelo do RESULTADO.md
 
