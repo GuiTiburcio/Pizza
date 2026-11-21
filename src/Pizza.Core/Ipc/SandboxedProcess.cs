@@ -156,6 +156,7 @@ public sealed unsafe partial class SandboxedProcess : IDisposable
             CloseHandle(process.Thread);
 
             var result = new SandboxedProcess(process.Process, job, (int)process.ProcessId, OpenStream(inWrite, FileAccess.Write), OpenStream(outRead, FileAccess.Read));
+            DiagTemp.Started[(int)process.ProcessId] = DateTime.UtcNow;
             job = 0;
             inWrite = 0;
             outRead = 0;

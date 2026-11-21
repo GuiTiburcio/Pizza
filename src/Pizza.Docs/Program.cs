@@ -41,6 +41,7 @@ internal static class Program
     {
         // PRIV-05 (ADR-032): sem dump nem relatório do Windows.
         CrashReporting.Suppress();
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => Mark("unhandled:" + e.ExceptionObject.GetType().Name);
         if (args is not ["--in", var input, "--out", var output, "--engine", var engine, "--work", var work, "--idle", var idle])
         {
             return InvalidArguments;
@@ -49,13 +50,17 @@ internal static class Program
         using var reader = OpenHandle(long.Parse(input, CultureInfo.InvariantCulture), FileAccess.Read);
         using var writer = OpenHandle(long.Parse(output, CultureInfo.InvariantCulture), FileAccess.Write);
         var folder = Path.Combine(work, Guid.NewGuid().ToString("N"));
+        DiagWork = work;
+        Mark("start");
         try
         {
+            Mark("startEngine");
             if (!StartEngine(engine, work, folder))
             {
                 return EngineUnavailable;
             }
 
+            Mark("engineReady");
             // Ninguém pediu dentro do prazo: o motor de reserva sai e leva a pasta junto.
             using var expiry = new Timer(_ => Exit(folder), null, TimeSpan.FromSeconds(int.Parse(idle, CultureInfo.InvariantCulture)), Timeout.InfiniteTimeSpan);
             while (IpcFraming.ReadFrame(reader) is { } frame)
@@ -63,12 +68,15 @@ internal static class Program
                 var message = IpcCodec.Parse(frame);
                 if (message.Type == IpcType.Convert)
                 {
+                    Mark("convertFrame");
                     expiry.Change(Timeout.Infinite, Timeout.Infinite);
                     IpcFraming.WriteFrame(writer, IpcCodec.Serialize(Convert(message, folder)));
+                    Mark("converted");
                     return 0;
                 }
             }
 
+            Mark("pipeClosed");
             return 0;
         }
         catch (IpcProtocolException)
@@ -90,10 +98,12 @@ internal static class Program
         var profile = Path.Combine(folder, "perfil");
         var template = Path.Combine(work, "modelo-" + EngineKey(engine));
         var hasTemplate = Directory.Exists(template);
+        Mark(hasTemplate ? "template:yes" : "template:no");
         if (hasTemplate)
         {
             CopyFolder(template, profile);
         }
+        Mark("profileCopied");
 
         Directory.CreateDirectory(Path.Combine(profile, "user"));
         File.WriteAllText(Path.Combine(profile, "user", "registrymodifications.xcu"), LockedProfile);
@@ -102,6 +112,7 @@ internal static class Program
             return false;
         }
 
+        Mark("kitStarted");
         if (!hasTemplate)
         {
             // Cópia completa numa pasta temporária, renomeada no fim: nunca há modelo pela metade.
@@ -137,7 +148,9 @@ internal static class Program
             original.CopyTo(copy);
         }
 
+        Mark("copied");
         var error = LibreOfficeKit.Convert(source, result, target.Filter);
+        Mark("libreOfficeDone:" + (error ?? "ok"));
         if (error is null)
         {
             // O destino é fechado antes da resposta: depois de "done", nada mais é escrito.
@@ -206,6 +219,19 @@ internal static class Program
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // O residente limpa as pastas que sobrarem ao abrir.
+        }
+    }
+
+    private static string? DiagWork;
+
+    private static void Mark(string text)
+    {
+        try
+        {
+            File.AppendAllText(Path.Combine(DiagWork ?? Path.GetTempPath(), "diag-" + Environment.ProcessId + ".txt"), $"{Environment.TickCount64} {text}\n");
+        }
+        catch (Exception)
+        {
         }
     }
 

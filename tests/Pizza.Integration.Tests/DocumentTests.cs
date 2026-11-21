@@ -64,7 +64,7 @@ public sealed class DocumentTests : IDisposable
 
         var result = Engine().Run(source, "document.pdf", "pdf");
 
-        Assert.Null(result.ErrorCode);
+        Ok(result);
         Assert.Equal("%PDF-", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(_folder, "contrato.pdf")).AsSpan(0, 5)));
     }
 
@@ -81,7 +81,7 @@ public sealed class DocumentTests : IDisposable
 
         var result = Engine().Run(source, "document.pdf", "pdf");
 
-        Assert.Null(result.ErrorCode);
+        Ok(result);
         Assert.False(File.Exists(marker));
     }
 
@@ -98,7 +98,7 @@ public sealed class DocumentTests : IDisposable
 
         var result = Engine().Run(source, "document.pdf", "pdf");
 
-        Assert.Null(result.ErrorCode);
+        Ok(result);
         Assert.False(listener.Pending());
     }
 
@@ -133,7 +133,7 @@ public sealed class DocumentTests : IDisposable
         var clock = System.Diagnostics.Stopwatch.StartNew();
         var result = engine.Run(source, "document.pdf", "pdf");
 
-        Assert.Null(result.ErrorCode);
+        Ok(result);
         Assert.True(clock.Elapsed < TimeSpan.FromSeconds(5), $"levou {clock.Elapsed.TotalSeconds:F1} s");
     }
 
@@ -178,7 +178,7 @@ public sealed class DocumentTests : IDisposable
             var result = engine.Run(source, "document.pdf", "pdf");
             engine.Dispose();
 
-            Assert.Null(result.ErrorCode);
+            Ok(result);
         }
         finally
         {
@@ -204,6 +204,30 @@ public sealed class DocumentTests : IDisposable
 
         Assert.Equal("UNSUPPORTED", result.ErrorCode);
         Assert.False(File.Exists(Path.Combine(_folder, "lista (1).docx")));
+    }
+
+    // TEMPORARIO: diagnostico do WORKER_CRASHED na mensagem do Assert.
+    private static void Ok(ConversionResult result)
+    {
+        if (result.ErrorCode is null)
+        {
+            return;
+        }
+
+        var info = DiagTemp.Last ?? "sem-diag";
+        var stages = "";
+        try
+        {
+            var pid = info.StartsWith("pid=", StringComparison.Ordinal) ? info.Split(' ')[0][4..] : "0";
+            var file = Path.Combine(DocumentEngine.WorkFolder(Profile), "diag-" + pid + ".txt");
+            stages = File.Exists(file) ? string.Join(" | ", File.ReadAllLines(file)) : "sem-etapas";
+        }
+        catch (Exception ex)
+        {
+            stages = "erro-etapas:" + ex.GetType().Name;
+        }
+
+        Assert.Fail($"DIAG code={result.ErrorCode} {info} stages=[{stages}] drives=[{string.Join(',', DocumentEngine.DrivesFor(JumboFactAttribute.Engine!))}]");
     }
 
     private DocumentEngine Engine(string? engineRoot = null, string profile = Profile, TimeSpan? spareIdle = null)

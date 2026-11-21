@@ -118,6 +118,7 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
         {
             var arguments = $"--engine \"{drive}\\program\" --work \"{ContainerFolder(sid)}\" --idle {(int)SpareIdle.TotalSeconds}";
             var process = SandboxedProcess.Start(docsPath, profile, arguments, @"WinSta0\" + desktopName);
+            DiagTemp.Drive[process.ProcessId] = drive;
             return new Spare(process, desktop, drive);
         }
         catch

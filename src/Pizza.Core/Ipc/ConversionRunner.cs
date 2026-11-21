@@ -411,6 +411,7 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
         }));
 
         // A leitura bloqueia; encerrar o Worker fecha o canal e a libera.
+        var diagSent = Stopwatch.StartNew();
         var reply = Task.Run(() => ReadOutcome(worker.Output, jobId, control?.Progress, converterId, options, offer));
         // ADR-029: pausar congela o Worker, e o prazo do SEC-43 conta só o tempo ativo.
         active.Start();
@@ -465,6 +466,12 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
 
         if (reply.Result is { } error)
         {
+            if (error == "WORKER_CRASHED")
+            {
+                var exited = worker.WaitForExit(5000);
+                DiagTemp.Last = DiagTemp.Collect(worker.ProcessId, worker.ExitCode, exited, diagSent.ElapsedMilliseconds);
+            }
+
             worker.Kill();
             return RandomAccess.GetLength(destination) > limit ? "LIMIT_EXCEEDED" : error;
         }
