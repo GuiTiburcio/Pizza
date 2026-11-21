@@ -33,6 +33,28 @@ internal static unsafe class HandleStream
         return (nint)instance;
     }
 
+    /// <summary>
+    /// Espera o Media Foundation soltar o objeto: depois de Finalize e dos Release do gravador, o MF ainda grava o
+    /// cabeçalho final (WAV, M4A) numa thread da fila de trabalho, segurando uma referência do stream até terminar.
+    /// Só quando sobra a referência de quem criou é que o destino está completo e pode ser reparado. Falso no prazo.
+    /// </summary>
+    public static bool WaitUntilOnlyOwner(nint self, TimeSpan timeout)
+    {
+        var deadline = Environment.TickCount64 + (long)timeout.TotalMilliseconds;
+        var wait = new SpinWait();
+        while (Volatile.Read(ref ((Instance*)self)->References) > 1)
+        {
+            if (Environment.TickCount64 >= deadline)
+            {
+                return false;
+            }
+
+            wait.SpinOnce(sleep1Threshold: -1);
+        }
+
+        return true;
+    }
+
     private struct Instance
     {
         public nint* Table;
