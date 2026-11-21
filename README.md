@@ -103,7 +103,7 @@ Builds locais são para desenvolvimento. A distribuição oficial deve vir do CI
 O projeto segue três fluxos, e o nome das pastas mostra qual é qual.
 
 - **Cascata (docs):** a documentação está na ordem em que o projeto é pensado: produto → decisões → design → entrega → operação → segurança → melhoria. O mapa está em [docs/README.md](docs/README.md).
-- **Cadeia (src):** `Pizza.App` (o residente, que recebe o gesto e o arquivo) → `Pizza.Core` (estados e IPC) → `Pizza.Worker` (processo isolado em AppContainer) → `Pizza.Converters` (os conversores). O `Pizza.Docs` é o motor de documentos, também isolado.
+- **Cadeia (src):** são dois desenhos diferentes. Em **tempo de execução**, `Pizza.App` (o residente, que recebe o gesto e o arquivo) fala por IPC com o `Pizza.Worker` (processo isolado em AppContainer), que chama o `Pizza.Converters` (os conversores); o `Pizza.Docs` é o motor de documentos, também isolado. Nas **referências de projeto .NET**, o `Pizza.Core` (estados, geometria, IPC) é a base e não referencia ninguém: `Pizza.App`, `Pizza.Converters` e `Pizza.Docs` referenciam o Core, e o `Pizza.Worker` referencia o Core e o Converters.
 - **Paralelo (trabalho):** um worktree e um ramo por tarefa, e o merge na `main` só com o CI verde. O processo completo está em [docs/7-melhoria/TI-360.md](docs/7-melhoria/TI-360.md).
 
 ## Inspiração
