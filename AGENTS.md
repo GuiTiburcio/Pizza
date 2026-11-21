@@ -16,6 +16,7 @@ Leia e siga [CLAUDE.md](CLAUDE.md) antes de alterar qualquer parte do projeto. A
 ## Papéis dos Agentes
 
 - **Claude Code (principal)**: Orquestra, revisa e aplica. Roda `/grill-me`, `/plan`, `/goal`; revisa diffs dos worktrees; faz merge na `main`; roda a auditoria de segurança. Não executa trabalho longo dentro dos worktrees do Antigravity.
+- **Subagentes do Claude (exceção autorizada pelo mantenedor em 20/11/2026)**: Quando o Claude Code principal os dispara com um `TAREFA.md`, podem implementar em `Pizza\worktrees\<nome>`, vários em paralelo, um por worktree. Valem os mesmos limites do Antigravity: não fazem merge na `main`, não alteram invariantes `SEC-*`/`PRIV-*` e não editam fora do próprio worktree. Entregam commits no ramo e um `RESULTADO.md`. O contrato está na skill `tarefa-worktree`.
 - **Antigravity**: Executa nos worktrees. Cria e mantém worktrees em `Pizza\worktrees\<nome>`; compila, testa e roda o app para validar; implementa a tarefa recebida. Não faz merge na `main`, não altera invariantes `SEC-*`/`PRIV-*`, não edita fora do próprio worktree.
 
 ## Comunicação
