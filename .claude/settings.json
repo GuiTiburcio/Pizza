@@ -15,5 +15,8 @@
       "mcp__ccd_pr__get_status",
       "mcp__ccd_session_mgmt__list_sessions"
     ]
+  },
+  "enabledPlugins": {
+    "mattpocock-skills@claude-plugins-official": true
   }
 }
