@@ -259,6 +259,7 @@ public sealed class AudioConverter(string id) : IConverter
             try
             {
                 MediaFoundation.SetGuid(attributes, MediaFoundation.ContainerType, Container());
+                if (Diag.Variant == 3) MediaFoundation.SetUInt32(attributes, new Guid("08b845d8-2b74-4afe-9d53-be16d2d5ae4f"), 1); // MF_SINK_WRITER_DISABLE_THROTTLING
                 writer = MediaFoundation.SinkWriter(byteStream, attributes);
                 MediaFoundation.SetGuid(output, MediaFoundation.MajorType, MediaFoundation.Audio);
                 MediaFoundation.SetUInt32(output, MediaFoundation.SampleRate, rate);

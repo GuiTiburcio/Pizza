@@ -27,7 +27,7 @@ jobs:
       - name: Estresse por variante
         shell: pwsh
         run: |
-          foreach ($v in 0, 2, 0, 2) {
+          foreach ($v in 0, 3, 0, 3, 0, 3) {
             $env:PIZZA_DIAG_VARIANT = "$v"
             $saida = dotnet test tests/Pizza.Converters.Tests -c Release --no-build --nologo --filter "FullyQualifiedName~ZStress" --logger "console;verbosity=normal" 2>&1 | Out-String
             ($saida -split "`r?`n" | Where-Object { $_ -match 'variant=' } | Select-Object -First 1).Trim()
