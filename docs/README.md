@@ -9,6 +9,7 @@
 | [Ideias descartadas](ideias-descartadas/README.md) | O que ficou pelo caminho, e por quê |
 | [SPECS](SPECS.md) | Requisitos; emendas da §2.1 prevalecem |
 | [Roteiro](ROADMAP.md) | Estado atual e próximas etapas |
+| [Validação e governança](VALIDACAO-E-GOVERNANCA.md) | Autonomia de skills, coordenação das frentes, segurança e evidências de conclusão |
 | [Lançamento do Brotinho](BROTINHO-LANCAMENTO.md) | Aceite das quatro abas, pendências, distribuição verificada e canais Estável/Beta |
 | [macOS e Linux](PORTABILIDADE.md) | Roteiro futuro, limites atuais e provas necessárias antes de prometer suporte |
 | [ADRs](adr/README.md) | Decisões e razões para as mudanças |
