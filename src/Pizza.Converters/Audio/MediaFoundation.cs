@@ -225,9 +225,9 @@ internal static unsafe partial class MediaFoundation
     {
         var deadline = Environment.TickCount64 + (long)timeout.TotalMilliseconds;
         var wait = new SpinWait();
+        var stats = stackalloc byte[112];
         while (true)
         {
-            var stats = stackalloc byte[112];
             new Span<byte>(stats, 112).Clear();
             *(uint*)stats = 112;
             Check(((delegate* unmanaged[Stdcall]<nint, uint, byte*, int>)Slot(writer, 13))(writer, stream, stats));
