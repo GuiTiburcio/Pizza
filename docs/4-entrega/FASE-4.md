@@ -1,6 +1,6 @@
 # Fase 4 — acompanhamento do visual
 
-Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste), [dossiê, Partes 4 e 13](PIZZA-PROJETO.md), [prancha do painel](dossie/wf-3-painel.png). As SPECS prevalecem. Este acompanhamento detalha a fase existente; não muda sua ordem nem seu critério de pronto.
+Referências: [SPECS §15](../1-produto/SPECS.md#15-rastreabilidade-requisito--fase--teste), [dossiê, Partes 4 e 13](../1-produto/PIZZA-PROJETO.md), [prancha do painel](../3-design/dossie/wf-3-painel.png). As SPECS prevalecem. Este acompanhamento detalha a fase existente; não muda sua ordem nem seu critério de pronto.
 
 **Fase concluída em 11/11/2026**, com o aceite do mantenedor. O critério final era corresponder ao canvas aprovado; a Parte 13.1 previa validação ao final de cada etapa, e cada uma foi validada antes da seguinte.
 
@@ -23,7 +23,7 @@ A 4b (faixa de níveis e vidro no painel) mexe nesses dois arquivos. Separá-los
 
 ## Etapa 4b — base do painel
 
-Continuidade após a etapa 2 do Dossiê (PR #43): [ADR-027 — faixa de níveis](adr/027-faixa-de-niveis.md). A retenção do último formato foi escolhida pelo mantenedor em 11/11/2026. O estado da faixa pode ser testado separadamente; sua presença na interface, navegação e confirmação de conversão ainda dependem da integração visual.
+Continuidade após a etapa 2 do Dossiê (PR #43): [ADR-027 — faixa de níveis](../2-decisoes/027-faixa-de-niveis.md). A retenção do último formato foi escolhida pelo mantenedor em 11/11/2026. O estado da faixa pode ser testado separadamente; sua presença na interface, navegação e confirmação de conversão ainda dependem da integração visual.
 
 - O painel lê o tema dos aplicativos do Windows a cada abertura; se a leitura falhar, usa o tema claro.
 - Cantos: 28 px no painel e 12 px nas opções e botões, escalados com o DPI do monitor.

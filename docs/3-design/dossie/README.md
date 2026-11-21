@@ -1,6 +1,6 @@
 # Dossiê do projeto
 
-**[Abrir o artefato original no Claude Design](https://claude.ai/artifact/LMrbTPnaY6EbVK1UPjcVDs#page-dcb81aee8d83)** (exige login no Claude). As imagens abaixo são as mesmas pranchas, exportadas para quem não usa o Claude. O texto consolidado do planejamento está em [PIZZA-PROJETO.md](../PIZZA-PROJETO.md).
+**[Abrir o artefato original no Claude Design](https://claude.ai/artifact/LMrbTPnaY6EbVK1UPjcVDs#page-dcb81aee8d83)** (exige login no Claude). As imagens abaixo são as mesmas pranchas, exportadas para quem não usa o Claude. O texto consolidado do planejamento está em [PIZZA-PROJETO.md](../../1-produto/PIZZA-PROJETO.md).
 
 Pranchas do planejamento do Pizza, feitas antes do código, em 08/11/2026 e 09/11/2026. Elas mostram:
 
@@ -13,19 +13,19 @@ Pranchas do planejamento do Pizza, feitas antes do código, em 08/11/2026 e 09/1
 
 > **Padrão desde 11/11/2026:** pranchas de documentação em tema claro, 1600 × 1000, fundo único; telas do Pizza em claro e escuro lado a lado.
 >
-> **Revisão de 10/11/2026:** as pranchas foram atualizadas para bater com a SPECS v1.2. Se alguma ainda divergir, valem as [SPECS](../SPECS.md) (em especial a §2.1, com as emendas) e os [ADRs](../adr/).
+> **Revisão de 10/11/2026:** as pranchas foram atualizadas para bater com a SPECS v1.2. Se alguma ainda divergir, valem as [SPECS](../../1-produto/SPECS.md) (em especial a §2.1, com as emendas) e os [ADRs](../../2-decisoes/).
 >
 > As principais mudanças desde o planejamento são estas:
 >
-> - **Gesto:** soltar fora de uma fatia deixa o menu aberto para escolher com um clique ([ADR-025](../adr/025-escolha-por-clique-apos-o-gesto.md)).
-> - **Vidro:** desenhado com GDI+ e um desfoque próprio ([ADR-023](../adr/023-vidro-gdiplus-desfoque-proprio.md)).
-> - **Notificações:** são janelas do próprio Pizza ([ADR-018](../adr/018-notificacao-e-painel-proprios.md)).
-> - **Simplificações do v1** ([ADR-019](../adr/019-simplificacoes-do-v1.md)):
+> - **Gesto:** soltar fora de uma fatia deixa o menu aberto para escolher com um clique ([ADR-025](../../2-decisoes/025-escolha-por-clique-apos-o-gesto.md)).
+> - **Vidro:** desenhado com GDI+ e um desfoque próprio ([ADR-023](../../2-decisoes/023-vidro-gdiplus-desfoque-proprio.md)).
+> - **Notificações:** são janelas do próprio Pizza ([ADR-018](../../2-decisoes/018-notificacao-e-painel-proprios.md)).
+> - **Simplificações do v1** ([ADR-019](../../2-decisoes/019-simplificacoes-do-v1.md)):
 >   - um Worker por arquivo;
 >   - documentos do Office só pelo LibreOffice isolado;
 >   - nenhum download além da atualização.
-> - **Canal com o Worker:** pipes sem nome ([ADR-021](../adr/021-pipe-sem-nome.md)).
-> - **Imagem para PDF:** um gerador próprio, sem dependência nova ([ADR-022](../adr/022-imagem-pdf-gerador-proprio.md)).
+> - **Canal com o Worker:** pipes sem nome ([ADR-021](../../2-decisoes/021-pipe-sem-nome.md)).
+> - **Imagem para PDF:** um gerador próprio, sem dependência nova ([ADR-022](../../2-decisoes/022-imagem-pdf-gerador-proprio.md)).
 
 ## Visão geral
 
@@ -137,7 +137,7 @@ Telas do design aprovado, nos temas claro e escuro. No Claude Design, a Ref-Imag
 
 ## Fase 4b · aprovado e implementado
 
-Aprovado pelo mantenedor em 11/11/2026, com a bolha de vidro B (franjas coloridas) também no painel de opções e entre as fatias. Detalhes no [ADR-027](../adr/027-faixa-de-niveis-e-bolha-de-vidro.md).
+Aprovado pelo mantenedor em 11/11/2026, com a bolha de vidro B (franjas coloridas) também no painel de opções e entre as fatias. Detalhes no [ADR-027](../../2-decisoes/027-faixa-de-niveis-e-bolha-de-vidro.md).
 
 ### Faixa de níveis acima do disco
 
@@ -165,7 +165,7 @@ Captura do painel de opções em vidro, com a bolha nas opções (PR #49).
 
 ## Fase 4c · aprovado e implementado
 
-Aprovado pelo mantenedor em 11/11/2026. Avisos e Arquivos em vidro translúcido, sem cópia da tela ([ADR-028](../adr/028-avisos-e-arquivos-em-vidro.md)), e progresso real com tempo e pausa ([ADR-029](../adr/029-progresso-real-e-pausa.md)).
+Aprovado pelo mantenedor em 11/11/2026. Avisos e Arquivos em vidro translúcido, sem cópia da tela ([ADR-028](../../2-decisoes/028-avisos-e-arquivos-em-vidro.md)), e progresso real com tempo e pausa ([ADR-029](../../2-decisoes/029-progresso-real-e-pausa.md)).
 
 ### Avisos em vidro
 

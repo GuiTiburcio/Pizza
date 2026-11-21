@@ -61,7 +61,7 @@ Esta especificação **substitui** o que o `PIZZA-PROJETO.md` dizia sobre venda 
 
 **Emenda de 10/11/2026 — ADR-025 (prevalece sobre FR-07/20/21 e SEC-03 abaixo):** Ctrl + arrastar abre o menu. Soltar em qualquer posição prepara o arquivo e mantém o menu aberto para seleção por clique; soltar numa fatia continua selecionando diretamente. Depois da soltura, Esc recebido pela própria janela ou perder o foco cancela. Durante o arraste, Esc continua sendo tratado pelo OLE, sem hook de teclado. Nenhuma cópia física é criada ao preparar o arquivo. SEC-01/02/04/05/06/31 permanecem obrigatórios.
 
-Decisões tomadas na entrevista (método *grilling*), em 5 rodadas. Viram ADRs em `docs/adr/`.
+Decisões tomadas na entrevista (método *grilling*), em 5 rodadas. Viram ADRs em `docs/2-decisoes/`.
 
 | # | Tema | Decisão | Requisitos |
 | --- | --- | --- | --- |
@@ -264,7 +264,7 @@ O Pizza é uma **ferramenta** que roda no computador do cliente. Quem decide con
 | v0.4 | Áudio (Media Foundation, ADR-035) e aba Web: dados, legendas, Markdown/HTML, fontes e compressão; nos dois pacotes (ADR-039) |
 | v1.x | Vídeo (FFmpeg LGPL), só no Pizza Jumbo |
 
-**O que vai em cada pacote (ADR-039).** O Pizza Brotinho faz tudo com o próprio código, o libvips, o QPDF, o PDFium e o Media Foundation: Imagem, PDF (menos PDF → DOCX), Docs simples, Áudio e Web. O Pizza Jumbo acrescenta o que precisa do motor de documentos (formatos de escritório entre si e para PDF, PPTX → PNG, MD/EPUB → PDF, PDF → DOCX) e, na v1.x, o Vídeo. A lista por formato está em `docs/propostas/plano-formatos-pacotes.md`.
+**O que vai em cada pacote (ADR-039).** O Pizza Brotinho faz tudo com o próprio código, o libvips, o QPDF, o PDFium e o Media Foundation: Imagem, PDF (menos PDF → DOCX), Docs simples, Áudio e Web. O Pizza Jumbo acrescenta o que precisa do motor de documentos (formatos de escritório entre si e para PDF, PPTX → PNG, MD/EPUB → PDF, PDF → DOCX) e, na v1.x, o Vídeo. A lista por formato está em `docs/3-design/propostas/plano-formatos-pacotes.md`.
 
 Os níveis de qualidade de cada conversão estão na Parte 7 do `PIZZA-PROJETO.md`.
 

@@ -54,4 +54,4 @@ O atualizador e a assinatura estável ainda são trabalho pendente. A configura�
 
 Manter uma demonstração com arquivos de exemplo, uma tabela de capacidades e limitações, links dos PRs/testes e um relato das decisões de segurança e experiência. Informar o apoio de ferramentas de IA com transparência, sem exigir do mantenedor um cargo profissional ou prometer serviços ainda não validados.
 
-Próximo marco: executar as quatro matrizes manuais no mesmo candidato, incluindo os casos de Áudio já cobertos pela CI. Depois, completar os portões de segurança e validar distribuição e atualização; só então abrir o lançamento Estável. O roteiro de portabilidade permanece [separado](PORTABILIDADE.md).
+Próximo marco: executar as quatro matrizes manuais no mesmo candidato, incluindo os casos de Áudio já cobertos pela CI. Depois, completar os portões de segurança e validar distribuição e atualização; só então abrir o lançamento Estável. O roteiro de portabilidade permanece [separado](../1-produto/PORTABILIDADE.md).

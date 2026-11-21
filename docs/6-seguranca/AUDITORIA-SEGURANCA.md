@@ -253,5 +253,5 @@ Nada abaixo foi aplicado às SPECS. São **propostas que dependem da sua decisã
 ## 8. Próximos passos
 
 1. Decidir as propostas de simplicidade S-01 a S-05 e revisar as 3 mudanças que afetam a experiência: arquivo da internet nunca abre no Word (L-01), MSI sem autoatualização (L-02) e toasts que esperam o desbloqueio (L-06).
-2. Criar o repositório Pizza e incluir este relatório em `docs/security/`.
+2. Criar o repositório Pizza e incluir este relatório em `docs/6-seguranca/`.
 3. Na Fase 5, rodar a skill no **modo auditoria completa** sobre o código, com verificação independente de cada achado, e fechar os itens V-01 a V-04.

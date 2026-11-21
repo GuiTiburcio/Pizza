@@ -6,7 +6,7 @@ Este roteiro prepara evidências enquanto o Claude trabalha nas referências vis
 
 Registrar antes de testar: commit completo, link do build CI aprovado, data, edição/build do Windows, escala de cada monitor, tema e cenário. Usar o mesmo pacote durante a rodada. Uma nova correção inicia outra rodada; não transferir o resultado da versão anterior automaticamente.
 
-Usar cópias de imagens de exemplo numa pasta de teste local. Não pedir documentos reais, captura de tela inteira ou logs brutos dos participantes. Relatos públicos não devem conter nomes/caminhos pessoais. Para suspeita de vulnerabilidade, seguir [SECURITY.md](../SECURITY.md).
+Usar cópias de imagens de exemplo numa pasta de teste local. Não pedir documentos reais, captura de tela inteira ou logs brutos dos participantes. Relatos públicos não devem conter nomes/caminhos pessoais. Para suspeita de vulnerabilidade, seguir [SECURITY.md](../../.github/SECURITY.md).
 
 ## Entrada e pendências
 

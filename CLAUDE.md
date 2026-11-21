@@ -4,7 +4,7 @@ Regras para qualquer pessoa ou agente que escreva código neste repositório. El
 
 **Precedência e Papéis:** leia e siga rigorosamente o [Bloco de Precedência e Papéis dos Agentes em AGENTS.md](AGENTS.md).
 
-**Fonte da verdade:** `docs/SPECS.md`. Se o código e as SPECS discordam, pare e pergunte. Não "resolva" sozinho.
+**Fonte da verdade:** `docs/1-produto/SPECS.md`. Se o código e as SPECS discordam, pare e pergunte. Não "resolva" sozinho.
 
 **Troca assumida:** estas regras preferem cautela a velocidade. Para tarefas triviais, use bom senso.
 
@@ -89,7 +89,7 @@ Para tarefas com várias etapas, escreva um plano curto:
 7. Senhas só em buffer zerado após o uso; nunca em string, log ou exceção (SEC-70 a SEC-73).
 8. Nenhum instalador sai de build local: só o CI publica (SPECS §11).
 
-Mudança que enfraqueça qualquer item acima precisa de ADR em `docs/adr/` e aprovação do mantenedor **antes** do código.
+Mudança que enfraqueça qualquer item acima precisa de ADR em `docs/2-decisoes/` e aprovação do mantenedor **antes** do código.
 
 ---
 

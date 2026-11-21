@@ -48,7 +48,7 @@ Abrir o Worker isolado custa ~150–300 ms em toda conversão. Agora o residente
 - **Prazo (SEC-43):** conta a partir do pedido, como antes. A espera da reserva não entra nele.
 - **Espera:** sem pedido em 60 s, a reserva é encerrada. Ao sair do Pizza, também (o Job encerra o processo mesmo se o residente cair).
 - **Custo:** um processo parado por até 60 s depois de cada menu aberto sobre esses arquivos.
-- Código em `WorkerSpare` (Pizza.Core) e `Conversion.WarmUp`. Medição em `docs/FASE-6.md`.
+- Código em `WorkerSpare` (Pizza.Core) e `Conversion.WarmUp`. Medição em `docs/4-entrega/FASE-6.md`.
 
 ## Adendo de 15/11/2026: Imagens e Texto (prancha 6B-1)
 

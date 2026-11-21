@@ -1,6 +1,6 @@
 # ADR-039 — Formatos por pacote e fatias incompatíveis
 
-- **Status:** Aceita pelo mantenedor em 13/11/2026. Complementa o ADR-034 (Brotinho e Jumbo) e substitui o pedido de 13/11/2026 de mostrar todas as fatias desabilitadas. Plano completo em [`propostas/plano-formatos-pacotes.md`](../propostas/plano-formatos-pacotes.md).
+- **Status:** Aceita pelo mantenedor em 13/11/2026. Complementa o ADR-034 (Brotinho e Jumbo) e substitui o pedido de 13/11/2026 de mostrar todas as fatias desabilitadas. Plano completo em [`propostas/plano-formatos-pacotes.md`](../3-design/propostas/plano-formatos-pacotes.md).
 - **Data:** 2026-11-13
 
 ## Contexto
@@ -26,7 +26,7 @@ Dois problemas apareceram:
 - **Outras abas:** continuam no scroll. Suas fatias aparecem apagadas. Escolher uma delas, clicando ou soltando, não converte: a descrição da fatia vira "Experimente a aba PDF", com a primeira aba que converte o arquivo, em tinta legível sobre a fatia apagada. O menu continua aberto para outra escolha.
 - **Personalizar a pizza (Fase 8):** em Configurações, nos dois pacotes, ligar e desligar abas e fatias e mudar a ordem. Padrão: tudo ligado.
 
-**Fora do Pizza:** compactados (não convertem conteúdo), 3D e CAD, PSD/AI/CDR, OCR, arquivos com DRM, PAGES/KEY/NUMBERS e raster → vetor. Motivos em [`ideias-descartadas`](../ideias-descartadas/README.md).
+**Fora do Pizza:** compactados (não convertem conteúdo), 3D e CAD, PSD/AI/CDR, OCR, arquivos com DRM, PAGES/KEY/NUMBERS e raster → vetor. Motivos em [`ideias-descartadas`](../7-melhoria/ideias-descartadas/README.md).
 
 **Em estudo:** YAML → JSON (leitor de YAML próprio, aliases em cascata são vetor de bomba), minificar JS (minificador próprio é arriscado; biblioteca exige justificativa e SBOM) e JPEG XL (depende do libvips empacotado).
 
@@ -47,6 +47,6 @@ Dois problemas apareceram:
 
 ## Adendo de 20/11/2026 — Web fica para a v1.x
 
-O mantenedor decidiu que a aba Web **não entra no lançamento do Pizza Brotinho**; ela volta para a v1.x, como estava antes deste ADR. Motivo: o levantamento do ramo `claude/aba-web-565239` mostrou que, além das legendas (SRT, VTT e ASS, já implementadas no Worker), faltam oito conversores que leem arquivo não confiável (JSON↔XML, CSV↔JSON, JSON→YAML, HTML→MD, .gz/.br, WOFF/WOFF2 e minificação), cada um com corpus hostil (TST-03, TST-08) e validação no app. Isso atrasaria o lançamento. Os critérios em `docs/BROTINHO-LANCAMENTO.md` (quatro abas) continuam valendo.
+O mantenedor decidiu que a aba Web **não entra no lançamento do Pizza Brotinho**; ela volta para a v1.x, como estava antes deste ADR. Motivo: o levantamento do ramo `claude/aba-web-565239` mostrou que, além das legendas (SRT, VTT e ASS, já implementadas no Worker), faltam oito conversores que leem arquivo não confiável (JSON↔XML, CSV↔JSON, JSON→YAML, HTML→MD, .gz/.br, WOFF/WOFF2 e minificação), cada um com corpus hostil (TST-03, TST-08) e validação no app. Isso atrasaria o lançamento. Os critérios em `docs/4-entrega/BROTINHO-LANCAMENTO.md` (quatro abas) continuam valendo.
 
 O que muda neste ADR: onde ele diz que o Brotinho ganha "a aba Web", leia-se v1.x. A separação por pacote continua igual: quando a Web vier, os conversores dela são .NET puro e vão nos dois pacotes. O ramo da Web fica preservado, com as legendas prontas.

@@ -1,6 +1,6 @@
 # Pizza — Especificação completa do projeto
 
-> **Atualização — 10/11/2026:** este dossiê preserva o planejamento e decisões históricas. A implementação está em prévia de imagens, e o repositório já é público. Consulte o [roteiro atual](ROADMAP.md) e as emendas da [SPECS](SPECS.md). O gesto permite soltar em qualquer posição e escolher por clique (ADR-025). O [artefato original do Claude Design](dossie/README.md) está referenciado na documentação.
+> **Atualização — 10/11/2026:** este dossiê preserva o planejamento e decisões históricas. A implementação está em prévia de imagens, e o repositório já é público. Consulte o [roteiro atual](ROADMAP.md) e as emendas da [SPECS](SPECS.md). O gesto permite soltar em qualquer posição e escolher por clique (ADR-025). O [artefato original do Claude Design](../3-design/dossie/README.md) está referenciado na documentação.
 
 > Conversor de arquivos para Windows que funciona no gesto: **segure Ctrl, arraste o arquivo e solte no formato** num menu circular de vidro. Tudo offline, leve e rápido.
 
@@ -57,7 +57,7 @@ Pensamos o projeto como uma equipe pequena com papéis claros. Uma pessoa pode a
 **Regras de ouro**
 
 1. Uma fase por vez; cada fase termina com algo que roda no PC.
-2. Toda mudança de decisão vira um ADR no Anexo A (e um arquivo em `docs/adr/`), nunca só uma conversa.
+2. Toda mudança de decisão vira um ADR no Anexo A (e um arquivo em `docs/2-decisoes/`), nunca só uma conversa.
 3. Meta de desempenho sem medição não conta como cumprida.
 4. O arquivo original do usuário **nunca** é alterado.
 
@@ -632,8 +632,8 @@ Arquivo `.ico` com 16, 20, 24, 32, 48, 64 e 256 px.
 
 ```
 README.md           # o que é, como instalar, como compilar
-docs/PIZZA-PROJETO.md   # este documento
-docs/adr/           # uma decisão por arquivo
+docs/1-produto/PIZZA-PROJETO.md   # este documento
+docs/2-decisoes/           # uma decisão por arquivo
 LICENSE             # decisão em aberto (código fechado para venda)
 THIRD-PARTY-NOTICES.md  # licenças das bibliotecas
 .github/workflows/  # CI
@@ -712,7 +712,7 @@ A etapa 1a vem antes de tudo porque receber o arraste do Explorer numa janela pr
 
 ## Anexo A — Registro de decisões (ADRs)
 
-Cada decisão também tem um arquivo próprio em [`docs/adr/`](adr/).
+Cada decisão também tem um arquivo próprio em [`docs/2-decisoes/`](../2-decisoes/).
 
 | # | Decisão | Motivo | Alternativas descartadas |
 | --- | --- | --- | --- |
@@ -769,7 +769,7 @@ Cada decisão também tem um arquivo próprio em [`docs/adr/`](adr/).
 | Canvas "Pizza — Wireframes e Engenharia" | Pasta principal do projeto: design aprovado, mockup do fluxo, wireframes WF-1 a WF-6 e diagramas ENG-1 a ENG-4 |
 | Canvas "Menu Radial de Vidro" | Design interativo (abas Imagem e PDF) e mockup do fluxo em 6 telas (JPG → PNG) |
 | Doc "Conversor Ctrl+Arrastar — Visão, Arquitetura e Plano" | Versão anterior desta especificação, com diagramas de arquitetura e de estados |
-| Este arquivo | Especificação consolidada (`docs/PIZZA-PROJETO.md`) |
+| Este arquivo | Especificação consolidada (`docs/1-produto/PIZZA-PROJETO.md`) |
 
 ### C.1 Divergências conhecidas entre o canvas e esta especificação
 

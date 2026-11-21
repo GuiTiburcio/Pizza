@@ -2,7 +2,7 @@
 
 Passo a passo para quem vai usar o Pizza no próprio PC. Para implantar em vários computadores pela TI, veja o [guia de TI (GPO e Intune)](TI-GPO.md).
 
-> **Estado atual:** o Pizza está em prévia de desenvolvimento. Hoje ele roda a partir de uma pasta, sem instalador. O instalador por usuário e o MSI por máquina chegam na Fase 8 ([roteiro](ROADMAP.md)).
+> **Estado atual:** o Pizza está em prévia de desenvolvimento. Hoje ele roda a partir de uma pasta, sem instalador. O instalador por usuário e o MSI por máquina chegam na Fase 8 ([roteiro](../1-produto/ROADMAP.md)).
 
 ## Requisitos
 
@@ -40,7 +40,7 @@ Em `%LOCALAPPDATA%\Pizza`, o Pizza mantém registros técnicos em `logs`, sem no
 
 ## Na versão 1.0 (planejado)
 
-Requisitos FR-70 a FR-73 da [SPECS](SPECS.md):
+Requisitos FR-70 a FR-73 da [SPECS](../1-produto/SPECS.md):
 
 - **Instalador por usuário**, sem administrador, em `%LOCALAPPDATA%\Programs\Pizza`, com atualização assinada que só instala depois que você clica em "Atualizar".
 - **MSI por máquina**, em `%ProgramFiles%\Pizza`, para a TI. Esse nunca se atualiza sozinho.
