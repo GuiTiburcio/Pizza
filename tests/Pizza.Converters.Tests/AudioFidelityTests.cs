@@ -73,9 +73,8 @@ public partial class AudioConverterTests
         var source = PatternWave(bits, rate, frames, trailingSilentFrames, channels);
         var before = source.ToArray();
         var options = id == "audio.m4a" ? new[] { ("bitrate", "lossless") } : Array.Empty<(string, string)>();
-        Pizza.Converters.Audio.AudioDiag.Last = Pizza.Converters.Audio.AudioDiag.Wait = null;
         var (error, encoded) = Run(id, source, options);
-        Assert.True(error is null, $"DIAG error={error} last={Pizza.Converters.Audio.AudioDiag.Last} wait={Pizza.Converters.Audio.AudioDiag.Wait} id={id} bits={bits} rate={rate} frames={frames}");
+        Assert.Null(error);
         if (id == "audio.m4a") Assert.Contains($"mdhd: escala={rate}, duração={frames}", M4aTimeline(encoded));
         var (decodeError, decoded) = Run("audio.wav", encoded);
         Assert.Null(decodeError);

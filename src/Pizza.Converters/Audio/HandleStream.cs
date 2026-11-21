@@ -55,8 +55,6 @@ internal static unsafe class HandleStream
         return true;
     }
 
-    public static int References(nint self) => Volatile.Read(ref ((Instance*)self)->References);
-
     private struct Instance
     {
         public nint* Table;

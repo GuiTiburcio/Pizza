@@ -27,9 +27,8 @@ public sealed class AudioConverter(string id) : IConverter
             using var reader = AudioReader.Open(source);
             return reader is null ? "UNSUPPORTED" : Transcode(reader, destination, options, progress);
         }
-        catch (MediaFoundationException exception)
+        catch (MediaFoundationException)
         {
-            AudioDiag.Last = $"A:catch-Convert hr={exception.Message} at={string.Join(" <- ", (exception.StackTrace ?? "").Split('\n').Take(3).Select(l => l.Trim().Split(" in ")[0]))}";
             return "CORRUPTED";
         }
         finally
@@ -199,14 +198,11 @@ public sealed class AudioConverter(string id) : IConverter
             MediaFoundation.Release(outBytes);
             outBytes = 0;
             // O MF termina o cabeçalho final depois do Release, em outra thread: espera soltar o fluxo de saída.
-            var refsBefore = HandleStream.References(outStream);
             var drained = HandleStream.WaitUntilOnlyOwner(outStream, TimeSpan.FromSeconds(30));
-            AudioDiag.Wait = $"refsBeforeWait={refsBefore} drained={drained} refsAfter={HandleStream.References(outStream)}";
             MediaFoundation.Release(outStream);
             outStream = 0;
             if (!drained)
             {
-                AudioDiag.Last = "C:wait-timeout " + AudioDiag.Wait;
                 return "CORRUPTED";
             }
 
@@ -335,7 +331,6 @@ public sealed class AudioConverter(string id) : IConverter
             var hr = MediaFoundation.ReadSample(reader.Handle, out var flags, out var time, out var sample);
             if (hr < 0 || (flags & MediaFoundation.ReadError) != 0)
             {
-                AudioDiag.Last = $"B:Pass hr=0x{hr:X8} flags=0x{flags:X} time={time}";
                 MediaFoundation.Release(sample);
                 return "CORRUPTED";
             }
