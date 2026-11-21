@@ -17,6 +17,27 @@ public sealed class FormattedBundleTests : IDisposable
 
     private readonly string _file = Path.Combine(Path.GetTempPath(), "pizza-pacote2-" + Guid.NewGuid().ToString("N"));
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Controle_interrompe_a_validacao_utf8_entre_blocos(bool timeout)
+    {
+        File.WriteAllBytes(_file, Written((PartFormat.Markdown, Encoding.UTF8.GetBytes(new string('a', 256 * 1024)))));
+        using var handle = File.OpenHandle(_file);
+        var checks = 0;
+        var error = Record.Exception(() => OutputBundle.ReadFormatted(handle, 10, "md", check: () =>
+        {
+            if (++checks == 4)
+            {
+                if (timeout) throw new TimeoutException();
+                throw new OperationCanceledException();
+            }
+        }));
+        Assert.Equal(4, checks);
+        if (timeout) Assert.IsType<TimeoutException>(error);
+        else Assert.IsType<OperationCanceledException>(error);
+    }
+
     public void Dispose() => File.Delete(_file);
 
     private static byte[] Written(params (PartFormat Format, byte[] Content)[] parts)

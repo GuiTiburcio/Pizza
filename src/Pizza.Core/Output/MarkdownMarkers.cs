@@ -14,16 +14,29 @@ public static class MarkdownMarkers
     // U+E000 em UTF-8.
     private static readonly byte[] Marker = [0xEE, 0x80, 0x80];
 
-    public static void Replace(Stream input, Stream output, IReadOnlyList<string> names, int bufferBytes = 64 * 1024)
+    public static void Replace(Stream input, Stream output, IReadOnlyList<string> names, int bufferBytes = 64 * 1024, Action? check = null)
     {
+        check?.Invoke();
         var reader = new BufferedStream(input, bufferBytes);
         var writer = new BufferedStream(output, bufferBytes);
+        var bytesSinceCheck = 0;
+        void Progress(int bytes)
+        {
+            bytesSinceCheck += bytes;
+            if (bytesSinceCheck >= bufferBytes)
+            {
+                check?.Invoke();
+                bytesSinceCheck = 0;
+            }
+        }
+
         int current;
         while ((current = reader.ReadByte()) != -1)
         {
             if (current != Marker[0])
             {
                 writer.WriteByte((byte)current);
+                Progress(1);
                 continue;
             }
 
@@ -35,13 +48,18 @@ public static class MarkdownMarkers
                 writer.WriteByte((byte)current);
                 writer.WriteByte((byte)second);
                 writer.WriteByte((byte)third);
+                Progress(3);
                 continue;
             }
 
-            writer.Write(Encoding.UTF8.GetBytes(names[Number(reader, names.Count) - 1]));
+            var name = Encoding.UTF8.GetBytes(names[Number(reader, names.Count) - 1]);
+            writer.Write(name);
+            Progress(name.Length);
         }
 
+        check?.Invoke();
         writer.Flush();
+        check?.Invoke();
     }
 
     private static int Number(BufferedStream reader, int count)

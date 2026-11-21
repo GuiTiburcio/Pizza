@@ -252,10 +252,15 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
     /// ("relatorio - imagem 1.png"); o Markdown é copiado trocando só os marcadores por esses nomes e ganha o nome
     /// por último. Se algo falhar, as partes já nomeadas são apagadas: ou saem todas, ou nenhuma.
     /// </summary>
-    private ConversionResult CommitMarkdown(string sourcePath, SafeFileHandle source, SafeFileHandle bundle, CancellationToken cancellation, Stopwatch active, ConversionControl? control)
+    internal ConversionResult CommitMarkdown(string sourcePath, SafeFileHandle source, SafeFileHandle bundle, CancellationToken cancellation, Stopwatch active, ConversionControl? control, long maxOutputBytes = OutputBudget.MaxBytes)
     {
+        // O limite injetável interno só pode reduzir o teto; permite testar a expansão sem gravar GiB.
+        ArgumentOutOfRangeException.ThrowIfNegative(maxOutputBytes);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(maxOutputBytes, OutputBudget.MaxBytes);
         var directory = Path.GetDirectoryName(Path.GetFullPath(sourcePath))!;
-        var list = OutputBundle.ReadFormatted(bundle, ConversionResult.MaxParts, "md");
+        var list = OutputBundle.ReadFormatted(bundle, ConversionResult.MaxParts, "md", maxOutputBytes,
+            () => CheckFinalization(cancellation, active, control));
+        var imageBytes = list.Skip(1).Sum(part => part.Length);
         var pending = new List<PendingOutput>(list.Count);
         var committed = new List<string>(list.Count);
         try
@@ -282,8 +287,9 @@ public sealed class ConversionRunner(string workerPath, string profile, TempJour
 
             using (var markdown = new BundlePartStream(bundle, list[0].Offset, list[0].Length))
             using (var text = Borrowed(pending[0].Handle))
+            using (var bounded = new OutputBudgetStream(text, maxOutputBytes - imageBytes))
             {
-                MarkdownMarkers.Replace(markdown, text, committed);
+                MarkdownMarkers.Replace(markdown, bounded, committed, check: () => CheckFinalization(cancellation, active, control));
             }
 
             CheckFinalization(cancellation, active, control);
