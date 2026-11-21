@@ -19,6 +19,8 @@ docs/
 produto → decisões → design → entrega → operação → segurança → melhoria
 ```
 
+Os números são a ordem de navegação, não fases obrigatórias: ninguém precisa terminar uma pasta para começar a outra. Segurança, privacidade, operação e acessibilidade valem desde os requisitos (pasta 1); as pastas 5 e 6 só reúnem a prova de que eles foram cumpridos.
+
 Cada pasta nasce da anterior. O produto define o que vale; as decisões registram por que; o design mostra como fica; a entrega divide em fases; a operação põe nas mãos de quem usa; a segurança confere o conjunto; a melhoria devolve o aprendizado ao começo da cascata. Arquivo novo vai na pasta que corresponde ao seu papel.
 
 ## Pasta por pasta
