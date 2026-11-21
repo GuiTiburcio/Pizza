@@ -1,6 +1,6 @@
 # Fase 6 — Aba PDF
 
-Biblioteca e regras em [ADR-033](adr/033-pdfium-e-qpdf.md); telas nas pranchas 6A-1 a 6A-3 do Dossiê.
+Biblioteca e regras em [ADR-033](../2-decisoes/033-pdfium-e-qpdf.md); telas nas pranchas 6A-1 a 6A-3 do Dossiê.
 
 | Etapa | O que entra | Estado |
 | --- | --- | --- |

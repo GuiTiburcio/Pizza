@@ -2,7 +2,7 @@
 
 Para a equipe de TI que quer distribuir o Pizza e controlar o que ele pode fazer. Para uso individual, veja [Instalar e configurar](INSTALACAO.md).
 
-> **Estado atual:** o MSI por máquina, os modelos ADMX/ADML e a leitura das políticas chegam na **Fase 8** ([roteiro](ROADMAP.md)). Este guia descreve como vai funcionar, conforme a [SPECS](SPECS.md) (§5.5, §9 e §11). A prévia de hoje não lê nenhuma política e **não deve** ser implantada em produção.
+> **Estado atual:** o MSI por máquina, os modelos ADMX/ADML e a leitura das políticas chegam na **Fase 8** ([roteiro](../1-produto/ROADMAP.md)). Este guia descreve como vai funcionar, conforme a [SPECS](../1-produto/SPECS.md) (§5.5, §9 e §11). A prévia de hoje não lê nenhuma política e **não deve** ser implantada em produção.
 
 ## O que a TI precisa saber antes
 
@@ -108,4 +108,4 @@ A desinstalação remove binários, logs e temporários (FR-72).
 
 ## Dúvidas e segurança
 
-Vulnerabilidades: siga o [SECURITY.md](../SECURITY.md). Para a validação interna, há o roteiro do piloto ([VALIDACAO-PILOTO.md](VALIDACAO-PILOTO.md)).
+Vulnerabilidades: siga o [SECURITY.md](../../.github/SECURITY.md). Para a validação interna, há o roteiro do piloto ([VALIDACAO-PILOTO.md](../4-entrega/VALIDACAO-PILOTO.md)).

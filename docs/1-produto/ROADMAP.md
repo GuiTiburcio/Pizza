@@ -2,7 +2,7 @@
 
 Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equivale à conclusão de todos os requisitos da v1.0.
 
-**Marco definido em 14/11/2026:** concluir e validar Imagem, PDF, Documento e Áudio, preparar distribuição verificada e então lançar o Brotinho. Ver [critérios e pendências](BROTINHO-LANCAMENTO.md). Estável/Beta foram escolhidos; o atualizador ainda não está implementado. [macOS e Linux](PORTABILIDADE.md) têm roteiro futuro separado, sem data de entrega.
+**Marco definido em 14/11/2026:** concluir e validar Imagem, PDF, Documento e Áudio, preparar distribuição verificada e então lançar o Brotinho. Ver [critérios e pendências](../4-entrega/BROTINHO-LANCAMENTO.md). Estável/Beta foram escolhidos; o atualizador ainda não está implementado. [macOS e Linux](PORTABILIDADE.md) têm roteiro futuro separado, sem data de entrega.
 
 | Área | Estado |
 | --- | --- |
@@ -14,21 +14,21 @@ Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equival
 | Worker isolado e proteção do original | Implementados; testes de integração |
 | Vidro, temas e movimento reduzido | Implementados no disco; validação manual ampla ainda necessária |
 | PDF | Juntar, dividir e girar implementados; aceite final do Brotinho pendente. Outros formatos seguem planejados |
-| Documento | Em andamento: Pizza Brotinho (conversões simples) e Pizza Jumbo (motor de documentos embutido e isolado), [ADR-034](adr/034-brotinho-jumbo-motor-de-documentos.md) |
-| Áudio | Antecipado da v1.x: só com o Media Foundation do Windows (MP3, WAV, M4A/AAC, FLAC); OGG/Opus e vídeo seguem na v1.x. Decidido no [ADR-035](adr/035-aba-audio-media-foundation.md); vai também no Pizza Brotinho ([ADR-039](adr/039-formatos-por-pacote-e-fatias-incompativeis.md)) |
-| Web | Planejada para v1.x (adendo de 20/11/2026 do [ADR-039](adr/039-formatos-por-pacote-e-fatias-incompativeis.md)): dados (JSON, XML, CSV), Markdown/HTML, fontes e compressão, em .NET puro e nos dois pacotes. As legendas já estão prontas no ramo da Web |
-| Vídeo, em aba própria (Media Foundation e FFmpeg) | Planejado para v1.x ([ADR-026](adr/026-aba-video-e-motores.md)); [estudo da barra compacta](propostas/barra-compacta.svg) para a Fase 4d |
+| Documento | Em andamento: Pizza Brotinho (conversões simples) e Pizza Jumbo (motor de documentos embutido e isolado), [ADR-034](../2-decisoes/034-brotinho-jumbo-motor-de-documentos.md) |
+| Áudio | Antecipado da v1.x: só com o Media Foundation do Windows (MP3, WAV, M4A/AAC, FLAC); OGG/Opus e vídeo seguem na v1.x. Decidido no [ADR-035](../2-decisoes/035-aba-audio-media-foundation.md); vai também no Pizza Brotinho ([ADR-039](../2-decisoes/039-formatos-por-pacote-e-fatias-incompativeis.md)) |
+| Web | Planejada para v1.x (adendo de 20/11/2026 do [ADR-039](../2-decisoes/039-formatos-por-pacote-e-fatias-incompativeis.md)): dados (JSON, XML, CSV), Markdown/HTML, fontes e compressão, em .NET puro e nos dois pacotes. As legendas já estão prontas no ramo da Web |
+| Vídeo, em aba própria (Media Foundation e FFmpeg) | Planejado para v1.x ([ADR-026](../2-decisoes/026-aba-video-e-motores.md)); [estudo da barra compacta](../3-design/propostas/barra-compacta.svg) para a Fase 4d |
 | Lotes | Planejados para v1.x |
 | Configurações completas e políticas de TI | Planejadas |
-| Prévias 0.x ([ADR-031](adr/031-previa-pelo-ci.md)) | `.zip` do CI com `SHA256SUMS`, SBOM e proveniência, como pré-lançamento |
+| Prévias 0.x ([ADR-031](../2-decisoes/031-previa-pelo-ci.md)) | `.zip` do CI com `SHA256SUMS`, SBOM e proveniência, como pré-lançamento |
 | Instaladores assinados, atualização verificada, SBOM e proveniência de release | Pendentes antes da distribuição estável |
 | Auditoria completa e medições finais de desempenho | Pendentes para a v1.0 |
-| Artefato original do Claude Design | [Referência disponível](dossie/README.md) |
+| Artefato original do Claude Design | [Referência disponível](../3-design/dossie/README.md) |
 | Vídeo de aplicação prática | Planejado pelo mantenedor |
 
 Fases e critérios completos estão nas [SPECS](SPECS.md). Artefatos experimentais do CI são builds de desenvolvimento.
 
-**Fase 4 — Visual Pizza: concluída em 11/11/2026** ([acompanhamento](FASE-4.md)). Prévias 0.1.0 e 0.1.1 publicadas ([ADR-031](adr/031-previa-pelo-ci.md)). **Fase 5 — medir e endurecer** ([acompanhamento](FASE-5.md)): 5a e boa parte da 5b feitas.
+**Fase 4 — Visual Pizza: concluída em 11/11/2026** ([acompanhamento](../4-entrega/FASE-4.md)). Prévias 0.1.0 e 0.1.1 publicadas ([ADR-031](../2-decisoes/031-previa-pelo-ci.md)). **Fase 5 — medir e endurecer** ([acompanhamento](../4-entrega/FASE-5.md)): 5a e boa parte da 5b feitas.
 
 **Rota decidida em 12/11/2026:** primeiro as quatro abas convertendo, na ordem Docs → PDF → Áudio; depois a auditoria completa (5c, cobrindo as abas novas) e, por fim, a parte estética (alto contraste e temas).
 
@@ -48,7 +48,7 @@ Pedidos do mantenedor, anotados em 10/11/2026. Cada um passa por alinhamento e A
 
 | Ideia | O que é |
 | --- | --- |
-| Régua de porcentagem | No painel de opções, um controle deslizante (slider) no lugar dos botões fixos de 75% e 50%. Antecipada para a Fase 4d em 11/11/2026 ([ADR-030](adr/030-regua-de-resolucao.md)) |
+| Régua de porcentagem | No painel de opções, um controle deslizante (slider) no lugar dos botões fixos de 75% e 50%. Antecipada para a Fase 4d em 11/11/2026 ([ADR-030](../2-decisoes/030-regua-de-resolucao.md)) |
 | Interação por voz | Uso guiado por voz, para incluir pessoas com deficiência visual |
 | Dicas de uso | Um tutorial curto na primeira vez; as dicas continuam enquanto o usuário quiser, e uma opção desliga |
 | Site no GitHub Pages | Layout "cartoonizado", com uma animação simples mostrando como o Pizza funciona. Segue o "efeito halo": primeira impressão premium em poucos segundos, mais visual que texto, poucos cards, caminho claro de por onde começar. Consentimento de cookies (LGPD) só se o site usar cookie ou rastreio não essencial; se a pessoa negar, nada é gravado. Pedido em 11/11/2026 |
