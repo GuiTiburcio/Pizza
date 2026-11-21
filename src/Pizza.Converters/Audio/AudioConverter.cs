@@ -21,6 +21,7 @@ public sealed class AudioConverter(string id) : IConverter
             return "MEDIA_UNAVAILABLE";
         }
 
+        Diag.Reads = 0; Diag.Writes = 0; Diag.Bytes = 0; Diag.LastFlags = 0;
         MediaFoundation.Startup();
         try
         {
@@ -183,6 +184,7 @@ public sealed class AudioConverter(string id) : IConverter
 
                 alac?.Record(sample);
                 pcmBytes = checked(pcmBytes + MediaFoundation.TotalLength(sample));
+                Diag.Writes++; Diag.Bytes = pcmBytes;
                 MediaFoundation.WriteSample(writer, stream, sample);
             }) is { } error)
             {
@@ -340,6 +342,7 @@ public sealed class AudioConverter(string id) : IConverter
         while (true)
         {
             var hr = MediaFoundation.ReadSample(reader.Handle, out var flags, out var time, out var sample);
+            Diag.Reads++; Diag.LastFlags = flags;
             if (hr < 0 || (flags & MediaFoundation.ReadError) != 0)
             {
                 MediaFoundation.Release(sample);
