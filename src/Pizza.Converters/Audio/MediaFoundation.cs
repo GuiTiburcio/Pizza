@@ -221,6 +221,19 @@ internal static unsafe partial class MediaFoundation
         return (*(long*)(stats + 48), *(long*)(stats + 56), *(long*)(stats + 64));
     }
 
+    public static bool WaitUntilEncoded(nint writer, uint stream, TimeSpan timeout)
+    {
+        var deadline = Environment.TickCount64 + (long)timeout.TotalMilliseconds;
+        var wait = new SpinWait();
+        while (Statistics(writer, stream) is var s && s.Encoded < s.Received)
+        {
+            if (Environment.TickCount64 >= deadline) return false;
+            wait.SpinOnce(sleep1Threshold: -1);
+        }
+
+        return true;
+    }
+
     public static void FinalizeWriting(nint writer) => Check(((delegate* unmanaged[Stdcall]<nint, int>)Slot(writer, 11))(writer));
 
     public static void Check(int hr)
