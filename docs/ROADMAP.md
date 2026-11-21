@@ -16,7 +16,7 @@ Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equival
 | PDF | Juntar, dividir e girar implementados; aceite final do Brotinho pendente. Outros formatos seguem planejados |
 | Documento | Em andamento: Pizza Brotinho (conversões simples) e Pizza Jumbo (motor de documentos embutido e isolado), [ADR-034](adr/034-brotinho-jumbo-motor-de-documentos.md) |
 | Áudio | Antecipado da v1.x: só com o Media Foundation do Windows (MP3, WAV, M4A/AAC, FLAC); OGG/Opus e vídeo seguem na v1.x. Decidido no [ADR-035](adr/035-aba-audio-media-foundation.md); vai também no Pizza Brotinho ([ADR-039](adr/039-formatos-por-pacote-e-fatias-incompativeis.md)) |
-| Web | Antecipada da v1.x: dados (JSON, XML, CSV), legendas, Markdown/HTML, fontes e compressão, em .NET puro e nos dois pacotes ([ADR-039](adr/039-formatos-por-pacote-e-fatias-incompativeis.md)) |
+| Web | Planejada para v1.x (adendo de 20/11/2026 do [ADR-039](adr/039-formatos-por-pacote-e-fatias-incompativeis.md)): dados (JSON, XML, CSV), Markdown/HTML, fontes e compressão, em .NET puro e nos dois pacotes. As legendas já estão prontas no ramo da Web |
 | Vídeo, em aba própria (Media Foundation e FFmpeg) | Planejado para v1.x ([ADR-026](adr/026-aba-video-e-motores.md)); [estudo da barra compacta](propostas/barra-compacta.svg) para a Fase 4d |
 | Lotes | Planejados para v1.x |
 | Configurações completas e políticas de TI | Planejadas |

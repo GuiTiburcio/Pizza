@@ -44,3 +44,9 @@ Dois problemas apareceram:
 - **Mostrar no Brotinho as fatias do Jumbo apagadas, com "Disponível no Pizza Jumbo":** poluiria o menu do pacote leve.
 - **Áudio só no Jumbo:** não economiza nada, só tira recurso do Brotinho.
 - **Campo `Package` no catálogo:** duplicaria o `DocumentEngine` enquanto ele for a única diferença.
+
+## Adendo de 20/11/2026 — Web fica para a v1.x
+
+O mantenedor decidiu que a aba Web **não entra no lançamento do Pizza Brotinho**; ela volta para a v1.x, como estava antes deste ADR. Motivo: o levantamento do ramo `claude/aba-web-565239` mostrou que, além das legendas (SRT, VTT e ASS, já implementadas no Worker), faltam oito conversores que leem arquivo não confiável (JSON↔XML, CSV↔JSON, JSON→YAML, HTML→MD, .gz/.br, WOFF/WOFF2 e minificação), cada um com corpus hostil (TST-03, TST-08) e validação no app. Isso atrasaria o lançamento. Os critérios em `docs/BROTINHO-LANCAMENTO.md` (quatro abas) continuam valendo.
+
+O que muda neste ADR: onde ele diz que o Brotinho ganha "a aba Web", leia-se v1.x. A separação por pacote continua igual: quando a Web vier, os conversores dela são .NET puro e vão nos dois pacotes. O ramo da Web fica preservado, com as legendas prontas.
