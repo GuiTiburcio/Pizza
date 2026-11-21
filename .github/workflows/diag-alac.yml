@@ -14,7 +14,7 @@ env:
 jobs:
   laco:
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
@@ -24,15 +24,11 @@ jobs:
         run: dotnet restore tests/Pizza.Converters.Tests
       - name: Compilar
         run: dotnet build tests/Pizza.Converters.Tests -c Release --no-restore
-      - name: Laco de 40 rodadas
+      - name: Estresse por variante
         shell: pwsh
         run: |
-          $falhas = @(); $rodadasComFalha = 0
-          for ($i = 1; $i -le 40; $i++) {
-            $saida = dotnet test tests/Pizza.Converters.Tests -c Release --no-build --nologo --filter "FullyQualifiedName~AudioConverterTests|FullyQualifiedName~AudioConcurrencyTests" --logger "console;verbosity=normal" 2>&1 | Out-String
-            $linhas = @($saida -split "`r?`n" | Where-Object { $_ -match 'DIAG|Failed Pizza|Failed ' })
-            if ($LASTEXITCODE -ne 0) { $rodadasComFalha++; $falhas += $linhas; if (-not ($linhas | Where-Object { $_ -match 'DIAG' })) { $falhas += ($saida -split "`r?`n" | Where-Object { $_ -match 'Error Message|Exception|Assert' } | Select-Object -First 6) } }
+          foreach ($v in 0, 2, 0, 2) {
+            $env:PIZZA_DIAG_VARIANT = "$v"
+            $saida = dotnet test tests/Pizza.Converters.Tests -c Release --no-build --nologo --filter "FullyQualifiedName~ZStress" --logger "console;verbosity=normal" 2>&1 | Out-String
+            ($saida -split "`r?`n" | Where-Object { $_ -match 'variant=' } | Select-Object -First 1).Trim()
           }
-          "=== RESUMO: rodadas com falha = $rodadasComFalha de 40 ==="
-          $falhas | Group-Object | Sort-Object Count -Descending | ForEach-Object { "{0,3}x {1}" -f $_.Count, $_.Name.Trim() }
-          if ($rodadasComFalha -gt 0) { exit 1 }

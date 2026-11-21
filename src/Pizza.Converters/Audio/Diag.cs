@@ -11,6 +11,7 @@ internal static class Diag
     [ThreadStatic] public static long Bytes;
     [ThreadStatic] public static uint LastFlags;
     public static volatile string? Callback;
+    public static readonly int Variant = int.TryParse(Environment.GetEnvironmentVariable("PIZZA_DIAG_VARIANT"), out var v) ? v : 0;
 
     public static string Take()
     {

@@ -192,8 +192,8 @@ public sealed class AudioConverter(string id) : IConverter
             }
 
             Diag.Stage = "finalize";
+            if (Diag.Variant == 2 && alac is not null) MediaFoundation.WaitUntilQueueEmpty(writer, stream, pcmBytes >= 4096L * channels * (bits / 8) ? TimeSpan.FromSeconds(5) : TimeSpan.Zero);
             { var s = MediaFoundation.Statistics(writer, stream); Diag.Stats = $"rec={s.Received} enc={s.Encoded} proc={s.Processed}"; }
-            { var started = Environment.TickCount64; var ok = MediaFoundation.WaitUntilEncoded(writer, stream, TimeSpan.FromSeconds(30)); var s = MediaFoundation.Statistics(writer, stream); Diag.Stats += $" wait={ok} ms={Environment.TickCount64 - started} after: rec={s.Received} enc={s.Encoded} proc={s.Processed}"; }
             alac?.BeginFinalization();
             try
             {
