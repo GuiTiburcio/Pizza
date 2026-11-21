@@ -1,5 +1,6 @@
 ﻿# Ferramenta de gerenciamento de worktrees do Pizza
-# Siga a convenção: Pizza\worktrees\<nome>
+# Convenção: pasta ..\2-paralelo\<nome>, ao lado do repositório.
+# Compatibilidade: se ..\worktrees já existir e ..\2-paralelo não, continua usando ..\worktrees.
 
 function New-PizzaWorktree {
     param(
@@ -8,7 +9,8 @@ function New-PizzaWorktree {
     )
     $repo = (& git rev-parse --show-toplevel).Trim()
     $parent = Split-Path $repo -Parent
-    $dest = Join-Path $parent "worktrees\$Nome"
+    $pasta = if ((Test-Path (Join-Path $parent 'worktrees')) -and -not (Test-Path (Join-Path $parent '2-paralelo'))) { 'worktrees' } else { '2-paralelo' }
+    $dest = Join-Path $parent "$pasta\$Nome"
     
     Write-Host "Atualizando origin main..." -ForegroundColor Cyan
     & git -C $repo fetch origin main
