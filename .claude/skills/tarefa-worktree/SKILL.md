@@ -1,7 +1,7 @@
 ---
 name: tarefa-worktree
 description: >-
-  Contrato de trabalho nos worktrees do Pizza (Pizza\worktrees\<nome>). Use ao
+  Contrato de trabalho nos worktrees do Pizza (a pasta de worktrees ao lado do repositório, `..\2-paralelo\<nome>`). Use ao
   escrever um TAREFA.md, ao executar uma tarefa recebida num worktree ou ao
   entregar o RESULTADO.md.
 ---
@@ -49,6 +49,7 @@ Vale para o Antigravity e para os subagentes do Claude. As regras de [AGENTS.md]
 4. Faça commit no ramo do worktree com o autor `Guilherme Tiburcio <54161354+GuiTiburcio@users.noreply.github.com>`. Subagentes do Claude acrescentam a linha `Co-Authored-By` da plataforma.
 5. Rode `git push` do ramo. **Não** faça merge na `main` e **não** edite fora do worktree.
 6. Tela nova não fica "pronta": fica "aguardando validação do mantenedor no app".
+7. **Seiso** (limpeza): ao fechar a tarefa, depois do merge, remova o worktree (git worktree remove) e o ramo local, e confira que in/, obj/ e saídas de build não ficaram fora do .gitignore.
 
 ## Modelo do RESULTADO.md
 
