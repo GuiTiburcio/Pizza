@@ -14,13 +14,17 @@ env:
 
 jobs:
   diag:
-    name: Laco DocumentTests (${{ matrix.n }})
+    name: Laco ${{ matrix.modo }} ${{ matrix.n }}
     runs-on: windows-latest
     timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
-        n: [1, 2, 3]
+        include:
+          - { n: 1, modo: doc, rodadas: 8 }
+          - { n: 2, modo: tudo, rodadas: 12 }
+          - { n: 3, modo: tudo, rodadas: 12 }
+          - { n: 4, modo: tudo, rodadas: 12 }
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -42,16 +46,22 @@ jobs:
           ./tools/baixar-motor.ps1 -Destino $motor
           "PIZZA_MOTOR=$motor" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
 
-      - name: Laco de 20 rodadas
+      - name: Laco
         shell: pwsh
         run: |
           $falhas = 0
-          for ($i = 1; $i -le 20; $i++) {
-            $saida = dotnet test tests/Pizza.Integration.Tests -c Release --no-build --filter "FullyQualifiedName~DocumentTests" --logger "console;verbosity=normal" 2>&1 | Out-String
-            $linhas = $saida -split "`r?`n" | Where-Object { $_ -match 'DIAG|^\s+(Failed|Passed) |Failed!|Passed!|Error Message' }
-            $falhou = $saida -match 'Failed!'
-            if ($falhou) { $falhas++ }
-            Write-Host "=== rodada $i : $(if ($falhou) { 'FALHOU' } else { 'ok' })"
-            if ($falhou) { $linhas | ForEach-Object { Write-Host $_ } }
+          $n = ${{ matrix.rodadas }}
+          for ($i = 1; $i -le $n; $i++) {
+            if ('${{ matrix.modo }}' -eq 'doc') {
+              $saida = dotnet test tests/Pizza.Integration.Tests -c Release --no-build --filter "FullyQualifiedName~DocumentTests" --logger "console;verbosity=normal" 2>&1 | Out-String
+            } else {
+              $saida = dotnet test Pizza.slnx -c Release --no-build --logger "console;verbosity=normal" 2>&1 | Out-String
+            }
+            $codigo = $LASTEXITCODE
+            $linhas = $saida -split "`r?`n" | Where-Object { $_ -match 'DIAG|^\s+Failed |Failed!|Passed!|Skipped!' }
+            if ($codigo -ne 0) { $falhas++ }
+            Write-Host "=== rodada $i : exit $codigo"
+            $linhas | ForEach-Object { Write-Host $_ }
           }
-          Write-Host "RESUMO: $falhas falhas em 20 rodadas (job ${{ matrix.n }})"
+          Write-Host "RESUMO: $falhas rodadas com falha em $n (job ${{ matrix.n }}, ${{ matrix.modo }})"
+          exit 0
