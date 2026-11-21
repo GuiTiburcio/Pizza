@@ -140,8 +140,9 @@ internal static unsafe class HandleStream
 
             return total == count ? Ok : False;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Diag.Callback = $"H-ReadFault {ex.GetType().Name}";
             return ReadFault;
         }
     }
@@ -159,8 +160,9 @@ internal static unsafe class HandleStream
 
             return Ok;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Diag.Callback = $"H-WriteFault {ex.GetType().Name}";
             return WriteFault;
         }
     }
@@ -178,8 +180,9 @@ internal static unsafe class HandleStream
 
             return Ok;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Diag.Callback = $"H-ReadFault {ex.GetType().Name}";
             return ReadFault;
         }
     }
@@ -192,8 +195,9 @@ internal static unsafe class HandleStream
             Of(self).SetLength((long)size);
             return Ok;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Diag.Callback = $"H-WriteFault {ex.GetType().Name}";
             return WriteFault;
         }
     }
@@ -209,8 +213,9 @@ internal static unsafe class HandleStream
             Of(self).Flush();
             return Ok;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Diag.Callback = $"H-WriteFault {ex.GetType().Name}";
             return WriteFault;
         }
     }
@@ -233,8 +238,9 @@ internal static unsafe class HandleStream
             statistics->Mode = stream.CanWrite ? (stream.CanRead ? 2u : 1u) : 0u; // STGM_READWRITE, STGM_WRITE, STGM_READ
             return Ok;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Diag.Callback = $"H-ReadFault {ex.GetType().Name}";
             return ReadFault;
         }
     }

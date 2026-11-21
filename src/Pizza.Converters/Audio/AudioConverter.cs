@@ -24,11 +24,13 @@ public sealed class AudioConverter(string id) : IConverter
         MediaFoundation.Startup();
         try
         {
+            Diag.Stage = "open";
             using var reader = AudioReader.Open(source);
             return reader is null ? "UNSUPPORTED" : Transcode(reader, destination, options, progress);
         }
-        catch (MediaFoundationException)
+        catch (MediaFoundationException ex)
         {
+            Diag.Last = $"A1 hr=0x{ex.Code:X8}";
             return "CORRUPTED";
         }
         finally
@@ -131,9 +133,12 @@ public sealed class AudioConverter(string id) : IConverter
         try
         {
             SetPcm(pcm, rate, channels, bits);
+            Diag.Stage = "setcur";
             MediaFoundation.SetCurrentMediaType(reader.Handle, MediaFoundation.FirstAudioStream, pcm);
+            Diag.Stage = "curtype";
             current = MediaFoundation.CurrentMediaType(reader.Handle, MediaFoundation.FirstAudioStream);
 
+            Diag.Stage = "writer";
             outStream = HandleStream.Create((Stream?)alac ?? wave ?? destination);
             outBytes = MediaFoundation.ByteStream(outStream);
             if (OpenWriter(outBytes, current, options, rate, channels, bits) is not { } opened)
@@ -143,7 +148,9 @@ public sealed class AudioConverter(string id) : IConverter
 
             (writer, var stream) = opened;
 
+            Diag.Stage = "begin";
             MediaFoundation.BeginWriting(writer);
+            Diag.Stage = "pass";
             var format = new Pcm((int)rate, (int)channels, (int)bits);
             var volume = new VolumeChain(options, format.Rate);
             var half = ProgressSteps / 2;
@@ -182,6 +189,7 @@ public sealed class AudioConverter(string id) : IConverter
                 return error;
             }
 
+            Diag.Stage = "finalize";
             alac?.BeginFinalization();
             try
             {
@@ -198,14 +206,17 @@ public sealed class AudioConverter(string id) : IConverter
             MediaFoundation.Release(outBytes);
             outBytes = 0;
             // O MF termina o cabeçalho final depois do Release, em outra thread: espera soltar o fluxo de saída.
+            Diag.Stage = "drain";
             var drained = HandleStream.WaitUntilOnlyOwner(outStream, TimeSpan.FromSeconds(30));
             MediaFoundation.Release(outStream);
             outStream = 0;
             if (!drained)
             {
+                Diag.Last = "D1 drain-timeout";
                 return "CORRUPTED";
             }
 
+            Diag.Stage = "complete";
             alac?.Complete();
             wave?.Complete(pcmBytes);
             progress?.Report(ProgressSteps);
@@ -332,6 +343,7 @@ public sealed class AudioConverter(string id) : IConverter
             if (hr < 0 || (flags & MediaFoundation.ReadError) != 0)
             {
                 MediaFoundation.Release(sample);
+                Diag.Last = $"P1 hr=0x{hr:X8} flags={flags} t={time}";
                 return "CORRUPTED";
             }
 

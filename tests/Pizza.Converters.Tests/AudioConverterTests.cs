@@ -144,6 +144,7 @@ public partial class AudioConverterTests
         using var input = new MemoryStream(source);
         using var output = new MemoryStream();
         var error = ConverterRegistry.Find(id)!.Convert(input, output, resolved, progress);
+        if (error == "CORRUPTED" && source.Length > 1000) Assert.Fail($"DIAG {id} {Diag.Take()}");
         return (error, output.ToArray());
     }
 

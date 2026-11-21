@@ -23,7 +23,7 @@ public class AudioConcurrencyTests
             var error = ConverterRegistry.Find(id)!.Convert(input, output, resolved);
             if (error is not null)
             {
-                failures.Add($"{id}: {error}");
+                failures.Add($"DIAG {id}: {error} {Pizza.Converters.Audio.Diag.Take()}");
             }
 
             using var again = new MemoryStream(wav);
