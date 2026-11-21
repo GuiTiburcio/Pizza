@@ -16,8 +16,8 @@ Leia e siga [CLAUDE.md](CLAUDE.md) antes de alterar qualquer parte do projeto. A
 ## Papéis dos Agentes
 
 - **Claude Code (principal)**: Orquestra, revisa e aplica. Roda `/grill-me`, `/plan`, `/goal`; revisa diffs dos worktrees; faz merge na `main`; roda a auditoria de segurança. Não executa trabalho longo dentro dos worktrees do Antigravity.
-- **Subagentes do Claude (exceção autorizada pelo mantenedor em 20/11/2026)**: Quando o Claude Code principal os dispara com um `TAREFA.md`, podem implementar na pasta de worktrees ao lado do repositório (`..\2-paralelo\<nome>`), vários em paralelo, um por worktree. Valem os mesmos limites do Antigravity: não fazem merge na `main`, não alteram invariantes `SEC-*`/`PRIV-*` e não editam fora do próprio worktree. Entregam commits no ramo e um `RESULTADO.md`. O contrato está na skill `tarefa-worktree`.
-- **Antigravity**: Executa nos worktrees. Cria e mantém worktrees na pasta de worktrees ao lado do repositório (`..\2-paralelo\<nome>`); compila, testa e roda o app para validar; implementa a tarefa recebida. Não faz merge na `main`, não altera invariantes `SEC-*`/`PRIV-*`, não edita fora do próprio worktree.
+- **Subagentes do Claude (exceção autorizada pelo mantenedor em 20/11/2026)**: Quando o Claude Code principal os dispara com um `TAREFA.md`, podem implementar na pasta de worktrees ao lado do repositório (`..\ramos\<faixa>\<tarefa>` (faixas `base`, `jumbo`, `projeto` e `revisao`; ramo `<faixa>/<tarefa>`)), vários em paralelo, um por worktree. Valem os mesmos limites do Antigravity: não fazem merge na `main`, não alteram invariantes `SEC-*`/`PRIV-*` e não editam fora do próprio worktree. Entregam commits no ramo e um `RESULTADO.md`. O contrato está na skill `tarefa-worktree`.
+- **Antigravity**: Executa nos worktrees. Cria e mantém worktrees na pasta de worktrees ao lado do repositório (`..\ramos\<faixa>\<tarefa>` (faixas `base`, `jumbo`, `projeto` e `revisao`; ramo `<faixa>/<tarefa>`)); compila, testa e roda o app para validar; implementa a tarefa recebida. Não faz merge na `main`, não altera invariantes `SEC-*`/`PRIV-*`, não edita fora do próprio worktree.
 
 ## Comunicação
 
