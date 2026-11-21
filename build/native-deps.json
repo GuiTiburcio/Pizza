@@ -1,0 +1,66 @@
+{
+  "esquema": 1,
+  "observacao": "Fonte de verdade das dependências nativas que o build baixa. O hash de cada arquivo baixado fica fixado também no campo fixadoEm; NativeDepsTests confere que os dois são iguais. tools/sbom-nativos.ps1 acrescenta estes componentes ao SBOM. Ao trocar versão ou hash, mude os dois lugares.",
+  "componentes": [
+    {
+      "id": "qpdf",
+      "nome": "qpdf",
+      "versao": "12.4.2",
+      "licenca": "Apache-2.0",
+      "purl": "pkg:github/qpdf/qpdf@v12.4.2",
+      "url": "https://github.com/qpdf/qpdf/releases/download/v12.4.2/qpdf-12.4.2-msvc64.zip",
+      "sha256": "db87077e683630c1217e0e8f9a20a9749d952ab676e881c3689187763a5de25d",
+      "fixadoEm": "src/Pizza.Converters/Pizza.Converters.csproj#QpdfSha256",
+      "arquivos": [ "qpdf30.dll" ],
+      "escopo": "previa"
+    },
+    {
+      "id": "vcruntime",
+      "nome": "microsoft-vc-runtime",
+      "versao": "14.51.36247.0",
+      "licenca": "LicenseRef-Microsoft-VC-Redistributable",
+      "purl": "pkg:generic/microsoft-vc-runtime@14.51.36247.0",
+      "url": "https://github.com/qpdf/qpdf/releases/download/v12.4.2/qpdf-12.4.2-msvc64.zip",
+      "sha256": "db87077e683630c1217e0e8f9a20a9749d952ab676e881c3689187763a5de25d",
+      "fixadoEm": "src/Pizza.Converters/Pizza.Converters.csproj#QpdfSha256",
+      "arquivos": [ "msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll" ],
+      "escopo": "previa"
+    },
+    {
+      "id": "pdfium",
+      "nome": "pdfium-binaries",
+      "versao": "chromium/8152",
+      "licenca": "BSD-3-Clause AND Apache-2.0",
+      "purl": "pkg:github/bblanchon/pdfium-binaries@chromium%2F8152",
+      "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8152/pdfium-win-x64.tgz",
+      "sha256": "cee2b0e9990bc67c0721774932961b9dbf2766046c10eec925acd4cfba6fdfe3",
+      "fixadoEm": "src/Pizza.Converters/Pizza.Converters.csproj#PdfiumSha256",
+      "arquivos": [ "pdfium.dll" ],
+      "escopo": "previa"
+    },
+    {
+      "id": "libjxl",
+      "nome": "libjxl",
+      "versao": "0.11.2",
+      "licenca": "BSD-3-Clause",
+      "purl": "pkg:github/libjxl/libjxl@v0.11.2",
+      "url": "https://github.com/libjxl/libjxl/releases/download/v0.11.2/jxl-x64-windows.zip",
+      "sha256": "54886b2d7a9ef625bc2b2e7b2b81b186f5b310376fd67d2fbbb3fcf3be01ad7a",
+      "fixadoEm": "src/Pizza.Converters/Pizza.Converters.csproj#JxlSha256",
+      "arquivos": [ "jxl.dll", "jxl_cms.dll", "jxl_threads.dll", "brotlicommon.dll", "brotlidec.dll", "brotlienc.dll" ],
+      "escopo": "previa"
+    },
+    {
+      "id": "libreoffice",
+      "nome": "libreoffice",
+      "versao": "26.2.7",
+      "licenca": "MPL-2.0",
+      "purl": "pkg:generic/libreoffice@26.2.7",
+      "url": "https://download.documentfoundation.org/libreoffice/stable/26.2.7/win/x86_64/LibreOffice_26.2.7_Win_x86-64.msi",
+      "sha256": "480fecf759fc6393bd614fbf43753eb95a8198fc1a065d41b727e3b664cd1e59",
+      "fixadoEm": "tools/baixar-motor.ps1#hash",
+      "arquivos": [ "program/mergedlo.dll" ],
+      "escopo": "jumbo"
+    }
+  ]
+}
