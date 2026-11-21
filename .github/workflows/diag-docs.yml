@@ -21,10 +21,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { n: 1, modo: doc, rodadas: 8 }
-          - { n: 2, modo: tudo, rodadas: 12 }
-          - { n: 3, modo: tudo, rodadas: 12 }
-          - { n: 4, modo: tudo, rodadas: 12 }
+          - { n: 1, modo: doc, rodadas: 10 }
+          - { n: 2, modo: doc, rodadas: 10 }
+          - { n: 3, modo: doc, rodadas: 10 }
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

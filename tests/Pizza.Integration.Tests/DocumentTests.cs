@@ -227,7 +227,8 @@ public sealed class DocumentTests : IDisposable
             stages = "erro-etapas:" + ex.GetType().Name;
         }
 
-        Assert.Fail($"DIAG code={result.ErrorCode} {info} stages=[{stages}] drives=[{string.Join(',', DocumentEngine.DrivesFor(JumboFactAttribute.Engine!))}]");
+        var markerSeen = File.Exists(Path.Combine(DocumentEngine.WorkFolder(Profile), "macro-rodou.txt"));
+        Assert.Fail($"DIAG markerSeen={markerSeen} code={result.ErrorCode} {info} stages=[{stages}] drives=[{string.Join(',', DocumentEngine.DrivesFor(JumboFactAttribute.Engine!))}]");
     }
 
     private DocumentEngine Engine(string? engineRoot = null, string profile = Profile, TimeSpan? spareIdle = null)

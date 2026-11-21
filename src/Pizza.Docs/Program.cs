@@ -41,6 +41,7 @@ internal static class Program
     {
         // PRIV-05 (ADR-032): sem dump nem relatório do Windows.
         CrashReporting.Suppress();
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => Mark("processExit threads=" + System.Diagnostics.Process.GetCurrentProcess().Threads.Count + " stack=" + Environment.StackTrace.Replace('\n', ' ').Replace('\r', ' '));
         AppDomain.CurrentDomain.UnhandledException += (_, e) => Mark("unhandled:" + e.ExceptionObject.GetType().Name);
         if (args is not ["--in", var input, "--out", var output, "--engine", var engine, "--work", var work, "--idle", var idle])
         {
@@ -203,6 +204,7 @@ internal static class Program
 
     private static void Exit(string folder)
     {
+        Mark("timerExit");
         Delete(folder);
         Environment.Exit(0);
     }
@@ -224,7 +226,7 @@ internal static class Program
 
     private static string? DiagWork;
 
-    private static void Mark(string text)
+    internal static void Mark(string text)
     {
         try
         {

@@ -39,6 +39,7 @@ internal static unsafe class LibreOfficeKit
     /// <summary>Abre o documento e o salva em outro formato. Devolve nulo se der certo, ou o código de erro.</summary>
     public static string? Convert(string source, string target, string format)
     {
+        Program.Mark("kitConvert");
         var officeClass = (nint*)_office[0];
         nint* document;
         fixed (byte* url = Utf8(new Uri(source).AbsoluteUri))
@@ -46,6 +47,7 @@ internal static unsafe class LibreOfficeKit
             document = ((delegate* unmanaged<nint*, byte*, nint*>)officeClass[OfficeDocumentLoad])(_office, url);
         }
 
+        Program.Mark(document == null ? "loadNull" : "loaded");
         if (document == null)
         {
             return "CORRUPTED";
@@ -58,7 +60,9 @@ internal static unsafe class LibreOfficeKit
             saved = ((delegate* unmanaged<nint*, byte*, byte*, byte*, int>)documentClass[DocumentSaveAs])(document, url, filter, null);
         }
 
+        Program.Mark("saved:" + saved);
         ((delegate* unmanaged<nint*, void>)documentClass[DocumentDestroy])(document);
+        Program.Mark("destroyed");
         return saved != 0 && File.Exists(target) ? null : "CORRUPTED";
     }
 
