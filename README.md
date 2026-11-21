@@ -98,6 +98,14 @@ Builds locais são para desenvolvimento. A distribuição oficial deve vir do CI
 | `docs` | Dossiê, especificações, uso, design e decisões |
 | `tools` | Publicação de desenvolvimento, sons e verificação de logs |
 
+## Como o projeto está organizado
+
+O projeto segue três fluxos, e o nome das pastas mostra qual é qual.
+
+- **Cascata (docs):** a documentação está na ordem em que o projeto é pensado: produto → decisões → design → entrega → operação → segurança → melhoria. O mapa está em [docs/README.md](docs/README.md).
+- **Cadeia (src):** `Pizza.App` (o residente, que recebe o gesto e o arquivo) → `Pizza.Core` (estados e IPC) → `Pizza.Worker` (processo isolado em AppContainer) → `Pizza.Converters` (os conversores). O `Pizza.Docs` é o motor de documentos, também isolado.
+- **Paralelo (trabalho):** um worktree e um ramo por tarefa, e o merge na `main` só com o CI verde. O processo completo está em [docs/7-melhoria/TI-360.md](docs/7-melhoria/TI-360.md).
+
 ## Inspiração
 
 O Pizza nasceu depois que vi, por acaso, um vídeo no **TikTok**. Gostei da ideia de converter arquivos com um menu circular e decidi criar minha própria implementação para Windows. O vídeo inspirou o conceito; este repositório registra a construção do meu projeto. O nome vem do formato do menu, que lembra uma pizza fatiada, e do ditado "afinal, tudo acaba em pizza": aqui, todo arquivo arrastado acaba nela.
