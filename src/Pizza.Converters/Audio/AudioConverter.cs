@@ -197,8 +197,15 @@ public sealed class AudioConverter(string id) : IConverter
             writer = 0;
             MediaFoundation.Release(outBytes);
             outBytes = 0;
+            // O MF termina o cabeçalho final depois do Release, em outra thread: espera soltar o fluxo de saída.
+            var drained = HandleStream.WaitUntilOnlyOwner(outStream, TimeSpan.FromSeconds(30));
             MediaFoundation.Release(outStream);
             outStream = 0;
+            if (!drained)
+            {
+                return "CORRUPTED";
+            }
+
             alac?.Complete();
             wave?.Complete(pcmBytes);
             progress?.Report(ProgressSteps);
