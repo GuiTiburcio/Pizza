@@ -2,7 +2,7 @@
 
 Use uma branch por mudança e envie pull request para `main`. Código em inglês; interface, documentação e commits em português. Leia [CLAUDE.md](CLAUDE.md) e [SPECS](docs/SPECS.md). Mudanças de decisão ganham um [ADR](docs/adr/README.md).
 
-Ambiente: Windows x64, .NET 10 SDK e Build Tools com C++ para NativeAOT.
+Ambiente: Windows x64, .NET 10 SDK, PowerShell 7 e Build Tools com C++ para NativeAOT e para o encoder ALAC (ADR-041). O build confere a fonte Apple e compila a DLL; nenhuma ferramenta de compilação é chamada pelo aplicativo.
 
 ```powershell
 dotnet restore Pizza.slnx --locked-mode

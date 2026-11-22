@@ -90,8 +90,11 @@ internal sealed class AudioReader : IDisposable
                         return null;
                     }
 
+                    var subtype = MediaFoundation.GetGuid(type, MediaFoundation.SubType);
+                    var isAlac = subtype == MediaFoundation.Alac || subtype == MediaFoundation.Mpeg4Alac;
                     var duration = MediaFoundation.DurationOf(reader);
-                    info = new AudioInfo(duration / 10_000, (int)UInt(type, MediaFoundation.SampleRate), (int)UInt(type, MediaFoundation.Channels), (int)UInt(type, MediaFoundation.BitsPerSample));
+                    info = new AudioInfo(duration / 10_000, (int)UInt(type, MediaFoundation.SampleRate), (int)UInt(type, MediaFoundation.Channels), (int)UInt(type, MediaFoundation.BitsPerSample), UInt(type, MediaFoundation.ChannelMask), isAlac, isAlac ? MediaFoundation.AlacLayoutTag(type) : 0);
+                    if (isAlac && info.Value.Channels > 2 && AlacChannelLayout.FromTag(info.Value.Channels, info.Value.AlacLayoutTag) is null) return null;
                 }
             }
             finally

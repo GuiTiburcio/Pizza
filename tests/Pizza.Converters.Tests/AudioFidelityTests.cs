@@ -98,9 +98,16 @@ public partial class AudioConverterTests
         using var memory = new MemoryStream();
         using var writer = new BinaryWriter(memory);
         var dataLength = frames * channels * bytes;
-        writer.Write("RIFF"u8); writer.Write(36 + dataLength + (dataLength & 1)); writer.Write("WAVEfmt "u8);
-        writer.Write(16); writer.Write((short)1); writer.Write((short)channels); writer.Write(rate);
+        var extensible = channels > 2;
+        writer.Write("RIFF"u8); writer.Write((extensible ? 60 : 36) + dataLength + (dataLength & 1)); writer.Write("WAVEfmt "u8);
+        writer.Write(extensible ? 40 : 16); writer.Write(extensible ? (ushort)0xfffe : (ushort)1); writer.Write((short)channels); writer.Write(rate);
         writer.Write(rate * channels * bytes); writer.Write((short)(channels * bytes)); writer.Write((short)bits);
+        if (extensible)
+        {
+            writer.Write((ushort)22); writer.Write((ushort)bits);
+            writer.Write(channels == 6 ? 0x3fu : throw new InvalidDataException("Definir a máscara do fixture multicanal."));
+            writer.Write(new Guid("00000001-0000-0010-8000-00aa00389b71").ToByteArray());
+        }
         writer.Write("data"u8); writer.Write(frames * channels * bytes);
         var maximum = (1 << (bits - 1)) - 1;
         for (var frame = 0; frame < frames; frame++)

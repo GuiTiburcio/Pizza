@@ -4,7 +4,8 @@ namespace Pizza.Converters.Audio;
 
 /// <summary>
 /// Aba Áudio (ADR-035): decodifica a origem para PCM e grava no formato escolhido, tudo pelo Media Foundation do
-/// Windows e só por handles. Canais, taxa e profundidade são convertidos pelo próprio leitor do MF.
+/// Windows e só por handles. ALAC usa a referência Apple (ADR-041). Canais, taxa e profundidade são
+/// convertidos pelo próprio leitor do MF.
 /// </summary>
 public sealed class AudioConverter(string id) : IConverter
 {
@@ -30,6 +31,14 @@ public sealed class AudioConverter(string id) : IConverter
         catch (MediaFoundationException)
         {
             return "CORRUPTED";
+        }
+        catch (InvalidDataException)
+        {
+            return "CORRUPTED";
+        }
+        catch (DllNotFoundException)
+        {
+            return "MEDIA_UNAVAILABLE";
         }
         finally
         {
@@ -74,7 +83,7 @@ public sealed class AudioConverter(string id) : IConverter
             var target = Core.Conversions.AudioPlan.Target("flac", OriginalLossless, reader.Info.SampleRate, reader.Info.Channels, reader.Info.Bits);
             pcm = MediaFoundation.CreateMediaType();
             SetPcm(pcm, (uint)target.Rate, (uint)target.Channels, (uint)target.Bits);
-            MediaFoundation.SetCurrentMediaType(reader.Handle, MediaFoundation.FirstAudioStream, pcm);
+            PrepareAlacReader(reader, pcm);
             current = MediaFoundation.CurrentMediaType(reader.Handle, MediaFoundation.FirstAudioStream);
 
             using var memory = new MemoryStream();
@@ -120,30 +129,36 @@ public sealed class AudioConverter(string id) : IConverter
         // A mesma regra que o painel usa para o tamanho previsto (adendo do ADR-035).
         var target = Core.Conversions.AudioPlan.Target(Format, options, reader.Info.SampleRate, reader.Info.Channels, reader.Info.Bits);
         var (rate, channels, bits) = ((uint)target.Rate, (uint)target.Channels, (uint)target.Bits);
-        var alac = Format == "m4a" && options["bitrate"] == "lossless"
-            ? new AlacTailStream(destination, (int)channels, (int)bits, (int)rate) : null;
+        var appleAlac = Format == "m4a" && options["bitrate"] == "lossless";
         var wave = Format == "wav" ? new WaveHeaderStream(destination) : null;
         long pcmBytes = 0;
 
         // O leitor entrega PCM já no formato da saída: ele mesmo reamostra e mistura os canais.
         var pcm = MediaFoundation.CreateMediaType();
         nint current = 0, writer = 0, outStream = 0, outBytes = 0;
+        uint writerStream = 0;
         try
         {
-            SetPcm(pcm, rate, channels, bits);
-            MediaFoundation.SetCurrentMediaType(reader.Handle, MediaFoundation.FirstAudioStream, pcm);
+            SetPcm(pcm, rate, channels, bits, appleAlac && channels == reader.Info.Channels ? reader.Info.ChannelMask : 0);
+            PrepareAlacReader(reader, pcm);
             current = MediaFoundation.CurrentMediaType(reader.Handle, MediaFoundation.FirstAudioStream);
 
-            outStream = HandleStream.Create((Stream?)alac ?? wave ?? destination);
-            outBytes = MediaFoundation.ByteStream(outStream);
-            if (OpenWriter(outBytes, current, options, rate, channels, bits) is not { } opened)
+            MediaFoundation.GetUInt32(current, MediaFoundation.ChannelMask, out var channelMask);
+            var layout = appleAlac ? AlacChannelLayout.Find((int)channels, channelMask) : null;
+            if (appleAlac && layout is null) return "UNSUPPORTED";
+            using var alac = appleAlac ? new AlacM4aWriter(destination, (int)rate, (int)channels, (int)bits, layout!) : null;
+            if (alac is null)
             {
-                return "MEDIA_UNAVAILABLE";
+                outStream = HandleStream.Create((Stream?)wave ?? destination);
+                outBytes = MediaFoundation.ByteStream(outStream);
+                if (OpenWriter(outBytes, current, options, rate, channels, bits) is not { } opened)
+                {
+                    return "MEDIA_UNAVAILABLE";
+                }
+
+                (writer, writerStream) = opened;
+                MediaFoundation.BeginWriting(writer);
             }
-
-            (writer, var stream) = opened;
-
-            MediaFoundation.BeginWriting(writer);
             var format = new Pcm((int)rate, (int)channels, (int)bits);
             var volume = new VolumeChain(options, format.Rate);
             var half = ProgressSteps / 2;
@@ -174,23 +189,22 @@ public sealed class AudioConverter(string id) : IConverter
                     Edit(sample, format, samples => applying.Apply(samples, format.Channels), write: true);
                 }
 
-                alac?.Record(sample);
                 pcmBytes = checked(pcmBytes + MediaFoundation.TotalLength(sample));
-                MediaFoundation.WriteSample(writer, stream, sample);
+                if (alac is not null) alac.WriteSample(sample);
+                else MediaFoundation.WriteSample(writer, writerStream, sample);
             }) is { } error)
             {
                 return error;
             }
 
-            alac?.BeginFinalization();
-            try
+            if (alac is not null)
             {
-                MediaFoundation.FinalizeWriting(writer);
+                var completed = alac.Complete();
+                progress?.Report(ProgressSteps);
+                return completed ? null : "CORRUPTED";
             }
-            finally
-            {
-                alac?.CheckLimit();
-            }
+
+            MediaFoundation.FinalizeWriting(writer);
 
             // Fecha todas as referências do gravador antes de reparar os cabeçalhos observados.
             MediaFoundation.Release(writer);
@@ -206,7 +220,6 @@ public sealed class AudioConverter(string id) : IConverter
                 return "CORRUPTED";
             }
 
-            alac?.Complete();
             wave?.Complete(pcmBytes);
             progress?.Report(ProgressSteps);
             return null;
@@ -253,10 +266,6 @@ public sealed class AudioConverter(string id) : IConverter
                     case ("mp3", _):
                         MediaFoundation.SetGuid(output, MediaFoundation.SubType, MediaFoundation.Mp3);
                         MediaFoundation.SetUInt32(output, MediaFoundation.AverageBytes, kbps * 1000 / 8);
-                        break;
-                    case ("m4a", 0):
-                        MediaFoundation.SetGuid(output, MediaFoundation.SubType, MediaFoundation.Alac);
-                        MediaFoundation.SetUInt32(output, MediaFoundation.BitsPerSample, bits);
                         break;
                     case ("m4a", _):
                         MediaFoundation.SetGuid(output, MediaFoundation.SubType, MediaFoundation.Aac);
@@ -420,14 +429,33 @@ public sealed class AudioConverter(string id) : IConverter
         }
     }
 
-    private static void SetPcm(nint type, uint rate, uint channels, uint bits)
+    private static void SetPcm(nint type, uint rate, uint channels, uint bits, uint mask = 0)
     {
         MediaFoundation.SetGuid(type, MediaFoundation.MajorType, MediaFoundation.Audio);
         MediaFoundation.SetGuid(type, MediaFoundation.SubType, MediaFoundation.Pcm);
         MediaFoundation.SetUInt32(type, MediaFoundation.SampleRate, rate);
         MediaFoundation.SetUInt32(type, MediaFoundation.Channels, channels);
+        if (mask != 0) MediaFoundation.SetUInt32(type, MediaFoundation.ChannelMask, mask);
         MediaFoundation.SetUInt32(type, MediaFoundation.BitsPerSample, bits);
         MediaFoundation.SetUInt32(type, MediaFoundation.BlockAlignment, channels * bits / 8);
         MediaFoundation.SetUInt32(type, MediaFoundation.AverageBytes, rate * channels * bits / 8);
+    }
+
+    private static void PrepareAlacReader(AudioReader reader, nint targetPcm)
+    {
+        if (!reader.Info.IsAlac || reader.Info.Channels <= 2)
+        {
+            MediaFoundation.SetCurrentMediaType(reader.Handle, MediaFoundation.FirstAudioStream, targetPcm);
+            return;
+        }
+        var layout = AlacChannelLayout.FromTag(reader.Info.Channels, reader.Info.AlacLayoutTag)
+            ?? throw new InvalidDataException("Layout ALAC não suportado.");
+        var pcm = MediaFoundation.CreateMediaType();
+        try
+        {
+            SetPcm(pcm, (uint)reader.Info.SampleRate, (uint)reader.Info.Channels, reader.Info.Bits == 24 ? 24u : 16u, layout.Mask);
+            MediaFoundation.CorrectAlacOrder(reader.Handle, pcm, targetPcm, layout);
+        }
+        finally { MediaFoundation.Release(pcm); }
     }
 }

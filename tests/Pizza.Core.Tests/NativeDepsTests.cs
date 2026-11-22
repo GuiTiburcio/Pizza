@@ -31,6 +31,7 @@ public class NativeDepsTests
         Assert.Contains("libjxl", ids);
         Assert.Contains("vcruntime", ids);
         Assert.Contains("libreoffice", ids);
+        Assert.Contains("apple-alac", ids);
         Assert.Equal(ids.Count, ids.Distinct().Count());
     }
 
