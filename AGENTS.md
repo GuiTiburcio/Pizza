@@ -16,8 +16,8 @@ Leia e siga [CLAUDE.md](CLAUDE.md) antes de alterar qualquer parte do projeto. A
 ## Papéis dos Agentes
 
 - **Claude Code (principal)**: Orquestra, revisa e aplica. Roda `/grill-me`, `/plan`, `/goal`; revisa diffs dos worktrees; faz merge na `main`; roda a auditoria de segurança. Não executa trabalho longo dentro dos worktrees do Antigravity.
-- **Subagentes do Claude (exceção autorizada pelo mantenedor em 20/11/2026)**: Quando o Claude Code principal os dispara com um `TAREFA.md`, podem implementar em `Pizza\worktrees\<nome>`, vários em paralelo, um por worktree. Valem os mesmos limites do Antigravity: não fazem merge na `main`, não alteram invariantes `SEC-*`/`PRIV-*` e não editam fora do próprio worktree. Entregam commits no ramo e um `RESULTADO.md`. O contrato está na skill `tarefa-worktree`.
-- **Antigravity**: Executa nos worktrees. Cria e mantém worktrees em `Pizza\worktrees\<nome>`; compila, testa e roda o app para validar; implementa a tarefa recebida. Não faz merge na `main`, não altera invariantes `SEC-*`/`PRIV-*`, não edita fora do próprio worktree.
+- **Subagentes do Claude (exceção autorizada pelo mantenedor em 20/11/2026)**: Quando o Claude Code principal os dispara com um `TAREFA.md`, podem implementar na pasta de worktrees ao lado do repositório (`Pizza\2-ramos\<faixa>\<tarefa>` (faixas `base`, `jumbo`, `projeto` e `revisao`; ramo `<faixa>/<tarefa>`)), vários em paralelo, um por worktree. Valem os mesmos limites do Antigravity: não fazem merge na `main`, não alteram invariantes `SEC-*`/`PRIV-*` e não editam fora do próprio worktree. Entregam commits no ramo e um `RESULTADO.md`. O contrato está na skill `tarefa-worktree`.
+- **Antigravity**: Executa nos worktrees. Cria e mantém worktrees na pasta de worktrees ao lado do repositório (`Pizza\2-ramos\<faixa>\<tarefa>` (faixas `base`, `jumbo`, `projeto` e `revisao`; ramo `<faixa>/<tarefa>`)); compila, testa e roda o app para validar; implementa a tarefa recebida. Não faz merge na `main`, não altera invariantes `SEC-*`/`PRIV-*`, não edita fora do próprio worktree.
 
 ## Comunicação
 
@@ -26,3 +26,7 @@ A pedido do mantenedor, use a skill [caveman](.agents/skills/caveman/SKILL.md) n
 A skill muda a comunicação no chat. Ela não autoriza encurtar código, comentários, documentação, testes, mensagens da interface, commits ou PRs. Perguntas e opções devem ser frases completas. As instruções da plataforma e as regras de segurança prevalecem.
 
 Continue o trabalho autorizado entre etapas independentes. Informe o resultado verificável, o teste disponível para o mantenedor e o próximo passo. Não declare validação manual, auditoria ou fase concluída sem evidência.
+
+## Organização (5S)
+
+- 5S: cada arquivo novo vai na pasta da cascata correspondente; nada gerado fica fora do .gitignore.

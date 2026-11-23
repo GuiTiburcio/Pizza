@@ -24,7 +24,7 @@ body:
     id: reproduce
     attributes:
       label: Caso e passos
-      description: Caso Pxx de docs/VALIDACAO-PILOTO.md, formato da imagem, passos e frequência da falha.
+      description: Caso Pxx de docs/4-entrega/VALIDACAO-PILOTO.md, formato da imagem, passos e frequência da falha.
     validations:
       required: true
   - type: textarea

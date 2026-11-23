@@ -1,6 +1,6 @@
 # Fase 5 — medir e endurecer
 
-Referências: [SPECS §15](SPECS.md#15-rastreabilidade-requisito--fase--teste) (NFR-01 a NFR-05, PRIV-02 a PRIV-05, TST-13, TST-20, TST-28) e os itens V-01 a V-04 da [auditoria do projeto](security/AUDITORIA-SEGURANCA.md). As SPECS prevalecem.
+Referências: [SPECS §15](../1-produto/SPECS.md#15-rastreabilidade-requisito--fase--teste) (NFR-01 a NFR-05, PRIV-02 a PRIV-05, TST-13, TST-20, TST-28) e os itens V-01 a V-04 da [auditoria do projeto](../6-seguranca/AUDITORIA-SEGURANCA.md). As SPECS prevalecem.
 
 **Fase aberta em 11/11/2026.** Ordem escolhida pelo mantenedor: medir, endurecer e auditar.
 

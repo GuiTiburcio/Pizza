@@ -1,6 +1,6 @@
 # Contribuir com o Pizza
 
-Use uma branch por mudança e envie pull request para `main`. Código em inglês; interface, documentação e commits em português. Leia [CLAUDE.md](CLAUDE.md) e [SPECS](docs/SPECS.md). Mudanças de decisão ganham um [ADR](docs/adr/README.md).
+Use uma branch por mudança e envie pull request para `main`. Código em inglês; interface, documentação e commits em português. Leia [CLAUDE.md](../CLAUDE.md) e [SPECS](../docs/1-produto/SPECS.md). Mudanças de decisão ganham um [ADR](../docs/2-decisoes/README.md).
 
 Ambiente: Windows x64, .NET 10 SDK e Build Tools com C++ para NativeAOT.
 

@@ -19,4 +19,4 @@ A saída fica na pasta da origem. Conflitos recebem ` (1)`, ` (2)` e assim por d
 - **Vários arquivos:** Juntar PDFs aceita várias entradas; as demais conversões não oferecem um lote genérico nesta etapa.
 - **Logs:** o menu do ícone abre os registros técnicos. Demonstre problemas com arquivos de exemplo, sem documentos pessoais.
 
-Consulte as [limitações e próximas etapas](ROADMAP.md).
+Consulte as [limitações e próximas etapas](../1-produto/ROADMAP.md).

@@ -1,6 +1,6 @@
 # Plano: formatos por pacote e parcelas em paralelo
 
-- **Status:** aprovado pelo mantenedor em 13/11/2026. Decisões registradas no [ADR-039](../adr/039-formatos-por-pacote-e-fatias-incompativeis.md) e na SPECS (§2.1 e §5.3).
+- **Status:** aprovado pelo mantenedor em 13/11/2026. Decisões registradas no [ADR-039](../../2-decisoes/039-formatos-por-pacote-e-fatias-incompativeis.md) e na SPECS (§2.1 e §5.3).
 - **Base:** ADR-026 (Vídeo), ADR-033 (PDFium e QPDF), ADR-034 (Brotinho e Jumbo), ADR-035 (Áudio) e a lista de formatos colada pelo mantenedor.
 
 ## 1. Decisões desta rodada
@@ -11,7 +11,7 @@
 | Aba Docs | **Uma aba só, com voltas.** Dentro de Docs aparecem só as fatias que servem ao arquivo arrastado (DOCX não mostra CSV) |
 | Outras abas | Continuam visíveis. Fatia incompatível fica apagada; ao clicar ou soltar nela, a descrição da fatia vira "Experimente a aba Docs". A aba citada é a que tem conversões para o arquivo. O menu continua aberto para nova escolha |
 | Personalizar a pizza | Fase 8, **nos dois pacotes**: ligar e desligar abas e fatias e reordenar, em Configurações. Padrão: tudo ligado |
-| Fora do Pizza | Compactados, 3D e CAD, PSD/AI/CDR, OCR, arquivos com DRM, PAGES/KEY/NUMBERS e raster → vetor. Vão para `docs/ideias-descartadas` com o motivo |
+| Fora do Pizza | Compactados, 3D e CAD, PSD/AI/CDR, OCR, arquivos com DRM, PAGES/KEY/NUMBERS e raster → vetor. Vão para `docs/7-melhoria/ideias-descartadas` com o motivo |
 | Pizza — VII | Nova sessão no grupo Pizza: aba Web, dados, legendas e Markdown/HTML, em .NET puro, nos dois pacotes |
 
 **A1 (aprovada):** no Brotinho, fatias que só existem no Jumbo **não aparecem** (menos é mais).
