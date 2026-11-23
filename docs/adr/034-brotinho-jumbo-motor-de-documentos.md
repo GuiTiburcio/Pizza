@@ -62,6 +62,19 @@ Decisões do mantenedor para o HTML, que o Markdown seguirá:
 
 O Markdown leva a mesma estrutura do HTML, no padrão que o Obsidian lê bem (CommonMark e GFM, mais `==realce==` e notas `[^1]`), sem citar nenhum programa na legenda da fatia ("MD · Texto formatado"). As imagens vão em arquivos ao lado, citadas por `![[…]]`, com os nomes dados pelo residente (ADR-038). Tabelas usam a primeira linha como cabeçalho, e uma célula mesclada vira célula vazia, porque o Markdown não tem mescla. Texto que seria lido como marcação (`#`, `$`, `%%`, `*`, `[`, "- " no começo do parágrafo e outros) é escapado.
 
+### Adendo de 22/11/2026: dois zips do mesmo commit (etapa 4)
+
+Implementado:
+
+- `packaging/comum.json`, `brotinho.json` e `jumbo.json` declaram o que entra em cada edição; o Jumbo herda o Brotinho e acrescenta `Pizza.Docs.*` e a pasta `motor\`. É a única fonte dessas regras, sem binários no Git.
+- `tools/montar-edicao.ps1 -Edicao brotinho|jumbo` monta a pasta e falha com arquivo citado que não existe, arquivo fora do manifesto ou arquivo proibido no Brotinho. Testes em `PackagingManifestTests` (manifestos válidos, Brotinho sem Docs nem motor, Jumbo superconjunto, falhas do script).
+- O `previa.yml` publica `Pizza-Brotinho-<versão>.zip` e `Pizza-Jumbo-<versão>.zip`, um SBOM por edição (`tools/sbom-nativos.ps1` aceita mais de um escopo) e os SHA-256 no `SHA256SUMS`, com atestado de proveniência dos dois zips. O motor sai do `tools/baixar-motor.ps1` (versão e SHA-256 fixos), então o Jumbo não ficou condicionado. O `ci.yml` monta as duas edições a cada PR, só para conferir.
+
+Pendente:
+
+- Enxugar o motor (dicionários, mantendo a hifenização) com teste de fidelidade: o Jumbo ainda leva o motor inteiro.
+- O primeiro Jumbo real só sai com a próxima tag `v*-previa*`; até lá a montagem foi verificada no CI e localmente, não num lançamento.
+- O syft não varre o motor; o SBOM do Jumbo o inclui pelo `build/native-deps.json`.
 ## Consequências
 
 Ninguém precisa instalar Office para converter documentos: quem quer só imagens baixa o Brotinho (cerca de 10 MB); quem quer DOCX/XLSX/PPTX → PDF baixa o Jumbo (cerca de 300 MB a mais). O isolamento é o mesmo do Worker de imagens: AppContainer, job, sem rede.
