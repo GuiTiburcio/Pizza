@@ -1,0 +1,8 @@
+{
+  "esquema": 1,
+  "edicao": "brotinho",
+  "descricao": "Pizza Brotinho (ADR-034, ADR-039): só o que o Pizza faz com o próprio código, o libvips, o QPDF, o PDFium e o Media Foundation. Sem Pizza.Docs e sem o motor de documentos.",
+  "herda": [ "comum" ],
+  "proibidos": [ "Pizza.Docs*", "motor/*" ],
+  "entradas": []
+}
