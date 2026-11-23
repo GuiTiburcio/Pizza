@@ -92,6 +92,21 @@ public class PackagingManifestTests
         Assert.Contains("Pizza.Worker.exe", brotinho);
     }
 
+    [Theory]
+    [InlineData("brotinho")]
+    [InlineData("jumbo")]
+    public void Edicao_inclui_ALAC_com_licenca_aviso_e_origem(string edition)
+    {
+        var entries = Resolve(edition).SelectMany(manifest => manifest.Entries);
+        var files = entries.Where(entry => entry.Origin == "pizza").SelectMany(Destinations).ToList();
+
+        Assert.Contains("Pizza.Alac.dll", files);
+        Assert.Contains("ALAC-LICENSE.txt", files);
+        Assert.Contains("ALAC-NOTICE.txt", files);
+        Assert.Contains("ALAC-BUILD.json", files);
+    }
+
+
     [Fact]
     public void Arquivo_sentinela_do_motor_e_o_mesmo_do_native_deps()
     {

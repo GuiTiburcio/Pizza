@@ -1,10 +1,10 @@
 # Pacotes do Pizza
 
-Manifestos declarativos das duas edições ([ADR-034](../docs/adr/034-brotinho-jumbo-motor-de-documentos.md), etapa 4; conteúdo de cada pacote no [ADR-039](../docs/adr/039-formatos-por-pacote-e-fatias-incompativeis.md)). Esta pasta é a **única** fonte das regras de "o que entra em cada zip". Não há binários aqui, só nomes de arquivo, e nenhuma outra pasta repete estas listas.
+Manifestos declarativos das duas edições ([ADR-034](../docs/2-decisoes/034-brotinho-jumbo-motor-de-documentos.md), etapa 4; conteúdo de cada pacote no [ADR-039](../docs/2-decisoes/039-formatos-por-pacote-e-fatias-incompativeis.md)). Esta pasta é a **única** fonte das regras de "o que entra em cada zip". Não há binários aqui, só nomes de arquivo, e nenhuma outra pasta repete estas listas.
 
 | Manifesto | Edição | Conteúdo |
 | --- | --- | --- |
-| `comum.json` | (base) | Residente, Worker, bibliotecas nativas do Worker, sons, `LICENSE` e `THIRD-PARTY-NOTICES.md` |
+| `comum.json` | (base) | Residente, Worker, bibliotecas nativas do Worker, arquivos de licença e origem do ALAC, sons, `LICENSE` e `THIRD-PARTY-NOTICES.md` |
 | `brotinho.json` | Pizza Brotinho | O comum. **Nunca** leva `Pizza.Docs*` nem a pasta `motor\` (campo `proibidos`) |
 | `jumbo.json` | Pizza Jumbo | O Brotinho, mais `Pizza.Docs.*` e `motor\` (LibreOffice extraído pelo `tools/baixar-motor.ps1`, versão e SHA-256 fixos) |
 
