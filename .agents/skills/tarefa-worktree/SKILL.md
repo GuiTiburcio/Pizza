@@ -1,7 +1,7 @@
 ---
 name: tarefa-worktree
 description: >-
-  Contrato de trabalho nos worktrees do Pizza (a pasta de worktrees ao lado do repositório, `..\ramos\<faixa>\<tarefa>` (faixas `base`, `jumbo`, `projeto` e `revisao`; ramo `<faixa>/<tarefa>`)). Use ao
+  Contrato de trabalho nos worktrees do Pizza (a pasta de worktrees ao lado do repositório, `Pizza\2-ramos\<faixa>\<tarefa>` (faixas `base`, `jumbo`, `projeto` e `revisao`; ramo `<faixa>/<tarefa>`)). Use ao
   escrever um TAREFA.md, ao executar uma tarefa recebida num worktree ou ao
   entregar o RESULTADO.md.
 ---
