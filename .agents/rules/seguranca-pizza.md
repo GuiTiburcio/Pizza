@@ -4,7 +4,7 @@ trigger: always_on
 
 # Invariantes de segurança do Pizza (nunca quebrar)
 
-Versão curta. O texto completo e a fonte da verdade estão em [CLAUDE.md §5](../../CLAUDE.md) e em `docs/SPECS.md`.
+Versão curta. O texto completo e a fonte da verdade estão em [CLAUDE.md §5](../../CLAUDE.md) e em `docs/1-produto/SPECS.md`.
 
 1. Nenhum dado de usuário sai do PC. A única rede permitida é a consulta de atualização (SEC-50).
 2. O arquivo original nunca é escrito, movido ou apagado, e o drop nunca devolve `DROPEFFECT_MOVE` (SEC-05, SEC-31).
@@ -15,4 +15,4 @@ Versão curta. O texto completo e a fonte da verdade estão em [CLAUDE.md §5](.
 7. Senha só em buffer zerado após o uso; nunca em string, log ou exceção (SEC-70 a SEC-73).
 8. Nenhum instalador sai de build local; só o CI publica (SPECS §11).
 
-Mudança que enfraqueça um item acima precisa de ADR em `docs/adr/` e aprovação do mantenedor antes do código.
+Mudança que enfraqueça um item acima precisa de ADR em `docs/2-decisoes/` e aprovação do mantenedor antes do código.

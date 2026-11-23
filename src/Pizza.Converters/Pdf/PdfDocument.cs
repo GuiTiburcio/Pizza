@@ -6,7 +6,7 @@ namespace Pizza.Converters.Pdf;
 /// Um PDF aberto pela QPDF, todo em memória (ADR-033). O arquivo de entrada não é confiável: só roda no
 /// Worker em AppContainer (SEC-20), e a saída é sempre regravada por inteiro e sem conteúdo ativo (SEC-76).
 /// </summary>
-internal sealed unsafe class PdfDocument : IDisposable
+internal sealed unsafe partial class PdfDocument : IDisposable
 {
     /// <summary>SEC-44: a origem e a saída ficam na memória do Worker, que tem 1,5 GB; acima disto, LIMIT_EXCEEDED.</summary>
     public const long MaxSourceBytes = 512L * 1024 * 1024;
@@ -19,6 +19,12 @@ internal sealed unsafe class PdfDocument : IDisposable
 
     private static readonly string[] DangerousAnnotations =
         ["/RichMedia", "/FileAttachment", "/Screen", "/Movie", "/Sound", "/3D"];
+
+    // PRIV-30: anotações de revisão carregam comentários, autoria, respostas e aparências privadas.
+    // Links e campos de formulário não são comentários e continuam no documento.
+    private static readonly string[] ReviewAnnotations =
+        ["/Text", "/Popup", "/FreeText", "/Line", "/Square", "/Circle", "/Polygon", "/PolyLine",
+         "/Highlight", "/Underline", "/Squiggly", "/StrikeOut", "/Stamp", "/Caret", "/Ink", "/Redact"];
 
     // Chaves que só carregam código, gatilhos ou arquivos embutidos. Sem elas, o resto do documento continua igual.
     private static readonly string[] ActiveKeys =
@@ -85,6 +91,12 @@ internal sealed unsafe class PdfDocument : IDisposable
             return tooMany ? "LIMIT_EXCEEDED" : "CORRUPTED";
         }
 
+        if (opened.PreserveTechnicalTitle() is { } metadataError)
+        {
+            opened.Dispose();
+            return metadataError;
+        }
+
         document = opened;
         return null;
     }
@@ -109,11 +121,12 @@ internal sealed unsafe class PdfDocument : IDisposable
 
     /// <summary>
     /// SEC-76: percorre tudo o que vai para a saída, a partir do trailer, e tira JavaScript, ações automáticas,
-    /// programas, envio de formulário, anexos e mídia. Devolve quantos itens foram removidos.
+    /// programas, envio de formulário, anexos e mídia. PRIV-30/31: também remove metadados pessoais e
+    /// comentários, preservando o título. Devolve quantos itens foram removidos.
     /// </summary>
     public int RemoveActiveContent()
     {
-        var removed = 0;
+        var removed = CleanDocumentInfo();
         // O papel entra na chave: um objeto usado ao mesmo tempo como mapa de recursos e como /Names é limpo mesmo assim.
         var visited = new HashSet<(int, int, bool)>();
         var pending = new Stack<(uint Handle, bool NameMap)>();
@@ -129,6 +142,12 @@ internal sealed unsafe class PdfDocument : IDisposable
 
             if (Qpdf.IsStream(_qpdf, handle) != 0)
             {
+                var dictionary = Qpdf.StreamDictionary(_qpdf, handle);
+                if (Qpdf.IsName(_qpdf, Qpdf.Key(_qpdf, dictionary, "/Type"), "/Metadata") != 0)
+                {
+                    ClearMetadataStream(handle);
+                }
+
                 handle = Qpdf.StreamDictionary(_qpdf, handle);
             }
 
@@ -182,6 +201,11 @@ internal sealed unsafe class PdfDocument : IDisposable
                     return "CORRUPTED";
                 }
 
+                if (CopyTechnicalTitleTo(part) is { } titleError)
+                {
+                    return titleError;
+                }
+
                 var (offset, count) = parts[index].GetOffsetAndLength(PageCount);
                 for (var page = offset; page < offset + count; page++)
                 {
@@ -223,6 +247,12 @@ internal sealed unsafe class PdfDocument : IDisposable
             if ((Qpdf.EmptyPdf(merged) & Qpdf.Errors) != 0)
             {
                 return "CORRUPTED";
+            }
+
+            // O primeiro documento define o nome e o título da saída, sem importar o restante de /Info.
+            if (documents.Count > 0 && documents[0].CopyTechnicalTitleTo(merged) is { } titleError)
+            {
+                return titleError;
             }
 
             foreach (var document in documents)
@@ -289,11 +319,33 @@ internal sealed unsafe class PdfDocument : IDisposable
 
     private int Clean(uint dictionary)
     {
+        if (Qpdf.HasKey(_qpdf, dictionary, "/Subtype") != 0
+            && ReviewAnnotations.Any(name => Qpdf.IsName(_qpdf, Qpdf.Key(_qpdf, dictionary, "/Subtype"), name) != 0))
+        {
+            // Retirar /Annots não basta: a árvore de estrutura pode apontar para o mesmo comentário.
+            // Esvaziar o objeto também desconecta respostas, metadados e streams de aparência privados.
+            var keys = Keys(dictionary);
+            foreach (var key in keys)
+            {
+                Qpdf.RemoveKey(_qpdf, dictionary, key);
+            }
+
+            return keys.Count;
+        }
+
         var removed = 0;
         foreach (var key in ActiveKeys)
         {
             removed += Remove(dictionary, key);
         }
+
+        // XMP pode estar no catálogo, numa página ou noutro objeto. PieceInfo guarda revisões privadas.
+        if (Qpdf.HasKey(_qpdf, dictionary, "/Metadata") != 0)
+        {
+            ClearMetadataStream(Qpdf.Key(_qpdf, dictionary, "/Metadata"));
+            removed += Remove(dictionary, "/Metadata");
+        }
+        removed += Remove(dictionary, "/PieceInfo");
 
         if (IsDangerousAction(dictionary))
         {
@@ -324,8 +376,15 @@ internal sealed unsafe class PdfDocument : IDisposable
         for (var index = 0; index < Qpdf.ArrayCount(_qpdf, annotations); index++)
         {
             var annotation = Qpdf.ArrayItem(_qpdf, annotations, index);
+            if (Qpdf.IsDictionary(_qpdf, annotation) == 0 || Qpdf.HasKey(_qpdf, annotation, "/Subtype") == 0)
+            {
+                removed++;
+                continue;
+            }
+
             var subtype = Qpdf.IsDictionary(_qpdf, annotation) != 0 ? Qpdf.Key(_qpdf, annotation, "/Subtype") : 0;
-            if (subtype != 0 && DangerousAnnotations.Any(name => Qpdf.IsName(_qpdf, subtype, name) != 0))
+            if (subtype != 0 && (DangerousAnnotations.Any(name => Qpdf.IsName(_qpdf, subtype, name) != 0)
+                || ReviewAnnotations.Any(name => Qpdf.IsName(_qpdf, subtype, name) != 0)))
             {
                 removed++;
                 continue;
@@ -337,6 +396,34 @@ internal sealed unsafe class PdfDocument : IDisposable
         if (removed > 0)
         {
             Qpdf.ReplaceKey(_qpdf, page, "/Annots", kept);
+        }
+
+        return removed;
+    }
+
+    private int CleanDocumentInfo()
+    {
+        var trailer = Qpdf.Trailer(_qpdf);
+        if (Qpdf.HasKey(_qpdf, trailer, "/Info") == 0)
+        {
+            return 0;
+        }
+
+        var info = Qpdf.Key(_qpdf, trailer, "/Info");
+        if (Qpdf.IsDictionary(_qpdf, info) == 0)
+        {
+            return Remove(trailer, "/Info");
+        }
+
+        var removed = 0;
+        foreach (var key in Keys(info))
+        {
+            // Allowlist: campos personalizados também podem carregar dados pessoais. Um título inválido
+            // não pode servir como referência para outro dicionário ou stream com metadados.
+            if (key != "/Title" || Qpdf.IsString(_qpdf, Qpdf.Key(_qpdf, info, key)) == 0)
+            {
+                removed += Remove(info, key);
+            }
         }
 
         return removed;
