@@ -14,6 +14,21 @@ public class PdfMergeConverterTests
         return (error, destination.ToArray());
     }
 
+    [Fact]
+    public void Juntar_preserva_apenas_o_titulo_tecnico_do_primeiro_documento()
+    {
+        var (error, output) = Merge(
+            TestPdf.Pages(1, "<< /Title (Primeiro titulo) /Author (AutorFicticioA) >>"),
+            TestPdf.Pages(1, "<< /Title (Segundo titulo) /Author (AutorFicticioB) >>"));
+        Assert.Null(error);
+        var inspection = PdfInspection.Of(output);
+        Assert.True(inspection.Valid);
+        Assert.Equal(2, inspection.Rotations.Count);
+        Assert.Equal("Primeiro titulo", inspection.Title);
+        Assert.DoesNotContain("Segundo titulo", inspection.Everything);
+        Assert.DoesNotContain("AutorFicticio", inspection.Everything);
+    }
+
     /// <summary>Páginas com larguras diferentes, para conferir a ordem pela largura.</summary>
     private static byte[] Widths(params int[] widths)
     {

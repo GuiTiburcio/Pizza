@@ -38,7 +38,7 @@ public class PdfRotateConverterTests
     [Fact]
     public void Saida_nao_leva_javascript_acoes_anexos_nem_midia()
     {
-        // SEC-76 e TST-22. O link para um site e a anotação de texto continuam.
+        // SEC-76, PRIV-30 e TST-22. O link continua; comentários não vão para a saída.
         var pdf = TestPdf.Build(
             "<< /Type /Catalog /Pages 2 0 R /OpenAction 6 0 R /AA << /WC 6 0 R >> /Names << /JavaScript 7 0 R /EmbeddedFiles 8 0 R >> /AcroForm << /Fields [] /XFA 3 0 R >> >>",
             "<< /Type /Pages /Kids [4 0 R] /Count 1 >>",
@@ -62,7 +62,7 @@ public class PdfRotateConverterTests
         Assert.True(inspection.Valid);
         Assert.Empty(inspection.ActiveContent);
         Assert.Contains("/URI", inspection.Everything);
-        Assert.Contains("/Text", inspection.Everything);
+        Assert.DoesNotContain("/Text", inspection.Everything);
         Assert.DoesNotContain("cmd.exe", inspection.Everything);
         Assert.DoesNotContain("app.alert", inspection.Everything);
     }

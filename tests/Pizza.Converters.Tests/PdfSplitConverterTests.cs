@@ -28,6 +28,21 @@ public sealed class PdfSplitConverterTests : IDisposable
     }
 
     [Fact]
+    public void Partes_preservam_titulo_unicode_sem_outros_metadados()
+    {
+        var (error, parts) = Split(TestPdf.Pages(2, "<< /Title <FEFF004100E700E3006F> /Author (AutorFicticio) >>"), "pages");
+        Assert.Null(error);
+        Assert.Equal(2, parts.Count);
+        Assert.All(parts, part =>
+        {
+            var inspection = PdfInspection.Of(part);
+            Assert.True(inspection.Valid);
+            Assert.Equal("Ação", inspection.Title);
+            Assert.DoesNotContain("AutorFicticio", inspection.Everything);
+        });
+    }
+
+    [Fact]
     public void Cada_pagina_vira_um_pdf_mantendo_o_giro_herdado()
     {
         // A árvore de páginas dá 90° a todas; a 3ª tem 180° próprio.

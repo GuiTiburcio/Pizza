@@ -36,6 +36,27 @@ public sealed class PdfConversionTests(SandboxFixture fixture) : IDisposable
     }
 
     [Fact]
+    public void Girar_com_metadados_preserva_texto_e_original_no_worker()
+    {
+        const string title = "Titulo tecnico de teste";
+        const string author = "Autor ficticio de teste";
+        const string content = "Texto sintetico da pagina";
+        var source = Path.Combine(_folder, "metadados.pdf");
+        var original = WithText(content, title, author);
+        File.WriteAllBytes(source, original);
+
+        var runner = Runner();
+        var rotated = runner.Run(source, "pdf.rotate", "pdf", new Dictionary<string, string> { ["rotation"] = "90" }, suffix: " - girado");
+        Assert.Null(rotated.ErrorCode);
+        var output = Path.Combine(_folder, Assert.IsType<string>(rotated.OutputName));
+        var extracted = runner.Run(output, "pdf.text", "txt");
+        Assert.Null(extracted.ErrorCode);
+        Assert.Equal(content, File.ReadAllText(Path.Combine(_folder, Assert.IsType<string>(extracted.OutputName))).Trim());
+        Assert.Equal(original, File.ReadAllBytes(source));
+        Assert.Empty(Directory.GetFiles(_folder, ".~pizza-*", new EnumerationOptions { AttributesToSkip = 0 }));
+    }
+
+    [Fact]
     public void Arquivo_pdf_que_nao_e_pdf_nao_gera_saida()
     {
         var source = Path.Combine(_folder, "falso.pdf");
@@ -249,7 +270,7 @@ public sealed class PdfConversionTests(SandboxFixture fixture) : IDisposable
     private static Dictionary<string, string> ImageOptions(string format) =>
         new() { ["resolution"] = "96", ["format"] = format, ["quality"] = "85" };
 
-    private static byte[] WithText(string text)
+    private static byte[] WithText(string text, string? title = null, string? author = null)
     {
         var content = $"BT /F1 18 Tf 20 150 Td ({text}) Tj ET";
         string[] objects =
@@ -260,6 +281,10 @@ public sealed class PdfConversionTests(SandboxFixture fixture) : IDisposable
             $"<< /Length {content.Length} >>\nstream\n{content}\nendstream",
             "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
         ];
+        if (title is not null)
+        {
+            objects = [.. objects, $"<< /Title ({title}) /Author ({author}) >>"];
+        }
         var pdf = new StringBuilder("%PDF-1.7\n");
         var offsets = new List<int>();
         for (var i = 0; i < objects.Length; i++)
@@ -271,7 +296,8 @@ public sealed class PdfConversionTests(SandboxFixture fixture) : IDisposable
         var start = pdf.Length;
         pdf.Append($"xref\n0 {objects.Length + 1}\n0000000000 65535 f \n");
         offsets.ForEach(offset => pdf.Append($"{offset:D10} 00000 n \n"));
-        pdf.Append($"trailer\n<< /Size {objects.Length + 1} /Root 1 0 R >>\nstartxref\n{start}\n%%EOF\n");
+        var info = title is null ? "" : $" /Info {objects.Length} 0 R";
+        pdf.Append($"trailer\n<< /Size {objects.Length + 1} /Root 1 0 R{info} >>\nstartxref\n{start}\n%%EOF\n");
         return Encoding.ASCII.GetBytes(pdf.ToString());
     }
 

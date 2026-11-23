@@ -7,8 +7,8 @@ Dependências diretas desta prévia. Este documento não substitui o SBOM nem os
 | .NET 10 | Runtime, bibliotecas e NativeAOT | MIT e avisos de terceiros do runtime |
 | NetVips 3.2.0 | Binding do conversor | MIT |
 | libvips / NetVips.Native.win-x64 8.18.7 | Conversão nativa no Worker | LGPL-2.1-or-later, além das licenças dos codecs incluídos |
-| QPDF 12.4.2 (`qpdf30.dll`) | Operações de estrutura de PDF no Worker ([ADR-033](docs/adr/033-pdfium-e-qpdf.md)) | Apache-2.0 |
-| Apple Lossless Audio Codec (`Pizza.Alac.dll`, fonte c38887c5) | Codificação ALAC no Worker; wrapper do projeto ([ADR-041](docs/adr/041-alac-referencia-apple.md)) | Apache-2.0; texto integral em `ALAC-LICENSE.txt` no pacote |
+| QPDF 12.4.2 (`qpdf30.dll`) | Operações de estrutura de PDF no Worker ([ADR-033](docs/2-decisoes/033-pdfium-e-qpdf.md)) | Apache-2.0 |
+| Apple Lossless Audio Codec (`Pizza.Alac.dll`, fonte c38887c5) | Codificação ALAC no Worker; wrapper do projeto ([ADR-041](docs/2-decisoes/041-alac-referencia-apple.md)) | Apache-2.0; texto integral em `ALAC-LICENSE.txt` no pacote |
 | Runtime do Visual C++ (`msvcp140.dll`, `vcruntime140.dll`, `vcruntime140_1.dll`) | `vcruntime140.dll` e `vcruntime140_1.dll` são importadas pela `qpdf30.dll` e pela `Pizza.Alac.dll` (RuntimeLibrary MultiThreadedDLL; confirmado com `dumpbin /dependents`); `msvcp140.dll`, só pela `qpdf30.dll`. Distribuídas junto com elas | Licença de redistribuição do Visual C++ |
 | xUnit.net | Testes | Apache-2.0 |
 | Microsoft.NET.Test.Sdk | Executor de testes | MIT |

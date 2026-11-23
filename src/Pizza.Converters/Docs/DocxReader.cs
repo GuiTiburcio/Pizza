@@ -408,9 +408,27 @@ internal sealed class DocxReader
         {
             var data = _package.ReadBytes(part);
             var (mime, format) = Format(data);
-            picture = format == "TIFF" && _tiffToPng(data) is { } png ? new Picture("image/png", png, "", null)
-                : mime is not null ? new Picture(mime, data, "", null)
-                : new Picture(null, null, "", $"[imagem em {format}: salve como PNG no editor e converta de novo]");
+            try
+            {
+                // PRIV-30: os metadados saem antes de qualquer saída; a TIFF convertida passa pelo mesmo filtro.
+                data = mime switch
+                {
+                    "image/png" => PngMetadata.Remove(data),
+                    "image/jpeg" => JpegMetadata.Remove(data),
+                    "image/gif" => GifMetadata.Remove(data),
+                    "image/webp" => WebpMetadata.Remove(data),
+                    _ => data,
+                };
+
+                picture = format == "TIFF" && _tiffToPng(data) is { } png ? new Picture("image/png", PngMetadata.Remove(png), "", null)
+                    : mime is not null ? new Picture(mime, data, "", null)
+                    : new Picture(null, null, "", $"[imagem em {format}: salve como PNG no editor e converta de novo]");
+            }
+            catch (InvalidDataException)
+            {
+                // Contêiner danificado: sem como separar pixels de metadados, nenhum byte dele vai para a saída.
+                picture = new Picture(null, null, "", "[imagem danificada não incluída]");
+            }
             _pictures[part] = picture;
         }
 

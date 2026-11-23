@@ -31,7 +31,7 @@ internal static partial class TestPdf
     }
 
     /// <summary>Páginas simples, todas com o mesmo conteúdo.</summary>
-    public static byte[] Pages(int count)
+    public static byte[] Pages(int count, string? info = null)
     {
         var kids = string.Join(" ", Enumerable.Range(0, count).Select(i => $"{i + 4} 0 R"));
         var objects = new List<string>
@@ -41,7 +41,14 @@ internal static partial class TestPdf
             "<< /Length 0 >>\nstream\n\nendstream",
         };
         objects.AddRange(Enumerable.Range(0, count).Select(_ => "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] /Contents 3 0 R >>"));
-        return Build([.. objects]);
+        if (info is null)
+        {
+            return Build([.. objects]);
+        }
+
+        objects.Add(info);
+        var pdf = Encoding.Latin1.GetString(Build([.. objects]));
+        return Encoding.Latin1.GetBytes(pdf.Replace("/Root 1 0 R >>", $"/Root 1 0 R /Info {objects.Count} 0 R >>", StringComparison.Ordinal));
     }
 
     /// <summary>Páginas de 200 × 300 pt com um texto em Helvetica e, opcionalmente, a metade esquerda pintada de preto.</summary>
@@ -99,6 +106,9 @@ internal static partial class TestPdf
 
         [LibraryImport("qpdf30", EntryPoint = "qpdf_oh_unparse_resolved")]
         public static partial nint UnparseResolved(nint qpdf, uint handle);
+
+        [LibraryImport("qpdf30", EntryPoint = "qpdf_oh_get_utf8_value")]
+        public static partial nint Utf8Value(nint qpdf, uint handle);
     }
 }
 
@@ -116,6 +126,8 @@ internal sealed unsafe class PdfInspection
     public required string Everything { get; init; }
 
     public required bool Valid { get; init; }
+
+    public string? Title { get; init; }
 
     public IEnumerable<string> ActiveContent => Forbidden.Where(name => System.Text.RegularExpressions.Regex.IsMatch(Everything, Regex(name)));
 
@@ -142,7 +154,10 @@ internal sealed unsafe class PdfInspection
             var size = (int)Qpdf.IntValue(qpdf, Qpdf.Key(qpdf, Qpdf.Trailer(qpdf), "/Size"));
             var everything = string.Join("\n", Enumerable.Range(1, size - 1)
                 .Select(id => Marshal.PtrToStringUTF8(TestPdf.Native.UnparseResolved(qpdf, Qpdf.ObjectById(qpdf, id, 0)))));
-            return new PdfInspection { Rotations = rotations, Everything = everything, Valid = valid };
+            var info = Qpdf.Key(qpdf, Qpdf.Trailer(qpdf), "/Info");
+            var title = Qpdf.IsDictionary(qpdf, info) != 0 && Qpdf.IsString(qpdf, Qpdf.Key(qpdf, info, "/Title")) != 0
+                ? Marshal.PtrToStringUTF8(TestPdf.Native.Utf8Value(qpdf, Qpdf.Key(qpdf, info, "/Title"))) : null;
+            return new PdfInspection { Rotations = rotations, Everything = everything, Valid = valid, Title = title };
         }
         finally
         {
