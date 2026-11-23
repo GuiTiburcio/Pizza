@@ -65,6 +65,18 @@ public sealed class DocxMarkdownConverterTests : IDisposable
     }
 
     [Fact]
+    public void Png_exportado_limpa_autor_e_data_preservando_pixels_e_dpi()
+    {
+        var (input, expected) = DocxHtmlConverterTests.PngComAutorEDpi();
+        var (error, _, images) = Convert(RichDocx(
+            "<w:p>" + Drawing("rIdI") + "</w:p>",
+            relations: [("rIdI", "image", "media/image1.png", false)],
+            media: ("word/media/image1.png", input)));
+        Assert.Null(error);
+        Assert.Equal(expected, Assert.Single(images).Data);
+    }
+
+    [Fact]
     public void Imagem_repetida_vira_uma_parte_so_e_cada_formato_vai_com_o_seu()
     {
         byte[] jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 1, 2];

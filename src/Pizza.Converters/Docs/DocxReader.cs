@@ -408,6 +408,11 @@ internal sealed class DocxReader
         {
             var data = _package.ReadBytes(part);
             var (mime, format) = Format(data);
+            if (mime == "image/png")
+            {
+                data = PngTextMetadata.Remove(data);
+            }
+
             picture = format == "TIFF" && _tiffToPng(data) is { } png ? new Picture("image/png", png, "", null)
                 : mime is not null ? new Picture(mime, data, "", null)
                 : new Picture(null, null, "", $"[imagem em {format}: salve como PNG no editor e converta de novo]");

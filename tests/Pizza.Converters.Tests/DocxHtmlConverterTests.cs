@@ -14,6 +14,18 @@ public sealed class DocxHtmlConverterTests
     // PNG de 1×1 pixel.
     internal const string Png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 
+    internal static (byte[] Input, byte[] Expected) PngComAutorEDpi()
+    {
+        var png = System.Convert.FromBase64String(Png);
+        // Chunks válidos com CRC, depois do IHDR. A saída mantém o pHYs (96 DPI).
+        var author = System.Convert.FromHexString("0000001574455874417574686F72004175746F7220666963746963696F3FA452C9");
+        var dpi = System.Convert.FromHexString("000000097048597300000EC400000EC401952B0E1B");
+        var time = System.Convert.FromHexString("0000000774494D4507EA0B160C000070B35272");
+        var compressed = System.Convert.FromHexString("000000117A545874436F6D6D656E740000789C030000000001A06DE1E9");
+        var localized = System.Convert.FromHexString("0000002169545874417574686F720000007074004175746F7200506573736F61204669637469636961DAE59D3C");
+        return ([.. png[..33], .. author, .. dpi, .. time, .. compressed, .. localized, .. png[33..]], [.. png[..33], .. dpi, .. png[33..]]);
+    }
+
     private static readonly byte[] Emf = [1, 0, 0, 0, .. new byte[36], 0x20, 0x45, 0x4D, 0x46, .. new byte[20]];
 
     private const string Styles =
@@ -250,6 +262,29 @@ public sealed class DocxHtmlConverterTests
             media: ("word/media/image1.png", content)));
 
         Assert.Equal($"<p>[imagem em {format}: salve como PNG no editor e converta de novo]</p>\n", Body(html));
+    }
+
+    [Fact]
+    public void Png_embutido_limpa_autor_e_data_preservando_pixels_e_dpi()
+    {
+        var (input, expected) = PngComAutorEDpi();
+        var html = Html(RichDocx(
+            "<w:p>" + Drawing("rIdI") + "</w:p>",
+            relations: [("rIdI", "image", "media/image1.png", false)],
+            media: ("word/media/image1.png", input)));
+        Assert.Equal($"<p><img src=\"data:image/png;base64,{System.Convert.ToBase64String(expected)}\" alt=\"\"></p>\n", Body(html));
+    }
+
+    [Fact]
+    public void Png_embutido_truncado_retorna_erro_sem_html()
+    {
+        var (input, _) = PngComAutorEDpi();
+        var (error, html) = Convert(RichDocx(
+            "<w:p>" + Drawing("rIdI") + "</w:p>",
+            relations: [("rIdI", "image", "media/image1.png", false)],
+            media: ("word/media/image1.png", input[..^6])));
+        Assert.Equal("CORRUPTED", error);
+        Assert.Null(html);
     }
 
     [Fact]

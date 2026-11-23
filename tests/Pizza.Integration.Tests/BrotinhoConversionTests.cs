@@ -75,14 +75,16 @@ public sealed class BrotinhoConversionTests(SandboxFixture fixture) : IDisposabl
         // ADR-038: o residente escolhe os nomes (sem [ ] # que o Obsidian não aceita), desvia de quem já existe e
         // troca no .md só os marcadores; o original não muda.
         var source = Path.Combine(_folder, "ata [final] #2.docx");
-        byte[] png = [0x89, (byte)'P', (byte)'N', (byte)'G', 1];
+        var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=");
+        var author = Convert.FromHexString("0000001574455874417574686F72004175746F7220666963746963696F3FA452C9");
+        byte[] pngWithAuthor = [.. png[..33], .. author, .. png[33..]];
         byte[] jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 2];
         File.WriteAllBytes(source, ZipBytes(
             ("_rels/.rels", Utf8($"<Relationships xmlns=\"{Rels}\"><Relationship Id=\"r\" Type=\"{Office}/officeDocument\" Target=\"word/document.xml\"/></Relationships>")),
             ("word/_rels/document.xml.rels", Utf8($"<Relationships xmlns=\"{Rels}\"><Relationship Id=\"a\" Type=\"{Office}/image\" Target=\"media/a.png\"/><Relationship Id=\"b\" Type=\"{Office}/image\" Target=\"media/b.jpg\"/></Relationships>")),
             ("word/document.xml", Utf8("<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:r=\"" + Office + "\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\">"
                 + "<w:body><w:p><w:r><w:t>Ata</w:t></w:r></w:p><w:p><w:r><w:drawing><a:blip r:embed=\"a\"/></w:drawing></w:r><w:r><w:drawing><a:blip r:embed=\"b\"/></w:drawing></w:r></w:p></w:body></w:document>")),
-            ("word/media/a.png", png),
+            ("word/media/a.png", pngWithAuthor),
             ("word/media/b.jpg", jpeg)));
         File.WriteAllText(Path.Combine(_folder, "ata _final_ _2 - imagem 1.png"), "já existia");
         var before = SHA256.HashData(File.ReadAllBytes(source));
