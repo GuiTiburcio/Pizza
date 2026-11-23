@@ -23,6 +23,17 @@ public partial class AudioConverterTests
 
         Write(7, 3); // END, seguido de alinhamento em zero
         Assert.Equal(packet.Length, (bit + 7) / 8);
+        return ReplaceAlacPacket(container, packet);
+
+        void Write(uint value, int count)
+        {
+            for (var shift = count - 1; shift >= 0; shift--, bit++)
+                packet[bit / 8] |= (byte)(((value >> shift) & 1) << (7 - bit % 8));
+        }
+    }
+
+    private static byte[] ReplaceAlacPacket(byte[] container, byte[] packet)
+    {
         var atoms = new List<(string Name, int Position, int Payload, int End)>();
         ReadAtoms(0, container.Length);
         var sizes = atoms.Single(atom => atom.Name == "stsz");
@@ -50,14 +61,6 @@ public partial class AudioConverterTests
         if (sizePosition >= offset + oldSize) sizePosition += delta;
         BinaryPrimitives.WriteUInt32BigEndian(result.AsSpan(sizePosition, 4), (uint)packet.Length);
         return result;
-
-        void Write(uint value, int count)
-        {
-            for (var shift = count - 1; shift >= 0; shift--, bit++)
-            {
-                packet[bit / 8] |= (byte)(((value >> shift) & 1) << (7 - bit % 8));
-            }
-        }
 
         uint Read32(int position) => BinaryPrimitives.ReadUInt32BigEndian(container.AsSpan(position, 4));
 

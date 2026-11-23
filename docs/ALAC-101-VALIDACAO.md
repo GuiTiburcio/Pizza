@@ -30,3 +30,20 @@ Este ramo preserva implementação e testes, inclusive testes vermelhos. Um chec
 4. A matriz manual e a validação de interface continuam pendentes. Testes de biblioteca não são testes visuais ou ponta a ponta da interface.
 
 O ALAC #101 permanece aberto até esses critérios serem satisfeitos. Não integrar este checkpoint à main.
+
+## Revalidação após a revisão da cadeia PCM
+
+A negociação implícita foi removida. O fluxo agora decodifica no formato original, permuta em bytes e usa um resampler Windows explícito somente se o destino exigir mudança. A configuração do decoder omite a máscara: pedir4.0 ou7.1 wide diretamente provocava mistura antecipada no SourceReader. A máscara real é aplicada depois da permutação e preservada no WAV.
+
+- Conversores:323 aprovados,0 falhas,0 ignorados na suíte completa, incluindo os sete casos acrescentados após a revisão.
+- Residente:54 aprovados,0 falhas,0 ignorados. Core:747 aprovados,0 falhas,0 ignorados.
+- Testes incluem comparação byte a byte de5.1→mono/estéreo,44.1/48kHz,16/24bits, normalização com rewind; layouts3–8 canais;96kHz; origem ALAC32bits construída por pacote escape independente; recusa de máscaras/cookies ambíguos; execução concorrente de64 conversões curtas.
+- ALAC→FLAC preserva PCM/máscara para3/5/6 canais. Para4/7/8 canais mantendo o layout, recusa explicitamente sem escrever; mono/estéreo continua testado.
+- A revisão independente estática não encontrou novo bloqueio concreto após essas correções. Isso não substitui integração, CI ou validação manual.
+- O PE da DLL local contém CFG, DEP/NX, ASLR, HighEntropyVA e CET. Build registra commit/hash da fonte, hash da DLL, versão do MSBuild e toolset.
+
+- Integração de áudio em AppContainer: 9 aprovados. Inclui um arquivo de uma hora, ALAC 5.1 de 4095 quadros, reutilização do Worker após o probe e comparação com a saída WAV de referência.
+- Integração de sandbox e conversão: 63 aprovados. Inclui cancelamento após progresso do ALAC 5.1, saída duplicada, falta de permissões, timeout e queda do Worker. O cancelamento não publicou saída nem deixou temporário.
+- Build Release da solução e publicação local do Worker e do residente NativeAOT concluídos. O pacote local contém a DLL, a licença, o aviso e o manifesto ALAC. A geração de SBOM foi executada duas vezes e manteve uma única entrada Apple.
+
+Ainda pendentes: CI do commit final e validação manual da interface. As quatro falhas anteriores ficam preservadas como diagnóstico.

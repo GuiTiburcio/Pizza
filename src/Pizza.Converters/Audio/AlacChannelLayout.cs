@@ -3,6 +3,21 @@ namespace Pizza.Converters.Audio;
 /// <summary>Layouts definidos pela referência Apple. Não interpretar quad ou 7.1 comum como outro layout.</summary>
 internal sealed record AlacChannelLayout(uint Mask, uint Tag, int[] Order)
 {
+    internal void ToWave(Span<byte> pcm, int bits)
+    {
+        var sampleBytes = bits / 8;
+        var frameBytes = checked(Order.Length * sampleBytes);
+        if (bits is not (16 or 24) || pcm.Length % frameBytes != 0) throw new InvalidDataException("PCM ALAC desalinhado.");
+        Span<byte> frame = stackalloc byte[24];
+        for (var offset = 0; offset < pcm.Length; offset += frameBytes)
+        {
+            pcm.Slice(offset, frameBytes).CopyTo(frame);
+            for (var apple = 0; apple < Order.Length; apple++)
+                frame.Slice(apple * sampleBytes, sampleBytes).CopyTo(pcm.Slice(offset + Order[apple] * sampleBytes, sampleBytes));
+        }
+        System.Security.Cryptography.CryptographicOperations.ZeroMemory(frame);
+    }
+
     internal static AlacChannelLayout? FromTag(int channels, uint tag)
     {
         var mask = channels switch { 3 => 0x7u, 4 => 0x107u, 5 => 0x37u, 6 => 0x3fu, 7 => 0x13fu, 8 => 0xffu, _ => 0u };

@@ -105,7 +105,7 @@ public partial class AudioConverterTests
         if (extensible)
         {
             writer.Write((ushort)22); writer.Write((ushort)bits);
-            writer.Write(channels == 6 ? 0x3fu : throw new InvalidDataException("Definir a máscara do fixture multicanal."));
+            writer.Write(channels switch { 3 => 0x7u, 4 => 0x107u, 5 => 0x37u, 6 => 0x3fu, 7 => 0x13fu, 8 => 0xffu, _ => throw new InvalidDataException("Definir a máscara do fixture multicanal.") });
             writer.Write(new Guid("00000001-0000-0010-8000-00aa00389b71").ToByteArray());
         }
         writer.Write("data"u8); writer.Write(frames * channels * bytes);

@@ -15,6 +15,10 @@ Um wrapper C pequeno compila a referência numa DLL x64. Aceita somente PCM inte
 
 O Worker mantém leitura e reamostragem pelo Media Foundation. M4A com opção Sem perda usa o encoder Apple e o muxer de uma trilha ALAC do projeto, com número real de quadros e cauda parcial. Não acrescenta silêncio nem corrige duração para esconder amostras ausentes. MP3/AAC/FLAC/WAV conservam seus caminhos existentes.
 
+A referência Apple recebe canais na ordem Apple; o PCM WAVE usa outra ordem. A codificação exige máscara conhecida e permuta as amostras antes do encoder. Na leitura ALAC multicanal, o cookie deve conter o `chan` reconhecido; um layout ausente, desconhecido ou ambíguo é recusado. O decoder Windows é solicitado no formato original, sem máscara que provoque mistura antecipada. A saída é permutada em bytes para WAVE antes de qualquer ajuste. Se taxa/canais/profundidade mudarem, um resampler Windows controlado por `IMFTransform` processa esse PCM canônico antes do Volume; se não mudarem, é dispensado para preservar bits. A cauda é drenada no EOF e o histórico é limpo no rewind da normalização. Origem ALAC32bits segue a política já existente de saída24bits, sem intermediário16bits.
+
+WAV recebe a máscara real do PCM. O encoder FLAC Windows não oferece uma forma comprovada de preservar os layouts Apple4.0,6.1 e7.1 wide: ALAC com4/7/8 canais para FLAC mantendo todos os canais é recusado com `UNSUPPORTED`, sem saída. Selecionar mono ou estéreo continua permitido. ALAC3/5/6 canais para FLAC tem regressões de PCM e máscara. Não relabelar quad como4.0 ou7.1 comum como7.1 wide.
+
 SEC-20/26: só a família Áudio carrega a DLL, por caminho absoluto sob os binários do Worker, antes de ativar MicrosoftSignedOnly. Isso permite a dependência explicitamente aprovada sem desativar a política posteriormente ou liberar outros codecs de terceiros. O probe pode preceder a conversão no mesmo processo; a preparação da dependência deve ocorrer antes da política também nesse caminho. O residente não carrega a DLL. Job, memória, orçamento de saída, timeout, handles e isolamento sem rede permanecem.
 
 ## Critérios de aceite
@@ -25,6 +29,6 @@ SEC-20/26: só a família Áudio carrega a DLL, por caminho absoluto sob os bin�
 - Conversão no Worker, probe, cancelamento/limites e teste de família de DLLs.
 - Build e publicação reproduzíveis, licença/avisos/SBOM presentes, revisão independente e CI aprovados.
 
-Fidelidade e estabilidade são critérios ainda a executar. Este ADR não fecha #101 nem aprova lançamento.
+Os resultados e os gates restantes ficam em [ALAC-101-VALIDACAO.md](../ALAC-101-VALIDACAO.md). Este ADR não fecha #101 nem aprova lançamento.
 
 Referências: https://macosforge.github.io/alac/ e https://github.com/macosforge/alac/tree/c38887c5c5e64a4b31108733bd79ca9b2496d987.

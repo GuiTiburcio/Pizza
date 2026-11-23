@@ -8,6 +8,9 @@ internal sealed class AudioReader : IDisposable
 {
     private readonly nint _stream;
     private readonly nint _byteStream;
+    private AlacChannelLayout? _decodedLayout;
+    private int _decodedBits;
+    private MediaFoundation.PcmTransform? _transform;
 
     private AudioReader(nint stream, nint byteStream, nint reader, AudioInfo info)
     {
@@ -61,7 +64,45 @@ internal sealed class AudioReader : IDisposable
         }
     }
 
-    public void Dispose() => Free(_stream, _byteStream, Handle);
+    internal bool ProcessesAlacChannels => _decodedLayout is not null;
+
+    internal void ProcessAlacChannels(AlacChannelLayout layout, int bits, nint sourcePcm, nint targetPcm, bool sameFormat)
+    {
+        _decodedLayout = layout;
+        _decodedBits = bits;
+        if (!sameFormat) _transform = new MediaFoundation.PcmTransform(sourcePcm, targetPcm);
+    }
+
+    internal void Process(nint sample, Action<nint> consume)
+    {
+        if (_decodedLayout is not null)
+        {
+            var buffer = MediaFoundation.ContiguousBuffer(sample);
+            try
+            {
+                var bytes = MediaFoundation.Lock(buffer);
+                try { _decodedLayout.ToWave(bytes, _decodedBits); }
+                finally { MediaFoundation.Unlock(buffer); }
+            }
+            finally { MediaFoundation.Release(buffer); }
+        }
+        if (_transform is null) consume(sample);
+        else _transform.Push(sample, consume);
+    }
+
+    internal void Drain(Action<nint> consume) => _transform?.Drain(consume);
+
+    internal void Rewind()
+    {
+        MediaFoundation.Rewind(Handle);
+        _transform?.Reset();
+    }
+
+    public void Dispose()
+    {
+        _transform?.Dispose();
+        Free(_stream, _byteStream, Handle);
+    }
 
     /// <summary>Confere todos os fluxos: nenhum pode ser vídeo, e o primeiro áudio precisa ser de um codec aceito.</summary>
     private static AudioInfo? Describe(nint reader)

@@ -68,6 +68,75 @@ public sealed class AudioConversionTests(SandboxFixture fixture, Xunit.Abstracti
     }
 
     [MediaFact]
+    public void Alac_curto_51_preserva_canais_e_reutiliza_worker_apos_probe()
+    {
+        // #101/SEC-15/20/26: encoder Apple e resampler Windows dentro do AppContainer real.
+        var original = Wav51(4095);
+        var source = Path.Combine(_folder, "seis-canais.wav");
+        File.WriteAllBytes(source, original);
+        var runner = Runner();
+        var probe = runner.Probe(source, "audio.m4a", TimeSpan.FromSeconds(10));
+        Assert.NotNull(probe?.Info);
+        Assert.Equal(6, probe.Info.Channels);
+        var encoded = runner.Run(source, "audio.m4a", "m4a", new Dictionary<string, string> { ["bitrate"] = "lossless" }, reuse: probe);
+        Assert.Null(encoded.ErrorCode);
+        var encodedPath = Path.Combine(_folder, encoded.OutputName!);
+        var encodedBefore = File.ReadAllBytes(encodedPath);
+        var decoded = runner.Run(encodedPath, "audio.wav", "wav");
+        Assert.Null(decoded.ErrorCode);
+        Assert.Equal(Pcm(original), Pcm(File.ReadAllBytes(Path.Combine(_folder, decoded.OutputName!))));
+        var options = new Dictionary<string, string> { ["channels"] = "mono", ["rate"] = "44100", ["normalize"] = "-14" };
+        var expected = runner.Run(source, "audio.wav", "wav", options);
+        var mixed = runner.Run(encodedPath, "audio.wav", "wav", options);
+        Assert.Null(expected.ErrorCode);
+        Assert.Null(mixed.ErrorCode);
+        Assert.Equal(Pcm(File.ReadAllBytes(Path.Combine(_folder, expected.OutputName!))), Pcm(File.ReadAllBytes(Path.Combine(_folder, mixed.OutputName!))));
+        Assert.Equal(original, File.ReadAllBytes(source));
+        Assert.Equal(encodedBefore, File.ReadAllBytes(encodedPath));
+        Assert.Empty(Directory.GetFiles(_folder, ".~pizza-*", new EnumerationOptions { AttributesToSkip = 0 }));
+    }
+
+    [MediaFact]
+    public void Cancelar_ALAC_51_apos_progresso_nao_publica_saida_nem_deixa_temporario()
+    {
+        var source = Path.Combine(_folder, "cancelar.wav");
+        var original = Wav51(48000 * 3);
+        File.WriteAllBytes(source, original);
+        var runner = Runner();
+        var encoded = runner.Run(source, "audio.m4a", "m4a", new Dictionary<string, string> { ["bitrate"] = "lossless" });
+        Assert.Null(encoded.ErrorCode);
+        var alacPath = Path.Combine(_folder, encoded.OutputName!);
+        var before = FileHash(alacPath);
+        using var cancel = new CancellationTokenSource();
+        var control = new ConversionControl { Progress = percent => { if (percent is > 0 and < 100) cancel.Cancel(); } };
+        var result = runner.Run(alacPath, "audio.m4a", "m4a",
+            new Dictionary<string, string> { ["bitrate"] = "lossless", ["channels"] = "mono", ["rate"] = "44100" },
+            cancellation: cancel.Token, control: control);
+        Assert.True(cancel.IsCancellationRequested);
+        Assert.Equal(ConversionRunner.Cancelled, result.ErrorCode);
+        Assert.Null(result.OutputName);
+        Assert.Equal(original, File.ReadAllBytes(source));
+        Assert.Equal(before, FileHash(alacPath));
+        Assert.Equal(2, Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }).Length);
+    }
+
+    private static byte[] Wav51(int frames)
+    {
+        using var memory = new MemoryStream();
+        using (var writer = new BinaryWriter(memory, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write("RIFF"u8); writer.Write(60 + frames * 12); writer.Write("WAVEfmt "u8); writer.Write(40);
+            writer.Write((ushort)0xfffe); writer.Write((ushort)6); writer.Write(48000); writer.Write(576000);
+            writer.Write((ushort)12); writer.Write((ushort)16); writer.Write((ushort)22); writer.Write((ushort)16);
+            writer.Write(0x3fu); writer.Write(new Guid("00000001-0000-0010-8000-00aa00389b71").ToByteArray());
+            writer.Write("data"u8); writer.Write(frames * 12);
+            for (var frame = 0; frame < frames; frame++)
+            for (var channel = 0; channel < 6; channel++) writer.Write((short)((frame * (channel + 1) * 127) % 30000 - 15000));
+        }
+        return memory.ToArray();
+    }
+
+    [MediaFact]
     public void Alac_de_uma_hora_respeita_prazo_e_preserva_PCM()
     {
         // ADR-035 / SEC-43: uma hora real de PCM sintético, em fluxo; não é um cabeçalho com duração falsa.
