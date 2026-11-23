@@ -39,6 +39,8 @@ internal sealed record AlacChannelLayout(uint Mask, uint Tag, int[] Order)
             8 => new AlacChannelLayout(0xff, (127u << 16) | 8, [2, 6, 7, 0, 1, 4, 5, 3]),
             _ => null,
         };
-        return layout is not null && (mask == layout.Mask || (mask == 0 && channels <= 2)) ? layout : null;
+        // 5.1 com side surround (0x60F) tem o mesmo layout Apple do 5.1 com back (0x3F): pares side e back viram Ls/Rs.
+        var sideSurround51 = channels == 6 && mask == 0x60f;
+        return layout is not null && (mask == layout.Mask || sideSurround51 || (mask == 0 && channels <= 2)) ? layout : null;
     }
 }

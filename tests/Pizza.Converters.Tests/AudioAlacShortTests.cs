@@ -143,7 +143,15 @@ public partial class AudioConverterTests
         var source = PatternWave(16, 48000, 4097, 0, 6);
         var sideSurround = source.ToArray();
         BinaryPrimitives.WriteUInt32LittleEndian(sideSurround.AsSpan(40, 4), 0x60f);
-        var (maskError, rejected) = Run("audio.m4a", sideSurround, ("bitrate", "lossless"));
+        // 5.1 com side surround (0x60F) é o mesmo layout Apple do 5.1 com back: os pares side e back viram Ls/Rs.
+        var (sideError, sideEncoded) = Run("audio.m4a", sideSurround, ("bitrate", "lossless"));
+        Assert.Null(sideError);
+        var (sideDecodeError, sideDecoded) = Run("audio.wav", sideEncoded);
+        Assert.Null(sideDecodeError);
+        Assert.Equal(Pcm(source), Pcm(sideDecoded));
+        var ambiguous = source.ToArray();
+        BinaryPrimitives.WriteUInt32LittleEndian(ambiguous.AsSpan(40, 4), 0x60e);
+        var (maskError, rejected) = Run("audio.m4a", ambiguous, ("bitrate", "lossless"));
         Assert.Equal("UNSUPPORTED", maskError);
         Assert.Empty(rejected);
         var (error, alac) = Run("audio.m4a", source, ("bitrate", "lossless"));
