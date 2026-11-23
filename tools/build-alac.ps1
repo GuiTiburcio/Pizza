@@ -8,6 +8,21 @@ $root = Split-Path -Parent $PSScriptRoot
 $cache = Join-Path $root 'artifacts\deps\alac-apple'
 $archive = Join-Path $cache 'source.zip'
 New-Item -ItemType Directory -Force -Path $cache, $Output | Out-Null
+# Serializa download e compilação entre builds paralelos (dotnet test em vários projetos, CI).
+$mutex = [System.Threading.Mutex]::new($false, 'Global\Pizza.Alac.Build')
+$locked = $false
+try {
+    try { $locked = $mutex.WaitOne([TimeSpan]::FromMinutes(10)) } catch [System.Threading.AbandonedMutexException] { $locked = $true }
+    if (-not $locked) { throw 'Outro build ALAC não terminou em 10 minutos.' }
+    # Outro processo pode ter terminado enquanto esperávamos: pula se a DLL já corresponde à fonte fixada.
+    $marker = Join-Path $Output 'ALAC-BUILD.json'
+    $library = Join-Path $Output 'Pizza.Alac.dll'
+    if ((Test-Path -LiteralPath $library) -and (Test-Path -LiteralPath $marker) -and
+        (Test-Path -LiteralPath (Join-Path $Output 'ALAC-LICENSE.txt')) -and (Test-Path -LiteralPath (Join-Path $Output 'ALAC-NOTICE.txt'))) {
+        $built = Get-Content -LiteralPath $marker -Raw | ConvertFrom-Json
+        if ($built.sourceSha256 -eq $hash -and $built.sourceCommit -eq $commit -and
+            $built.binarySha256 -eq (Get-FileHash -LiteralPath $library -Algorithm SHA256).Hash.ToLowerInvariant()) { return }
+    }
 function Get-Sha256([string]$Path) { (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant() }
 # Cache com hash divergente (corrompido ou adulterado): apaga e baixa de novo uma única vez.
 if ((Test-Path -LiteralPath $archive) -and (Get-Sha256 $archive) -ne $hash) { Remove-Item -LiteralPath $archive -Force }
@@ -59,4 +74,9 @@ try {
 finally {
     # Só o staging exclusivo, cujo caminho absoluto já foi conferido dentro deste cache.
     if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }
+}
+}
+finally {
+    if ($locked) { $mutex.ReleaseMutex() }
+    $mutex.Dispose()
 }
