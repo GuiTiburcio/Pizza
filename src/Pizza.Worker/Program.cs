@@ -79,6 +79,9 @@ internal static class Program
     {
         if (!Pizza.Converters.Audio.SignaturePolicy.IsMicrosoftSignedOnly())
         {
+            // ADR-041: única dependência própria da família Áudio, carregada por caminho absoluto.
+            // O probe e a conversão usam o mesmo Worker; preparar antes de ligar a política permanente.
+            Pizza.Converters.Audio.AppleAlacCodec.Preload();
             Pizza.Converters.Audio.SignaturePolicy.RequireMicrosoftSigned();
         }
     }

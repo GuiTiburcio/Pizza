@@ -58,9 +58,9 @@ public static class AudioPlan
         }
 
         var depth = options.GetValueOrDefault("depth", Original);
-        var bits = !lossless || (format == "m4a" && sourceBits != 24) ? 16
+        var bits = !lossless || (format == "m4a" && sourceBits is not (20 or 24)) ? 16
             // Origem com perda (MP3, AAC) não informa bits: 16 bastam, 24 só dobraria o arquivo sem ganho.
-            : depth == Original ? (sourceBits is 24 or 32 ? 24 : 16)
+            : depth == Original ? (sourceBits is 20 or 24 or 32 ? 24 : 16)
             : int.Parse(depth, CultureInfo.InvariantCulture);
         return (rate, channels, bits);
     }

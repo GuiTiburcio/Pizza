@@ -1,7 +1,7 @@
 namespace Pizza.Converters.Audio;
 
 /// <summary>Duração (ms), taxa de amostragem, canais e bits por amostra (0 quando o formato comprimido não informa).</summary>
-internal readonly record struct AudioInfo(long DurationMs, int SampleRate, int Channels, int Bits);
+internal readonly record struct AudioInfo(long DurationMs, int SampleRate, int Channels, int Bits, uint ChannelMask = 0, bool IsAlac = false, uint AlacLayoutTag = 0);
 
 /// <summary>Formato de origem reconhecido pelo conteúdo (ADR-035, equivalente da SEC-45 para áudio).</summary>
 internal enum AudioSource
