@@ -99,6 +99,9 @@ internal static partial class TestPdf
 
         [LibraryImport("qpdf30", EntryPoint = "qpdf_oh_unparse_resolved")]
         public static partial nint UnparseResolved(nint qpdf, uint handle);
+
+        [LibraryImport("qpdf30", EntryPoint = "qpdf_oh_get_utf8_value")]
+        public static partial nint Utf8Value(nint qpdf, uint handle);
     }
 }
 
@@ -116,6 +119,8 @@ internal sealed unsafe class PdfInspection
     public required string Everything { get; init; }
 
     public required bool Valid { get; init; }
+
+    public string? Title { get; init; }
 
     public IEnumerable<string> ActiveContent => Forbidden.Where(name => System.Text.RegularExpressions.Regex.IsMatch(Everything, Regex(name)));
 
@@ -142,7 +147,10 @@ internal sealed unsafe class PdfInspection
             var size = (int)Qpdf.IntValue(qpdf, Qpdf.Key(qpdf, Qpdf.Trailer(qpdf), "/Size"));
             var everything = string.Join("\n", Enumerable.Range(1, size - 1)
                 .Select(id => Marshal.PtrToStringUTF8(TestPdf.Native.UnparseResolved(qpdf, Qpdf.ObjectById(qpdf, id, 0)))));
-            return new PdfInspection { Rotations = rotations, Everything = everything, Valid = valid };
+            var info = Qpdf.Key(qpdf, Qpdf.Trailer(qpdf), "/Info");
+            var title = Qpdf.IsDictionary(qpdf, info) != 0 && Qpdf.IsString(qpdf, Qpdf.Key(qpdf, info, "/Title")) != 0
+                ? Marshal.PtrToStringUTF8(TestPdf.Native.Utf8Value(qpdf, Qpdf.Key(qpdf, info, "/Title"))) : null;
+            return new PdfInspection { Rotations = rotations, Everything = everything, Valid = valid, Title = title };
         }
         finally
         {
