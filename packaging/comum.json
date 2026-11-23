@@ -1,0 +1,44 @@
+{
+  "esquema": 1,
+  "edicao": "comum",
+  "descricao": "O que as duas edições levam: o residente, o Worker, as bibliotecas nativas do Worker, os sons e os avisos de licença.",
+  "herda": [],
+  "origens": {
+    "pizza": { "ignorar": [ "*.pdb" ] },
+    "docs": { "ignorar": [ "*.pdb" ], "compartilhados": [ "Pizza.Core.dll" ] }
+  },
+  "proibidos": [],
+  "entradas": [
+    {
+      "origem": "pizza",
+      "arquivos": [
+        "Pizza.exe",
+        "Pizza.Core.dll",
+        "Pizza.Converters.dll",
+        "Pizza.Worker.exe",
+        "Pizza.Worker.dll",
+        "Pizza.Worker.deps.json",
+        "Pizza.Worker.runtimeconfig.json",
+        "NetVips.dll",
+        "libvips-42.dll",
+        "pdfium.dll",
+        "qpdf30.dll",
+        "msvcp140.dll",
+        "vcruntime140.dll",
+        "vcruntime140_1.dll",
+        "jxl.dll",
+        "jxl_cms.dll",
+        "jxl_threads.dll",
+        "brotlicommon.dll",
+        "brotlidec.dll",
+        "brotlienc.dll",
+        "concluido.wav",
+        "erro.wav"
+      ]
+    },
+    {
+      "origem": "raiz",
+      "arquivos": [ "LICENSE", "THIRD-PARTY-NOTICES.md" ]
+    }
+  ]
+}
