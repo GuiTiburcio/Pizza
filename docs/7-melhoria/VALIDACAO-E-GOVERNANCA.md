@@ -102,4 +102,4 @@ Base local observada: `7ac527ca3b8b89f068e57e5397c1a041d3afb21f`. Esta é uma tr
 
 Medir a satisfação no piloto com tarefas sintéticas concluídas, erros recuperados e tempo de uso. Registrar os resultados na matriz local, sem telemetria.
 
-Cada entrega registra revisão/artefato, ambiente, cenário, esperado, observado, integridade das origens, resultado e limitações. Classificações: bloqueio, correção necessária, melhoria recomendada e preferência estética. A matriz manual só recebe aprovação para os cenários realmente executados. O aceite de lançamento continua nos critérios de [Brotinho](BROTINHO-LANCAMENTO.md) e nas [SPECS](../1-produto/SPECS.md).
+Cada entrega registra revisão/artefato, ambiente, cenário, esperado, observado, integridade das origens, resultado e limitações. Classificações: bloqueio, correção necessária, melhoria recomendada e preferência estética. A matriz manual só recebe aprovação para os cenários realmente executados. O aceite de lançamento continua nos critérios de [Brotinho](../4-entrega/BROTINHO-LANCAMENTO.md) e nas [SPECS](../1-produto/SPECS.md).
