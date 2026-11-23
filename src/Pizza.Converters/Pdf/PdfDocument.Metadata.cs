@@ -9,6 +9,35 @@ internal sealed unsafe partial class PdfDocument
     // Metadados não justificam descompactação sem limite. O payload de página não passa por este leitor.
     private const int MaxMetadataBytes = 1024 * 1024;
 
+    /// <summary>Copia somente o título para um PDF novo, mantendo a codificação original da string.</summary>
+    private string? CopyTechnicalTitleTo(nint destination)
+    {
+        var info = Qpdf.Key(_qpdf, Qpdf.Trailer(_qpdf), "/Info");
+        if (Qpdf.IsDictionary(_qpdf, info) == 0)
+        {
+            return null;
+        }
+
+        var title = Qpdf.Key(_qpdf, info, "/Title");
+        if (Qpdf.IsString(_qpdf, title) == 0)
+        {
+            return null;
+        }
+
+        var bytes = Qpdf.BinaryString(_qpdf, title, out var length);
+        if (bytes is null)
+        {
+            return "CORRUPTED";
+        }
+
+        // A string pertence à origem. Crie a cópia antes de voltar a chamar a QPDF para a origem.
+        var copy = Qpdf.NewBinaryString(destination, bytes, length);
+        var targetInfo = Qpdf.NewDictionary(destination);
+        Qpdf.ReplaceKey(destination, targetInfo, "/Title", copy);
+        Qpdf.ReplaceKey(destination, Qpdf.Trailer(destination), "/Info", targetInfo);
+        return null;
+    }
+
     private string? PreserveTechnicalTitle()
     {
         var trailer = Qpdf.Trailer(_qpdf);

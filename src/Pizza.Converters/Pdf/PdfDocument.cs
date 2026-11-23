@@ -201,6 +201,11 @@ internal sealed unsafe partial class PdfDocument : IDisposable
                     return "CORRUPTED";
                 }
 
+                if (CopyTechnicalTitleTo(part) is { } titleError)
+                {
+                    return titleError;
+                }
+
                 var (offset, count) = parts[index].GetOffsetAndLength(PageCount);
                 for (var page = offset; page < offset + count; page++)
                 {
@@ -242,6 +247,12 @@ internal sealed unsafe partial class PdfDocument : IDisposable
             if ((Qpdf.EmptyPdf(merged) & Qpdf.Errors) != 0)
             {
                 return "CORRUPTED";
+            }
+
+            // O primeiro documento define o nome e o título da saída, sem importar o restante de /Info.
+            if (documents.Count > 0 && documents[0].CopyTechnicalTitleTo(merged) is { } titleError)
+            {
+                return titleError;
             }
 
             foreach (var document in documents)

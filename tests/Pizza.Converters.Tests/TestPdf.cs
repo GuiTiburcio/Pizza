@@ -31,7 +31,7 @@ internal static partial class TestPdf
     }
 
     /// <summary>Páginas simples, todas com o mesmo conteúdo.</summary>
-    public static byte[] Pages(int count)
+    public static byte[] Pages(int count, string? info = null)
     {
         var kids = string.Join(" ", Enumerable.Range(0, count).Select(i => $"{i + 4} 0 R"));
         var objects = new List<string>
@@ -41,7 +41,14 @@ internal static partial class TestPdf
             "<< /Length 0 >>\nstream\n\nendstream",
         };
         objects.AddRange(Enumerable.Range(0, count).Select(_ => "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] /Contents 3 0 R >>"));
-        return Build([.. objects]);
+        if (info is null)
+        {
+            return Build([.. objects]);
+        }
+
+        objects.Add(info);
+        var pdf = Encoding.Latin1.GetString(Build([.. objects]));
+        return Encoding.Latin1.GetBytes(pdf.Replace("/Root 1 0 R >>", $"/Root 1 0 R /Info {objects.Count} 0 R >>", StringComparison.Ordinal));
     }
 
     /// <summary>Páginas de 200 × 300 pt com um texto em Helvetica e, opcionalmente, a metade esquerda pintada de preto.</summary>

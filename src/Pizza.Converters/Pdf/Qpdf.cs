@@ -94,6 +94,12 @@ internal static partial class Qpdf
     [LibraryImport(Library, EntryPoint = "qpdf_oh_new_unicode_string", StringMarshalling = StringMarshalling.Utf8)]
     public static partial uint NewUnicodeString(nint qpdf, string value);
 
+    [LibraryImport(Library, EntryPoint = "qpdf_oh_get_binary_string_value")]
+    public static unsafe partial byte* BinaryString(nint qpdf, uint handle, out nuint length);
+
+    [LibraryImport(Library, EntryPoint = "qpdf_oh_new_binary_string")]
+    public static unsafe partial uint NewBinaryString(nint qpdf, byte* value, nuint length);
+
     [LibraryImport(Library, EntryPoint = "qpdf_oh_get_stream_data")]
     public static unsafe partial int StreamData(nint qpdf, uint stream, int decodeLevel, int* filtered, byte** data, nuint* length);
 
