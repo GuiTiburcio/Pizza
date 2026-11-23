@@ -132,6 +132,8 @@ public sealed class AudioConverter(string id) : IConverter
         var appleAlac = Format == "m4a" && options["bitrate"] == "lossless";
         // FLAC tem layouts próprios; o sink Windows não oferece um canal discreto com máscara customizada.
         if (Format == "flac" && reader.Info.IsAlac && channels is 4 or 7 or 8) return "UNSUPPORTED";
+        // Limites do encoder nativo (native/Pizza.Alac): fora deles o pedido é inviável, não o arquivo corrompido.
+        if (appleAlac && (rate is < 8000 or > 384000 || bits is not (16 or 24))) return "UNSUPPORTED";
         var wave = Format == "wav" ? new WaveHeaderStream(destination) : null;
         long pcmBytes = 0;
 

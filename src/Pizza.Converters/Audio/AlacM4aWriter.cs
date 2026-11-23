@@ -37,7 +37,7 @@ internal sealed unsafe class AlacM4aWriter : IDisposable
         {
             if (_encoder != 0) _api.Destroy(_encoder);
             _encoder = 0;
-            throw new InvalidDataException("Parâmetros ALAC recusados.");
+            throw new InvalidOperationException("Parâmetros ALAC recusados.");
         }
         try
         {
@@ -101,7 +101,7 @@ internal sealed unsafe class AlacM4aWriter : IDisposable
         {
             size = _api.Encode(_encoder, source, _pending, destination, (uint)_packet.Length);
         }
-        if (size <= 0 || size > _packet.Length) throw new InvalidDataException("Pacote ALAC inválido.");
+        if (size <= 0 || size > _packet.Length) throw new InvalidOperationException("Pacote ALAC inválido.");
         OutputBudget.Check(checked(_output.Position + size));
         _output.Write(_packet.AsSpan(0, size));
         _sizes.Add((uint)size);
@@ -116,7 +116,7 @@ internal sealed unsafe class AlacM4aWriter : IDisposable
         var config = new byte[24];
         fixed (byte* pointer = config)
         {
-            if (_api.Config(_encoder, pointer, (uint)config.Length) != config.Length) throw new InvalidDataException("Configuração ALAC inválida.");
+            if (_api.Config(_encoder, pointer, (uint)config.Length) != config.Length) throw new InvalidOperationException("Configuração ALAC inválida.");
         }
         var end = _output.Position;
         var metadata = Movie(config, _rate, _channels, _bits, _layout, _frames, _sizes, _dataStart);

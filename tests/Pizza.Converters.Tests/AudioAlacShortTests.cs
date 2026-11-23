@@ -243,4 +243,11 @@ public partial class AudioConverterTests
                 index % 3 == 0 ? 44100 : 48000, frames, Math.Min(3, frames), index % 4 == 0 ? 1 : 2);
         });
     }
+
+    [MediaFact]
+    public void Alac_sem_perdas_fora_dos_limites_do_encoder_e_nao_suportado()
+    {
+        var (error, _) = Run("audio.m4a", PatternWave(16, 6000, 4096, 0), ("bitrate", "lossless"));
+        Assert.Equal("UNSUPPORTED", error);
+    }
 }

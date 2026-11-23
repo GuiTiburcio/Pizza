@@ -23,10 +23,10 @@ internal static unsafe partial class MediaFoundation
                 Check(((delegate* unmanaged[Stdcall]<nint, uint, OutputInfo*, int>)Slot(_transform, 7))(_transform, 0, &info));
                 // O resampler usa buffers fornecidos pelo chamador. Limitar alocação mesmo se o contrato mudar.
                 if ((info.Flags & 0x100) != 0 || info.Size > 1024 * 1024 || info.Alignment > 4096)
-                    throw new InvalidDataException("Contrato do resampler não suportado.");
+                    throw new InvalidOperationException("Contrato do resampler não suportado.");
                 _size = Math.Max(64 * 1024u, info.Size);
                 _alignment = info.Alignment == 0 ? 15u : info.Alignment - 1;
-                if ((_alignment & (_alignment + 1)) != 0) throw new InvalidDataException("Alinhamento do resampler inválido.");
+                if ((_alignment & (_alignment + 1)) != 0) throw new InvalidOperationException("Alinhamento do resampler inválido.");
                 Reset();
             }
             catch { Dispose(); throw; }
@@ -80,7 +80,7 @@ internal static unsafe partial class MediaFoundation
                     var hr = ((delegate* unmanaged[Stdcall]<nint, uint, uint, OutputData*, uint*, int>)Slot(_transform, 25))(_transform, 0, 1, &output, &status);
                     if (hr == NeedMoreInput) return;
                     Check(hr);
-                    if (output.Sample != sample) throw new InvalidDataException("Amostra do resampler inesperada.");
+                    if (output.Sample != sample) throw new InvalidOperationException("Amostra do resampler inesperada.");
                     if (TotalLength(sample) != 0) consume(sample);
                 }
                 finally
