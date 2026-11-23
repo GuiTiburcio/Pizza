@@ -1,7 +1,7 @@
 # Proposta de workspace, edições e trabalho paralelo
 
-- Estado: proposta preparada em 21/11/2026; não representa pastas já migradas.
-- Base observada: main 7ac527c e ramo docs/estrutura-360 39bbbde.
+- Estado: proposta v2 conciliada com o Claude. Migração física pendente.
+- Base observada: main 7ac527c e [PR #108 de organização documental](https://github.com/GuiTiburcio/Pizza/pull/108).
 - Decisão preservada: Brotinho e Jumbo são edições da mesma base (ADR-034), não produtos com cópias independentes do código.
 
 ## 1. Pasta matriz local
@@ -10,12 +10,12 @@
 Pizza/
 ├── LEIA-ME.md
 ├── Pizza.code-workspace
-├── 1-produto/                      checkout de integração na main
-├── 2-paralelo/                     um worktree completo por tarefa
-│   ├── 107-governanca/
-│   ├── fix-alac/
-│   ├── fix-jumbo-docs/
-│   └── docs-estrutura/
+├── 1-main/                         checkout de integração na main
+├── 2-ramos/                        um worktree completo por tarefa
+│   ├── base/<tarefa>/              funções compartilhadas pelas edições
+│   ├── jumbo/<tarefa>/             funções exclusivas da edição Jumbo
+│   ├── projeto/<tarefa>/           documentação, governança e ferramentas
+│   └── revisao/<tarefa>/           revisão e validação independente
 ├── 3-validacao/                    local; fora do repositório
 │   └── <sha-do-candidato>/
 │       ├── brotinho/
@@ -30,10 +30,11 @@ Pizza/
 │   └── <versao>/<canal>/<edicao>/
 ├── .claude/                        configuração local do orquestrador
 ├── .vscode/                        configuração local de navegação
+├── .coordenacao/                   registro local de trabalho paralelo
 └── GEMINI.md                       entrada de instruções da ferramenta
 ```
 
-O diretório 1-produto contém o repositório real e seu .git. A main representa o estado integrado; não é uma pasta de tarefas nem um fluxo em cascata. O diretório 2-paralelo contém worktrees ligados ao mesmo repositório, cada um com seu ramo, índice e diretório de trabalho. Um worktree é uma cópia de trabalho completa, não um subconjunto de src.
+O diretório `1-main` contém o checkout de integração e o repositório Git. Use-o para atualizar a main e preparar validações e entregas integradas. Cada tarefa em `2-ramos/<faixa>/<tarefa>` tem seu índice e diretório de trabalho próprios. As faixas orientam a localização, e os novos ramos usam o padrão `<faixa>/<tarefa>`. Os ramos em andamento mantêm seus nomes durante a transição.
 
 Os diretórios 3-validacao e 4-distribuicao não são outros repositórios nem outra fonte de código. Candidatos são identificados pelo SHA e pelo artefato real; ter uma pasta de edição não significa que a CI já produz esse pacote. Hoje o workflow de prévia observado não implementa toda a composição Jumbo descrita no ADR-034. A separação dos pacotes exige uma tarefa própria.
 
@@ -42,7 +43,7 @@ Não criar cópias permanentes do produto chamadas main, Brotinho e Jumbo. Não 
 ## 2. Repositório de produto
 
 ```text
-1-produto/
+1-main/
 ├── src/                           implementação compartilhada
 │   ├── Pizza.App/
 │   ├── Pizza.Core/
@@ -56,16 +57,7 @@ Não criar cópias permanentes do produto chamadas main, Brotinho e Jumbo. Não 
 │   ├── brotinho/
 │   └── jumbo/
 ├── tools/
-├── docs/
-│   ├── 1-produto/                 visão, requisitos, roteiro, portabilidade
-│   │   └── edicoes/               capacidades e limites Brotinho/Jumbo
-│   ├── 2-decisoes/
-│   ├── 3-design/
-│   ├── 4-entrega/
-│   │   └── validacao/             protocolo e matrizes por edição
-│   ├── 5-operacao/
-│   ├── 6-seguranca/
-│   └── 7-melhoria/                governança, métricas e retrospectivas
+├── docs/                          árvore documental definida no PR #108
 ├── .github/                       automação e templates
 ├── .agents/                       instruções e skills do projeto
 ├── .claude/                       integrações específicas do Claude
@@ -104,9 +96,9 @@ O fluxo de execução App → IPC → Worker → conversores não é uma cadeia 
 main
 ├── docs/estrutura-360             organização documental existente
 ├── docs/validacao-autonoma-...    protocolo de validação
-├── fix/alac-101-clean             frente existente, verificar estado
+├── fix/alac-apple-101             correção em revisão no PR #109
 ├── fix/docs-worker-crash          frente existente, causa ainda a demonstrar
-└── feat/<necessidade>             próxima tarefa delimitada
+└── <faixa>/<tarefa>               padrão para novas tarefas
 ```
 
 Esta árvore representa origem e integração do trabalho, não subdiretórios Git nem garantia de ancestralidade atual dos ramos. Cada tarefa parte de uma base registrada e volta por PR. Dependências entre tarefas são explícitas; uma tarefa dependente pode aguardar o PR anterior ou usar uma pilha curta de ramos com base identificada. Não manter um ramo develop ou integração permanente sem necessidade demonstrada.
@@ -123,7 +115,8 @@ Worktree bloqueado por escopo adiado é preservado. Worktree ativo não é movid
 2. Conferir links e descoberta de instruções. O teste de links preparado nesse ramo deve examinar documentos de instruções e skills também. Corrigir referências relativas movidas e verificar clones limpos.
 3. Preparar LEIA-ME da matriz e arquivos de workspace como mapas. Eles apontam para contratos versionados; não criam outro backlog nem outra SPECS fora do repositório.
 4. Continuar o trabalho nos caminhos atuais enquanto houver sessões ativas. Neste levantamento, os ramos ALAC e Docs mudaram de HEAD durante a leitura: há trabalho em andamento.
-5. Em uma janela coordenada, fechar processos dependentes, registrar estado e mover o checkout principal e os worktrees pelos procedimentos Git adequados. O worktree principal tem limitações de movimentação próprias; a operação deve considerar repair dos vínculos após mover o repositório principal. Não aplicar Move-Item em lote aos diretórios em uso.
+5. Em uma janela coordenada, fechar processos dependentes e registrar caminhos, HEADs, locks e alterações locais. Mover worktrees vinculados com `git worktree move` quando elegíveis. Para renomear o checkout principal, reparar os vínculos com `git worktree repair` a partir do novo local e conferir cada destino registrado. Preservar worktrees bloqueados e preparar reversão antes de mover.
+   Antes da migração, atualizar `tools/gerenciar-worktrees.ps1` e os consumidores para `2-ramos/<faixa>/<tarefa>`. A raiz deve ser a pasta matriz do checkout principal, inclusive quando o script for chamado dentro de um worktree vinculado.
 6. Atualizar a solução padrão do VS Code, caminhos de ferramentas, permissões locais que dependem de caminho e instruções da raiz. Hoje .vscode/settings.json aponta para MenuConversorPizza/Pizza.slnx e GEMINI.md aponta para MenuConversorPizza e worktrees: ambos precisam de atualização conjunta.
 7. Verificar git worktree list, status/HEAD de cada frente e abertura da solução. Depois executar verificações de build/testes, um teste real por edição disponível e comparação das origens. Não atribuir testes de uma versão antiga ao novo candidato.
 8. Só retirar compatibilidade de caminhos depois de confirmar ausência de referências antigas. Não usar symlinks/junctions para esconder referências quebradas.
