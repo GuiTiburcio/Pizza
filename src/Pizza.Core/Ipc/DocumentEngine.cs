@@ -116,9 +116,11 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
         var drive = MapEngine(engineRoot);
         try
         {
-            var arguments = $"--engine \"{drive}\\program\" --work \"{ContainerFolder(sid)}\" --idle {(int)SpareIdle.TotalSeconds}";
+            var work = ContainerFolder(sid);
+            var job = Guid.NewGuid().ToString("N");
+            var arguments = $"--engine \"{drive}\\program\" --work \"{work}\" --idle {(int)SpareIdle.TotalSeconds} --job {job}";
             var process = SandboxedProcess.Start(docsPath, profile, arguments, @"WinSta0\" + desktopName);
-            return new Spare(process, desktop, drive);
+            return new Spare(process, desktop, drive, Path.Combine(work, job));
         }
         catch
         {
@@ -128,8 +130,8 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
         }
     }
 
-    /// <summary>Um motor e o que é só dele: a área oculta e a letra, liberadas juntas.</summary>
-    private sealed class Spare(SandboxedProcess process, nint desktop, string drive)
+    /// <summary>Um motor e o que é só dele: a área oculta, a letra e a pasta do job, liberadas juntas.</summary>
+    private sealed class Spare(SandboxedProcess process, nint desktop, string drive, string folder)
     {
         private bool _released;
 
@@ -146,9 +148,30 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
 
             _released = true;
             Expiry?.Dispose();
+
+            // SEC-20: o motor encerrado à força não apaga a cópia do documento. O residente espera o processo sair
+            // (até lá ele segura os arquivos) e apaga a pasta antes de qualquer outro motor do mesmo AppContainer.
+            process.Kill();
             process.Dispose();
+            DeleteJobFolder(folder);
             Unmap(drive, engineRoot);
             CloseDesktop(desktop);
+        }
+    }
+
+    private static void DeleteJobFolder(string folder)
+    {
+        for (var attempt = 0; attempt < 20 && Directory.Exists(folder); attempt++)
+        {
+            try
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Um antivírus pode segurar o arquivo por instantes; o que sobrar sai no CleanWorkFolder ao abrir.
+                Thread.Sleep(50);
+            }
         }
     }
 

@@ -41,14 +41,16 @@ internal static class Program
     {
         // PRIV-05 (ADR-032): sem dump nem relatório do Windows.
         CrashReporting.Suppress();
-        if (args is not ["--in", var input, "--out", var output, "--engine", var engine, "--work", var work, "--idle", var idle])
+        // A pasta do job é escolhida pelo residente, que a apaga depois que este processo sai (SEC-20).
+        if (args is not ["--in", var input, "--out", var output, "--engine", var engine, "--work", var work, "--idle", var idle, "--job", var job]
+            || !Guid.TryParseExact(job, "N", out _))
         {
             return InvalidArguments;
         }
 
         using var reader = OpenHandle(long.Parse(input, CultureInfo.InvariantCulture), FileAccess.Read);
         using var writer = OpenHandle(long.Parse(output, CultureInfo.InvariantCulture), FileAccess.Write);
-        var folder = Path.Combine(work, Guid.NewGuid().ToString("N"));
+        var folder = Path.Combine(work, job);
         try
         {
             if (!StartEngine(engine, work, folder))
@@ -131,10 +133,26 @@ internal static class Program
         var clock = Stopwatch.StartNew();
         var source = Path.Combine(folder, "entrada");
         var result = Path.Combine(folder, "saida" + target.Extension);
+        // SEC-40: o teto de 2 GB vale para a entrada antes de qualquer byte ir ao disco, e de novo durante a
+        // cópia, caso o arquivo cresça depois da conferência.
         using (var original = OpenHandle(request.SrcHandle!.Value, FileAccess.Read))
-        using (var copy = File.Create(source))
         {
-            original.CopyTo(copy);
+            if (original.Length > OutputBudget.MaxBytes)
+            {
+                return new IpcMessage(IpcType.Error, request.JobId) { Code = "LIMIT_EXCEEDED" };
+            }
+
+            try
+            {
+                using var copy = File.Create(source);
+                using var bounded = new OutputBudgetStream(copy);
+                original.CopyTo(bounded);
+            }
+            catch (ConversionLimitException)
+            {
+                File.Delete(source);
+                return new IpcMessage(IpcType.Error, request.JobId) { Code = "LIMIT_EXCEEDED" };
+            }
         }
 
         var error = LibreOfficeKit.Convert(source, result, target.Filter);

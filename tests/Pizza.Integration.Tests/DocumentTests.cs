@@ -196,6 +196,63 @@ public sealed class DocumentTests : IDisposable
     }
 
     [JumboFact]
+    public void Job_cancelado_nao_deixa_a_copia_para_o_proximo_motor()
+    {
+        // SEC-20: o motor encerrado à força não roda o próprio finally. A pasta do job é do residente, que a apaga
+        // depois de o processo sair e antes de aquecer o próximo motor, que usa o mesmo AppContainer.
+        var source = Write("cancelado.docx", Docx(string.Concat(Enumerable.Repeat("Documento longo para cancelar. ", 40_000))));
+        var engine = Engine();
+        var work = DocumentEngine.WorkFolder(Profile);
+        using var cancel = new CancellationTokenSource();
+        var run = Task.Run(() => engine.Run(source, "document.pdf", "pdf", cancel.Token));
+        var deadline = DateTime.UtcNow.AddMinutes(1);
+        while (Copies(work).Length == 0 && !run.IsCompleted && DateTime.UtcNow < deadline)
+        {
+            Thread.Sleep(5);
+        }
+
+        cancel.Cancel();
+        var result = run.GetAwaiter().GetResult();
+
+        Assert.Equal(ConversionRunner.Cancelled, result.ErrorCode); // prova que o motor foi encerrado no meio
+        Assert.Empty(Copies(work));
+    }
+
+    [JumboFact]
+    public void Entrada_acima_do_teto_e_recusada_antes_da_copia()
+    {
+        // SEC-40: 2 GB + 1 byte, em arquivo esparso (não ocupa o disco). O motor recusa pelo tamanho, sem copiar nada.
+        var source = Path.Combine(_folder, "enorme.docx");
+        using (var file = new FileStream(source, FileMode.CreateNew, FileAccess.ReadWrite))
+        {
+            MakeSparse(file.SafeFileHandle);
+            file.SetLength(OutputBudget.MaxBytes + 1);
+        }
+
+        var engine = Engine();
+        var work = DocumentEngine.WorkFolder(Profile);
+        var result = engine.Run(source, "document.pdf", "pdf");
+
+        Assert.Equal("LIMIT_EXCEEDED", result.ErrorCode);
+        Assert.Empty(Copies(work));
+        Assert.False(File.Exists(Path.Combine(_folder, "enorme.pdf")));
+    }
+
+    private static string[] Copies(string work) => Directory.GetFiles(work, "entrada", SearchOption.AllDirectories);
+
+    private static void MakeSparse(Microsoft.Win32.SafeHandles.SafeFileHandle handle)
+    {
+        const uint SetSparse = 0x000900C4; // FSCTL_SET_SPARSE
+        if (!DeviceIoControl(handle, SetSparse, 0, 0, 0, 0, out _, 0))
+        {
+            throw new System.ComponentModel.Win32Exception();
+        }
+    }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool DeviceIoControl(Microsoft.Win32.SafeHandles.SafeFileHandle device, uint code, nint input, int inputSize, nint output, int outputSize, out int returned, nint overlapped);
+
+    [JumboFact]
     public void Conversao_fora_da_lista_e_recusada()
     {
         var source = Write("lista.docx", Docx("Fora da lista."));
