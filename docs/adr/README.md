@@ -4,4 +4,4 @@ Uma decisão por arquivo, numerada. Para mudar uma decisão, crie um ADR novo qu
 
 Modelo: Status · Data · Contexto · Decisão · Consequências · Alternativas descartadas.
 
-[ADR-041 — Codificação ALAC pela referência Apple](041-alac-referencia-apple.md): decisão de22/11/2026 para #101; implementação e validação em andamento.
+[ADR-041 — Codificação ALAC pela referência Apple](041-alac-referencia-apple.md): decisão de 22/11/2026 para #101; implementação e validação em andamento.
