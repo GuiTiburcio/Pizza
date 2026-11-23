@@ -2,6 +2,8 @@
 
 Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equivale à conclusão de todos os requisitos da v1.0.
 
+**Acompanhamento de 23/11/2026:** [previsão por tipo de entrega](../4-entrega/PREVISAO-DE-ENTREGA.md) e [fundamentos para apresentação](../3-design/dossie/FUNDAMENTOS-DO-PIZZA.md). Consulte essas páginas para o estado dos candidatos e PRs.
+
 **Marco definido em 14/11/2026:** concluir e validar Imagem, PDF, Documento e Áudio, preparar distribuição verificada e então lançar o Brotinho. Ver [critérios e pendências](../4-entrega/BROTINHO-LANCAMENTO.md). Estável/Beta foram escolhidos; o atualizador ainda não está implementado. [macOS e Linux](PORTABILIDADE.md) têm roteiro futuro separado, sem data de entrega.
 
 | Área | Estado |
@@ -13,8 +15,8 @@ Esta entrega fecha uma prévia do gesto e da conversão de imagens. Não equival
 | Opções, metadados e histórico da sessão | Implementados |
 | Worker isolado e proteção do original | Implementados; testes de integração |
 | Vidro, temas e movimento reduzido | Implementados no disco; validação manual ampla ainda necessária |
-| PDF | Juntar, dividir e girar implementados; aceite final do Brotinho pendente. Outros formatos seguem planejados |
-| Documento | Em andamento: Pizza Brotinho (conversões simples) e Pizza Jumbo (motor de documentos embutido e isolado), [ADR-034](../2-decisoes/034-brotinho-jumbo-motor-de-documentos.md) |
+| PDF | Juntar, Dividir, Girar, Imagens e Texto implementados. Senha/AES-256, Comprimir e PDF para DOCX continuam na Fase 6 |
+| Documento | Brotinho oferece DOCX para TXT, HTML e Markdown e XLSX para CSV. Jumbo usa o motor isolado para conversões com diagramação. A composição dos dois pacotes está em revisão no [PR #112](https://github.com/GuiTiburcio/Pizza/pull/112). [ADR-034](../2-decisoes/034-brotinho-jumbo-motor-de-documentos.md) |
 | Áudio | Antecipado da v1.x: só com o Media Foundation do Windows (MP3, WAV, M4A/AAC, FLAC); OGG/Opus e vídeo seguem na v1.x. Decidido no [ADR-035](../2-decisoes/035-aba-audio-media-foundation.md); vai também no Pizza Brotinho ([ADR-039](../2-decisoes/039-formatos-por-pacote-e-fatias-incompativeis.md)) |
 | Web | Planejada para v1.x (adendo de 20/11/2026 do [ADR-039](../2-decisoes/039-formatos-por-pacote-e-fatias-incompativeis.md)): dados (JSON, XML, CSV), Markdown/HTML, fontes e compressão, em .NET puro e nos dois pacotes. As legendas já estão prontas no ramo da Web |
 | Vídeo, em aba própria (Media Foundation e FFmpeg) | Planejado para v1.x ([ADR-026](../2-decisoes/026-aba-video-e-motores.md)); [estudo da barra compacta](../3-design/propostas/barra-compacta.svg) para a Fase 4d |

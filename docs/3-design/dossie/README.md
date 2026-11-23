@@ -1,5 +1,7 @@
 # Dossiê do projeto
 
+Para apresentar o Pizza, comece pelos [fundamentos e pela planta funcional de 23/11/2026](FUNDAMENTOS-DO-PIZZA.md). Essa página distingue decisões integradas, propostas em revisão e requisitos pendentes. As pranchas a seguir registram o planejamento visual e o histórico.
+
 **[Abrir o artefato original no Claude Design](https://claude.ai/artifact/LMrbTPnaY6EbVK1UPjcVDs#page-dcb81aee8d83)** (exige login no Claude). As imagens abaixo são as mesmas pranchas, exportadas para quem não usa o Claude. O texto consolidado do planejamento está em [PIZZA-PROJETO.md](../../1-produto/PIZZA-PROJETO.md).
 
 Pranchas do planejamento do Pizza, feitas antes do código, em 08/11/2026 e 09/11/2026. Elas mostram:
