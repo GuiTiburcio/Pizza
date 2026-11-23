@@ -9,3 +9,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      # init e analyze do CodeQL precisam da mesma versão; em PRs separados, os dois falham.
+      codeql:
+        patterns:
+          - "github/codeql-action*"
