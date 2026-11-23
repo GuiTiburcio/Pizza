@@ -81,4 +81,25 @@ Base local observada: `7ac527ca3b8b89f068e57e5397c1a041d3afb21f`. Esta é uma tr
 
 ## Evidência de conclusão
 
+### Contrato de revisão por entrega
+
+| Área | Critério de aceite | Evidência |
+| --- | --- | --- |
+| Legibilidade e manutenção | Nomes e responsabilidades claros. Reutilizar o código existente quando o contrato for o mesmo. Comentários explicam decisões, limites e invariantes | Diferença revisada, testes junto à fronteira afetada e ADR para mudanças de arquitetura, dependência ou comportamento relevante |
+| Navegação técnica | Um novo mantenedor consegue seguir o fluxo do gesto ao resultado, localizar quem abre arquivos, o que passa pelo IPC e onde ocorre a conversão | README ou mapa aponta para SPECS, ADR, implementação, testes e edição afetada. Atualizar referências no mesmo PR |
+| Privacidade offline | Residente trata o gesto e abre arquivos. Worker recebe handles e converte em isolamento sem rede. O original fica intacto e o log exclui conteúdo, caminhos sensíveis e senhas | Testes de sandbox, hashes dos originais, cenário offline, inspeção de logs e revisão dos contratos SEC/PRIV tocados |
+| Fronteira de rede | Conversão, estimativa, histórico e diagnóstico funcionam localmente. As únicas exceções são atualização e pacote opcional pedido pelo usuário, nos limites de PRIV-03. Nenhum arquivo ou dado do usuário sai do PC | Revisar chamadas de rede, capabilities, dependências e mudanças de contrato no diff. Reprovar o candidato quando houver transmissão de dados da conversão |
+| Qualidade funcional | Teste unitário para regras. Integração para arquivos, IPC, cancelamento, concorrência, colisões de saída e falhas do Worker. Cenário manual para gesto, foco, contraste e recuperação de erro | Resultado no SHA do candidato, com fixture sintético, esperado e observado. Executar primeiro Brotinho e depois os recursos comuns e exclusivos do Jumbo |
+| Publicação | Validar o pacote que será entregue, com inventário de dependências, licenças, hash e resultado da matriz por edição | CI, SBOM, revisão independente e aceite manual registrados. Um resultado pendente continua visível |
+
+### Ordem de retomada
+
+1. **ALAC e Brotinho.** Revisar o [PR #109](https://github.com/GuiTiburcio/Pizza/pull/109) e executar no candidato a matriz de bitrate, Voltar, Cancelar, Desfazer, Arquivos e conversão ALAC. CI e CodeQL já passaram no commit `c901631`. Registrar separadamente o que exigir sessão interativa.
+2. **Privacidade e isolamento.** Validar a limpeza de metadados PDF, a preservação dos campos técnicos pertinentes e o isolamento do Worker. Tratar em frentes próprias metadados de imagens incorporadas em DOCX, limpeza de temporários do Jumbo e limite de entrada antes da cópia. Fechar os gates do TST-28 com evidência do candidato.
+3. **Fase 6 da aba PDF.** Revalidar Girar, Dividir, Juntar, Imagens e Texto. Entregar senha e AES-256, com senha por entrada protegida e senha nova para a saída de Juntar. Depois, comparar tamanho e fidelidade de Comprimir e provar PDF para DOCX no motor Jumbo. Tratar como falha local a indisponibilidade do motor.
+4. **Workspace v2.** Conciliar a [organização documental](https://github.com/GuiTiburcio/Pizza/pull/108) e o [gerenciador de worktrees](https://github.com/GuiTiburcio/Pizza/pull/110). Ensaiar a migração, registrar caminhos, HEADs e locks, verificar o VS Code e só então mover checkouts que estiverem livres.
+5. **Experiência de uso.** Validar um gesto para lotes mistos com revisão antes de confirmar e resultado por item. Medir a fluidez em escalas e monitores distintos, incluindo movimento reduzido. Conferir estados vazios, foco, teclado, texto de erro e recuperação antes do aceite.
+
+Medir a satisfação no piloto com tarefas sintéticas concluídas, erros recuperados e tempo de uso. Registrar os resultados na matriz local, sem telemetria.
+
 Cada entrega registra revisão/artefato, ambiente, cenário, esperado, observado, integridade das origens, resultado e limitações. Classificações: bloqueio, correção necessária, melhoria recomendada e preferência estética. A matriz manual só recebe aprovação para os cenários realmente executados. O aceite de lançamento continua nos critérios de [Brotinho](BROTINHO-LANCAMENTO.md) e nas [SPECS](SPECS.md).
