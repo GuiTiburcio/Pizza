@@ -408,10 +408,14 @@ internal sealed class DocxReader
         {
             var data = _package.ReadBytes(part);
             var (mime, format) = Format(data);
-            if (mime == "image/png")
+            data = mime switch
             {
-                data = PngTextMetadata.Remove(data);
-            }
+                "image/png" => PngMetadata.Remove(data),
+                "image/jpeg" => JpegMetadata.Remove(data),
+                "image/gif" => GifMetadata.Remove(data),
+                "image/webp" => WebpMetadata.Remove(data),
+                _ => data,
+            };
 
             picture = format == "TIFF" && _tiffToPng(data) is { } png ? new Picture("image/png", png, "", null)
                 : mime is not null ? new Picture(mime, data, "", null)

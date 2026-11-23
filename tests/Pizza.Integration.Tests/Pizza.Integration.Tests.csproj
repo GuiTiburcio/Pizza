@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <None Include="..\samples\fachada.jpg" Link="samples\fachada.jpg" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

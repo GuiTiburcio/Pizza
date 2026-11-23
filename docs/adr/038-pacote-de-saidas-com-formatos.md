@@ -7,7 +7,9 @@
 
 O DOCX → Markdown (ADR-034, Pizza Brotinho) segue o jeito do Obsidian: o texto num `.md` e cada imagem num arquivo ao lado, citado no texto por `![[relatorio - imagem 1.png]]`. São saídas de formatos diferentes que saem da mesma conversão.
 
-O leitor DOCX compartilhado com HTML remove os chunks de texto e de data do PNG antes de montar qualquer saída. Preserva os chunks restantes, inclusive pixels comprimidos, cor, DPI e quadros APNG. Uma estrutura truncada é recusada. EXIF e os outros formatos de imagem ainda precisam de tratamento próprio para preservar a orientação e a aparência.
+O leitor DOCX compartilhado com HTML filtra os metadados no Worker antes de montar a saída, sem decodificar ou recomprimir a imagem. Em PNG, remove os chunks de texto, data e proveniência `caBX`. Em JPEG, descarta comentários, XMP e segmentos de aplicação sem papel técnico conhecido. Em GIF, conserva quadros, transparência, texto visível, repetição e perfil ICC, descartando comentários e outras extensões de aplicação. Em WebP, conserva pixels, animação e perfil ICC, removendo XMP e chunks desconhecidos. Os perfis ICC e os dados comprimidos permanecem intactos.
+
+Para EXIF em PNG, JPEG e WebP, a saída recebe um IFD reconstruído apenas com orientação, resoluções e unidade. Os demais campos e diretórios EXIF não são copiados. Um contêiner truncado ou campos técnicos incoerentes retornam `CORRUPTED`. Estes filtros cobrem metadados do contêiner. O conteúdo visível da imagem e as informações internas de perfis de cor são preservados.
 
 O pacote de partes de hoje (ADR-033, `PZB1`) leva saídas de um formato só, conferidas pelos bytes iniciais do formato da extensão (`%PDF-` no Dividir, BOM do UTF-8 no CSV). Os nomes são sempre do residente (SEC-15, SEC-30). O Worker não sabe o nome do arquivo e, por isso, não tem como escrever no `.md` o nome final das imagens.
 

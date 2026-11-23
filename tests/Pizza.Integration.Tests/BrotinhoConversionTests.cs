@@ -49,7 +49,7 @@ public sealed class BrotinhoConversionTests(SandboxFixture fixture) : IDisposabl
     {
         // No Worker em AppContainer: a foto entra no HTML e o HTML sai sem script, ao lado do original.
         var source = Path.Combine(_folder, "relatorio.docx");
-        byte[] photo = [0xFF, 0xD8, 0xFF, 0xE0, .. "foto"u8];
+        var photo = SampleJpeg();
         File.WriteAllBytes(source, ZipBytes(
             ("_rels/.rels", Utf8($"<Relationships xmlns=\"{Rels}\"><Relationship Id=\"r\" Type=\"{Office}/officeDocument\" Target=\"word/document.xml\"/></Relationships>")),
             ("word/_rels/document.xml.rels", Utf8($"<Relationships xmlns=\"{Rels}\"><Relationship Id=\"i\" Type=\"{Office}/image\" Target=\"media/foto.jpg\"/></Relationships>")),
@@ -78,7 +78,7 @@ public sealed class BrotinhoConversionTests(SandboxFixture fixture) : IDisposabl
         var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=");
         var author = Convert.FromHexString("0000001574455874417574686F72004175746F7220666963746963696F3FA452C9");
         byte[] pngWithAuthor = [.. png[..33], .. author, .. png[33..]];
-        byte[] jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 2];
+        var jpeg = SampleJpeg();
         File.WriteAllBytes(source, ZipBytes(
             ("_rels/.rels", Utf8($"<Relationships xmlns=\"{Rels}\"><Relationship Id=\"r\" Type=\"{Office}/officeDocument\" Target=\"word/document.xml\"/></Relationships>")),
             ("word/_rels/document.xml.rels", Utf8($"<Relationships xmlns=\"{Rels}\"><Relationship Id=\"a\" Type=\"{Office}/image\" Target=\"media/a.png\"/><Relationship Id=\"b\" Type=\"{Office}/image\" Target=\"media/b.jpg\"/></Relationships>")),
@@ -169,6 +169,8 @@ public sealed class BrotinhoConversionTests(SandboxFixture fixture) : IDisposabl
         Assert.Equal("CORRUPTED", result.ErrorCode);
         Assert.Single(Directory.GetFiles(_folder, "*", new EnumerationOptions { AttributesToSkip = 0 }));
     }
+
+    private static byte[] SampleJpeg() => File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "samples", "fachada.jpg"));
 
     private string Read(string name) => new UTF8Encoding(false).GetString(File.ReadAllBytes(Path.Combine(_folder, name)));
 
