@@ -4,7 +4,7 @@
 
 O Brotinho e o Jumbo convertem arquivos no computador. O IPC é local e os arquivos não confiáveis passam pelo Worker ou pelo motor de documentos isolado. Esta edição opera sem cadastro, banco de contas ou API HTTP. Uma função que peça a senha de um PDF deve manter a senha em memória pelo tempo da operação, aplicar a proteção solicitada ao documento de saída e limpar os buffers após o uso. Senhas, conteúdo de arquivos e identificadores pessoais ficam fora dos logs. Valem SEC-15, SEC-20, SEC-70 a SEC-73 e PRIV-16 das [especificações](../1-produto/SPECS.md).
 
-Para conversões de arquivos, controle o custo no ponto de admissão e na execução. Preserve cotas de tamanho de entrada e saída, de itens por lote e de tempo de processamento. Ao evoluir a fila local, valide capacidade finita, concorrência por tipo de trabalho e recuperação após cancelamento. PDFs, planilhas e arquivos web entram como dados. Preserve a origem e mantenha macros, links externos e outros recursos ativos sob as políticas de isolamento existentes.
+Para conversões de arquivos, controle o custo no ponto de admissão e na execução. Hoje, o residente serializa a execução, mas cria a tarefa antes de obter o acesso ao executor. A fila ainda precisa de um limite global de admissão, com recusa clara, cancelamento dos pendentes e verificação de novas conversões após a fila liberar espaço. Preserve cotas de tamanho de entrada e saída, de itens por lote e de tempo de processamento. Ao evoluir a fila local, valide capacidade finita, concorrência por tipo de trabalho e recuperação após cancelamento. PDFs, planilhas e arquivos web entram como dados. Preserve a origem e mantenha macros, links externos e outros recursos ativos sob as políticas de isolamento existentes.
 
 ## Configuração e segredos
 

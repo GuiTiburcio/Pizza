@@ -42,6 +42,7 @@ Desktop.ini
 .env.*
 !.env.example
 .envrc
+.envrc.*
 !.envrc.example
 
 # Worktrees e sessões locais
