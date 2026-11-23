@@ -1,0 +1,9 @@
+Apple Lossless Audio Codec
+Copyright (c) 2011 Apple Inc. All rights reserved.
+Licensed under the Apache License, Version 2.0.
+Source: https://github.com/macosforge/alac
+Revision: c38887c5c5e64a4b31108733bd79ca9b2496d987
+
+The Apple source is compiled without source modifications.
+Pizza supplies the C ABI wrapper, build integration and M4A writer under the Pizza project license.
+The full Apache License is distributed as ALAC-LICENSE.txt.

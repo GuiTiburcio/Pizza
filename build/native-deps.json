@@ -51,6 +51,18 @@
       "escopo": "previa"
     },
     {
+      "id": "apple-alac",
+      "nome": "apple-lossless-audio-codec",
+      "versao": "c38887c5c5e64a4b31108733bd79ca9b2496d987",
+      "licenca": "Apache-2.0",
+      "purl": "pkg:github/macosforge/alac@c38887c5c5e64a4b31108733bd79ca9b2496d987",
+      "url": "https://codeload.github.com/macosforge/alac/zip/c38887c5c5e64a4b31108733bd79ca9b2496d987",
+      "sha256": "d555102b7d57b05f26b626bf4f92c1681928d883d621b41d80de63c6c3d3097c",
+      "fixadoEm": "tools/build-alac.ps1#hash",
+      "arquivos": [ "Pizza.Alac.dll" ],
+      "escopo": "previa"
+    },
+    {
       "id": "libreoffice",
       "nome": "libreoffice",
       "versao": "26.2.7",

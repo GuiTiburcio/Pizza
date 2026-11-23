@@ -86,6 +86,8 @@ Decisões tomadas na entrevista (método *grilling*), em 5 rodadas. Viram ADRs e
 
 ### 2.1 Emendas da versão 1.2
 
+**22/11/2026 — ALAC, ADR-041, decisão do mantenedor:** a codificação M4A sem perda passa à referência Apple Apache-2.0, compilada de fonte fixada e inventariada no SBOM. O Media Foundation continua na leitura, reamostragem e demais destinos. Exceção delimitada de SEC-26: somente `Pizza.Alac.dll`, no Worker da família Áudio, é carregada por caminho absoluto antes da política permanente MicrosoftSignedOnly; os demais codecs de terceiros continuam bloqueados. O residente não carrega o encoder. A decisão substitui a afirmação abaixo de que toda codificação Áudio usa exclusivamente o Windows. O aceite de #101 depende da fidelidade, concorrência e integração previstas no ADR, ainda em validação.
+
 Decisões das rodadas de alinhamento de 08/11/2026. **Onde houver conflito, esta tabela prevalece** sobre o restante do documento.
 
 | Requisito | Emenda | ADR |
