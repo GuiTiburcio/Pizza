@@ -16,7 +16,7 @@ Segure **Ctrl**, arraste um arquivo e solte numa fatia. Nada sai do seu computad
 
 ### Como usar
 
-1. Baixe o `.zip` abaixo e extraia numa pasta sua.
+1. Baixe um dos `.zip` abaixo e extraia numa pasta sua: **Pizza-Brotinho** (leve) ou **Pizza-Jumbo** (o Brotinho mais o motor de documentos, bem maior).
 2. Abra o `Pizza.exe`. O ícone aparece perto do relógio.
 
 ### Antes de abrir
@@ -27,8 +27,8 @@ Segure **Ctrl**, arraste um arquivo e solte numa fatia. Nada sai do seu computad
 
 ### Conferir o download
 
-- Hash: compare o SHA-256 do `.zip` com o arquivo `SHA256SUMS` (`Get-FileHash .\arquivo.zip`).
+- Hash: compare o SHA-256 do `.zip` com a linha dele no arquivo `SHA256SUMS` (`Get-FileHash .\arquivo.zip`).
 - Origem: `gh attestation verify .\arquivo.zip --repo GuiTiburcio/Pizza` confirma que o pacote foi gerado por este repositório, no GitHub Actions.
-- Componentes: a lista completa está em `sbom.cdx.json`.
+- Componentes: a lista de cada edição está no `.sbom.cdx.json` com o nome dela.
 
 Encontrou um problema? Abra uma issue. Falhas de segurança vão pelo canal privado descrito em `SECURITY.md`.

@@ -84,6 +84,15 @@ jobs:
       - name: Publicar Worker
         run: dotnet publish src/Pizza.Worker -c Release -o artifacts/publish/app
 
+      - name: Publicar Pizza.Docs
+        run: dotnet publish src/Pizza.Docs -c Release -o artifacts/publish/docs
+
+      # ADR-034, etapa 4: confere que os manifestos de packaging/ montam as duas edições (nada é publicado daqui).
+      - name: Montar Brotinho e Jumbo (verificação)
+        shell: pwsh
+        run: |
+          ./tools/montar-edicao.ps1 -Edicao brotinho -Pizza artifacts/publish/app -Saida artifacts/publish/edicoes/Brotinho
+          ./tools/montar-edicao.ps1 -Edicao jumbo -Pizza artifacts/publish/app -Docs artifacts/publish/docs -Motor $env:PIZZA_MOTOR -Saida artifacts/publish/edicoes/Jumbo
       - name: Tamanho do Pizza.exe
         shell: pwsh
         run: |
