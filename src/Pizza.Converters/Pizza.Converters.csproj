@@ -92,4 +92,18 @@
     <InternalsVisibleTo Include="Pizza.Converters.Tests" />
   </ItemGroup>
 
+  <!-- ADR-041: encoder Apple compilado localmente/CI de fonte imutável; runtime sem downloads. -->
+  <PropertyGroup><AlacOutput>$(MSBuildThisFileDirectory)..\..\artifacts\native\alac</AlacOutput></PropertyGroup>
+  <ItemGroup>
+    <None Include="$(AlacOutput)\Pizza.Alac.dll" Link="Pizza.Alac.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+    <None Include="$(AlacOutput)\ALAC-LICENSE.txt" Link="ALAC-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+    <None Include="$(AlacOutput)\ALAC-NOTICE.txt" Link="ALAC-NOTICE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+    <None Include="$(AlacOutput)\ALAC-BUILD.json" Link="ALAC-BUILD.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+  <Target Name="BuildAppleAlac" BeforeTargets="BeforeBuild;AssignTargetPaths"
+          Inputs="$(MSBuildProjectFullPath);$(MSBuildThisFileDirectory)..\..\tools\build-alac.ps1;$(MSBuildThisFileDirectory)..\..\native\Pizza.Alac\Pizza.Alac.cpp;$(MSBuildThisFileDirectory)..\..\native\Pizza.Alac\Pizza.Alac.vcxproj;$(MSBuildThisFileDirectory)..\..\native\Pizza.Alac\NOTICE.txt"
+          Outputs="$(AlacOutput)\Pizza.Alac.dll;$(AlacOutput)\ALAC-LICENSE.txt;$(AlacOutput)\ALAC-NOTICE.txt;$(AlacOutput)\ALAC-BUILD.json">
+    <Exec Command="pwsh -NoProfile -File &quot;$(MSBuildThisFileDirectory)..\..\tools\build-alac.ps1&quot; -Output &quot;$(AlacOutput)&quot;" />
+  </Target>
+
 </Project>

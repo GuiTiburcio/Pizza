@@ -25,6 +25,7 @@ internal static unsafe partial class MediaFoundation
     public static readonly Guid MajorType = new("48eba18e-f8c9-4687-bf11-0a74c9f96a8f");
     public static readonly Guid SubType = new("f7e34c9a-42e8-4714-b74b-cb29d72c35e5");
     public static readonly Guid Channels = new("37e48bf5-645e-4c5b-89de-ada9e29b696a");
+    public static readonly Guid ChannelMask = new("55fb5765-644a-4caf-8479-938983bb1588");
     public static readonly Guid SampleRate = new("5faeeae7-0290-4c31-9e8a-c534f68d9dba");
     public static readonly Guid AverageBytes = new("1aab75c8-cfef-451c-ab95-ac034b8e1731");
     public static readonly Guid BitsPerSample = new("f2deb57f-40fa-4764-aa33-ed4f2d1ff669");
