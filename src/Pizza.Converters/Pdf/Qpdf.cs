@@ -82,6 +82,33 @@ internal static partial class Qpdf
     [LibraryImport(Library, EntryPoint = "qpdf_oh_is_dictionary")]
     public static partial int IsDictionary(nint qpdf, uint handle);
 
+    [LibraryImport(Library, EntryPoint = "qpdf_oh_is_string")]
+    public static partial int IsString(nint qpdf, uint handle);
+
+    [LibraryImport(Library, EntryPoint = "qpdf_oh_new_dictionary")]
+    public static partial uint NewDictionary(nint qpdf);
+
+    [LibraryImport(Library, EntryPoint = "qpdf_oh_new_null")]
+    public static partial uint NewNull(nint qpdf);
+
+    [LibraryImport(Library, EntryPoint = "qpdf_oh_new_unicode_string", StringMarshalling = StringMarshalling.Utf8)]
+    public static partial uint NewUnicodeString(nint qpdf, string value);
+
+    [LibraryImport(Library, EntryPoint = "qpdf_oh_get_binary_string_value")]
+    public static unsafe partial byte* BinaryString(nint qpdf, uint handle, out nuint length);
+
+    [LibraryImport(Library, EntryPoint = "qpdf_oh_new_binary_string")]
+    public static unsafe partial uint NewBinaryString(nint qpdf, byte* value, nuint length);
+
+    [LibraryImport(Library, EntryPoint = "qpdf_oh_get_stream_data")]
+    public static unsafe partial int StreamData(nint qpdf, uint stream, int decodeLevel, int* filtered, byte** data, nuint* length);
+
+    [LibraryImport(Library, EntryPoint = "qpdf_oh_free_buffer")]
+    public static unsafe partial void FreeBuffer(byte** data);
+
+    [LibraryImport(Library, EntryPoint = "qpdf_oh_replace_stream_data")]
+    public static unsafe partial void ReplaceStreamData(nint qpdf, uint stream, byte* data, nuint length, uint filter, uint decodeParameters);
+
     [LibraryImport(Library, EntryPoint = "qpdf_oh_is_stream")]
     public static partial int IsStream(nint qpdf, uint handle);
 

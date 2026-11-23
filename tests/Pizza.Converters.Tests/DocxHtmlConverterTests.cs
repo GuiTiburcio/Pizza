@@ -13,6 +13,48 @@ public sealed class DocxHtmlConverterTests
 {
     // PNG de 1×1 pixel.
     internal const string Png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+    internal static byte[] SampleJpeg() => File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "samples", "fachada.jpg"));
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Jpeg_embutido_preserva_scans_e_exif_tecnico(bool progressive)
+    {
+        using var pixels = Image.Black(24, 16);
+        var jpg = pixels.JpegsaveBuffer(interlace: progressive, keep: Enums.ForeignKeep.None);
+        var exif = System.Convert.FromHexString("FFE1004A4578696600004D4D002A000000080003011200030000000100060000011A00050000000100000032013B0002000000080000003A0000000000000060000000014669637469636100");
+        var expectedExif = System.Convert.FromHexString("FFE1003645786966000049492A000800000002001201030001000000060000001A0105000100000026000000000000006000000001000000");
+        var comment = System.Convert.FromHexString("FFFE000B436F6D656E746172");
+        // APP1 vem depois de JFIF. O comentário no fim é um segmento JPEG, fora dos dados de pixels.
+        var afterJfif = jpg.AsSpan(6, 5).SequenceEqual("JFIF\0"u8) ? 4 + System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(jpg.AsSpan(4)) : 2;
+        comment[3] = (byte)(comment.Length - 2);
+        byte[] input = [.. jpg[..afterJfif], .. exif, .. jpg[afterJfif..^2], .. comment, .. jpg[^2..]];
+        byte[] expected = [.. jpg[..afterJfif], .. expectedExif, .. jpg[afterJfif..]];
+        var html = Html(RichDocx(
+            "<w:p>" + Drawing("rIdI") + "</w:p>",
+            relations: [("rIdI", "image", "media/image1.jpg", false)],
+            media: ("word/media/image1.jpg", input)));
+        Assert.Equal($"<p><img src=\"data:image/jpeg;base64,{System.Convert.ToBase64String(expected)}\" alt=\"\"></p>\n", Body(html));
+        using var decoded = Image.NewFromBuffer(expected);
+        Assert.Equal(6, decoded.Get("orientation"));
+        Assert.Equal(24, decoded.Width);
+        Assert.Equal(16, decoded.Height);
+    }
+
+    internal static (byte[] Input, byte[] Expected) PngComAutorEDpi()
+    {
+        var png = System.Convert.FromBase64String(Png);
+        // Chunks válidos com CRC, depois do IHDR. A saída mantém o pHYs (96 DPI).
+        var author = System.Convert.FromHexString("0000001574455874417574686F72004175746F7220666963746963696F3FA452C9");
+        var dpi = System.Convert.FromHexString("000000097048597300000EC400000EC401952B0E1B");
+        var time = System.Convert.FromHexString("0000000774494D4507EA0B160C000070B35272");
+        var compressed = System.Convert.FromHexString("000000117A545874436F6D6D656E740000789C030000000001A06DE1E9");
+        var localized = System.Convert.FromHexString("0000002169545874417574686F720000007074004175746F7200506573736F61204669637469636961DAE59D3C");
+        // EXIF big-endian com orientação 6, resolução 96/1 e artista. A saída tem só os campos técnicos.
+        var exif = System.Convert.FromHexString("00000042655849664D4D002A000000080003011200030000000100060000011A00050000000100000032013B0002000000080000003A00000000000000600000000146696374696361000929B770");
+        var technical = System.Convert.FromHexString("0000002E6558496649492A000800000002001201030001000000060000001A010500010000002600000000000000600000000100000087D42396");
+        return ([.. png[..33], .. author, .. dpi, .. time, .. compressed, .. localized, .. exif, .. png[33..]], [.. png[..33], .. dpi, .. technical, .. png[33..]]);
+    }
 
     private static readonly byte[] Emf = [1, 0, 0, 0, .. new byte[36], 0x20, 0x45, 0x4D, 0x46, .. new byte[20]];
 
@@ -250,6 +292,30 @@ public sealed class DocxHtmlConverterTests
             media: ("word/media/image1.png", content)));
 
         Assert.Equal($"<p>[imagem em {format}: salve como PNG no editor e converta de novo]</p>\n", Body(html));
+    }
+
+    [Fact]
+    public void Png_embutido_limpa_autor_e_data_preservando_pixels_e_dpi()
+    {
+        var (input, expected) = PngComAutorEDpi();
+        var html = Html(RichDocx(
+            "<w:p>" + Drawing("rIdI") + "</w:p>",
+            relations: [("rIdI", "image", "media/image1.png", false)],
+            media: ("word/media/image1.png", input)));
+        Assert.Equal($"<p><img src=\"data:image/png;base64,{System.Convert.ToBase64String(expected)}\" alt=\"\"></p>\n", Body(html));
+    }
+
+    [Fact]
+    public void Png_embutido_truncado_vira_aviso_sem_os_bytes_da_imagem()
+    {
+        // Uma imagem danificada não derruba o documento, e nenhum byte dela (nem o autor) chega à saída.
+        var (input, _) = PngComAutorEDpi();
+        var (error, html) = Convert(RichDocx(
+            "<w:p><w:r><w:t>antes</w:t></w:r>" + Drawing("rIdI") + "</w:p>",
+            relations: [("rIdI", "image", "media/image1.png", false)],
+            media: ("word/media/image1.png", input[..^6])));
+        Assert.Null(error);
+        Assert.Equal("<p>antes[imagem danificada não incluída]</p>\n", Body(html!));
     }
 
     [Fact]
