@@ -191,18 +191,41 @@ public sealed unsafe partial class SandboxedProcess : IDisposable
     /// handles duplicados, e o temporário marcado para exclusão continuaria existindo (SEC-34).
     /// </summary>
     /// <summary>ADR-029: pausa congelando o processo inteiro; o libvips cria threads durante a conversão.</summary>
-    public void Suspend() => NtSuspendProcess(_process);
+    // Depois do Dispose o handle está fechado e o número pode já ser de outro objeto do residente: nada mais o usa.
+    public void Suspend()
+    {
+        if (!_disposed)
+        {
+            NtSuspendProcess(_process);
+        }
+    }
 
-    public void Resume() => NtResumeProcess(_process);
+    public void Resume()
+    {
+        if (!_disposed)
+        {
+            NtResumeProcess(_process);
+        }
+    }
 
     public void Kill()
     {
+        if (_disposed)
+        {
+            return; // o Dispose já encerrou e esperou
+        }
+
         TerminateProcess(_process, 1);
         WaitForExit(KillWaitMs);
     }
 
-    public bool WaitForExit(int milliseconds) => WaitForSingleObject(_process, (uint)milliseconds) == 0;
+    /// <summary>Descartado conta como encerrado: o <see cref="Dispose"/> espera o processo sair.</summary>
+    public bool WaitForExit(int milliseconds) => _disposed || WaitForSingleObject(_process, (uint)milliseconds) == 0;
 
+    /// <summary>
+    /// Encerra, espera sair e só então fecha os handles. Quem descarta sabe que o processo não segura mais nenhum
+    /// arquivo: a pasta de trabalho dele pode ser apagada logo em seguida (SEC-20, SEC-34).
+    /// </summary>
     public void Dispose()
     {
         if (_disposed)
@@ -210,6 +233,7 @@ public sealed unsafe partial class SandboxedProcess : IDisposable
             return;
         }
 
+        Kill();
         _disposed = true;
         Input.Dispose();
         Output.Dispose();

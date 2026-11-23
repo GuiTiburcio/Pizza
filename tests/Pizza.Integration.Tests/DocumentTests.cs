@@ -196,6 +196,137 @@ public sealed class DocumentTests : IDisposable
     }
 
     [JumboFact]
+    public void Job_cancelado_nao_deixa_a_copia_para_o_proximo_motor()
+    {
+        // SEC-20: o motor encerrado à força não roda o próprio finally. A pasta do job é do residente, que a apaga
+        // depois de o processo sair e antes de aquecer o próximo motor, que usa o mesmo AppContainer.
+        var source = Write("cancelado.docx", Docx(string.Concat(Enumerable.Repeat("Documento longo para cancelar. ", 40_000))));
+        var engine = Engine();
+        var work = DocumentEngine.WorkFolder(Profile);
+        using var cancel = new CancellationTokenSource();
+        var run = Task.Run(() => engine.Run(source, "document.pdf", "pdf", cancel.Token));
+        var deadline = DateTime.UtcNow.AddMinutes(1);
+        while (Copies(work).Length == 0 && !run.IsCompleted && DateTime.UtcNow < deadline)
+        {
+            Thread.Sleep(5);
+        }
+
+        Assert.Single(Copies(work)); // a cópia existe antes do cancelamento
+        cancel.Cancel();
+        var result = run.GetAwaiter().GetResult();
+
+        Assert.Equal(ConversionRunner.Cancelled, result.ErrorCode); // prova que o motor foi encerrado no meio
+        Assert.Empty(Copies(work));
+    }
+
+    [JumboFact]
+    public void Pasta_que_nao_sai_impede_o_proximo_motor_ate_ser_apagada()
+    {
+        // SEC-20, falhar fechado: se a pasta do job cancelado não puder ser apagada, nenhum motor novo do mesmo
+        // AppContainer inicia (ele leria a cópia). Quando a pasta sai, o motor volta a converter.
+        var source = Write("travado.docx", Docx(string.Concat(Enumerable.Repeat("Documento longo para cancelar. ", 40_000))));
+        var engine = Engine();
+        var work = DocumentEngine.WorkFolder(Profile);
+        using var cancel = new CancellationTokenSource();
+        var run = Task.Run(() => engine.Run(source, "document.pdf", "pdf", cancel.Token));
+        var deadline = DateTime.UtcNow.AddMinutes(1);
+        while (Copies(work).Length == 0 && !run.IsCompleted && DateTime.UtcNow < deadline)
+        {
+            Thread.Sleep(5);
+        }
+
+        Assert.Single(Copies(work)); // a cópia existe: o cancelamento abaixo pega o motor no meio
+        var lockFile = new FileStream(Path.Combine(Path.GetDirectoryName(Copies(work).Single())!, "trava.txt"), FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        try
+        {
+            // Uma reserva aquecida durante o job (o menu aberto sobre outro documento) também não pode recebê-lo.
+            engine.WarmUp();
+            cancel.Cancel();
+            Assert.Equal(ConversionRunner.Cancelled, run.GetAwaiter().GetResult().ErrorCode);
+
+            Assert.Throws<IOException>(() => engine.Run(Write("bloqueado.docx", Docx("Não pode converter.")), "document.pdf", "pdf"));
+            Assert.False(File.Exists(Path.Combine(_folder, "bloqueado.pdf")));
+        }
+        finally
+        {
+            lockFile.Dispose();
+        }
+
+        var result = engine.Run(Write("liberado.docx", Docx("Pode converter.")), "document.pdf", "pdf");
+        Assert.Null(result.ErrorCode);
+        Assert.Empty(Copies(work));
+    }
+
+    [JumboFact]
+    public void Arquivo_protegido_pelo_motor_nao_impede_a_limpeza()
+    {
+        // O processo isolado pode marcar um arquivo como somente leitura e negar a exclusão na ACL. A pessoa é a dona
+        // e a limpeza desfaz as duas coisas: a pasta sai e os documentos seguintes convertem.
+        var source = Write("protegido.docx", Docx(string.Concat(Enumerable.Repeat("Documento longo para cancelar. ", 40_000))));
+        var engine = Engine();
+        var work = DocumentEngine.WorkFolder(Profile);
+        using var cancel = new CancellationTokenSource();
+        var run = Task.Run(() => engine.Run(source, "document.pdf", "pdf", cancel.Token));
+        var deadline = DateTime.UtcNow.AddMinutes(1);
+        while (Copies(work).Length == 0 && !run.IsCompleted && DateTime.UtcNow < deadline)
+        {
+            Thread.Sleep(5);
+        }
+
+        Assert.Single(Copies(work));
+        var guarded = new FileInfo(Path.Combine(Path.GetDirectoryName(Copies(work).Single())!, "protegido.txt"));
+        File.WriteAllText(guarded.FullName, "x");
+        var acl = guarded.GetAccessControl();
+        acl.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
+            System.Security.Principal.WindowsIdentity.GetCurrent().User!,
+            System.Security.AccessControl.FileSystemRights.Delete,
+            System.Security.AccessControl.AccessControlType.Deny));
+        guarded.SetAccessControl(acl);
+        guarded.Attributes |= FileAttributes.ReadOnly;
+
+        cancel.Cancel();
+        Assert.Equal(ConversionRunner.Cancelled, run.GetAwaiter().GetResult().ErrorCode);
+
+        Assert.Empty(Copies(work));
+        Assert.False(guarded.Directory!.Exists);
+        Assert.Null(engine.Run(Write("seguinte.docx", Docx("Converte.")), "document.pdf", "pdf").ErrorCode);
+    }
+
+    [JumboFact]
+    public void Entrada_acima_do_teto_e_recusada_antes_da_copia()
+    {
+        // SEC-40: 2 GB + 1 byte, em arquivo esparso (não ocupa o disco). O motor recusa pelo tamanho, sem copiar nada.
+        var source = Path.Combine(_folder, "enorme.docx");
+        using (var file = new FileStream(source, FileMode.CreateNew, FileAccess.ReadWrite))
+        {
+            MakeSparse(file.SafeFileHandle);
+            file.SetLength(OutputBudget.MaxBytes + 1);
+        }
+
+        var engine = Engine();
+        var work = DocumentEngine.WorkFolder(Profile);
+        var result = engine.Run(source, "document.pdf", "pdf");
+
+        Assert.Equal("LIMIT_EXCEEDED", result.ErrorCode);
+        Assert.Empty(Copies(work));
+        Assert.False(File.Exists(Path.Combine(_folder, "enorme.pdf")));
+    }
+
+    private static string[] Copies(string work) => Directory.GetFiles(work, "entrada", SearchOption.AllDirectories);
+
+    private static void MakeSparse(Microsoft.Win32.SafeHandles.SafeFileHandle handle)
+    {
+        const uint SetSparse = 0x000900C4; // FSCTL_SET_SPARSE
+        if (!DeviceIoControl(handle, SetSparse, 0, 0, 0, 0, out _, 0))
+        {
+            throw new System.ComponentModel.Win32Exception();
+        }
+    }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool DeviceIoControl(Microsoft.Win32.SafeHandles.SafeFileHandle device, uint code, nint input, int inputSize, nint output, int outputSize, out int returned, nint overlapped);
+
+    [JumboFact]
     public void Conversao_fora_da_lista_e_recusada()
     {
         var source = Write("lista.docx", Docx("Fora da lista."));
