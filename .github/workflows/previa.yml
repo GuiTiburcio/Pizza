@@ -69,49 +69,71 @@ jobs:
       - name: Testar
         run: dotnet test Pizza.slnx -c Release --no-build
 
-      - name: Publicar residente (NativeAOT) e Worker
+      - name: Publicar residente (NativeAOT), Worker e Pizza.Docs
         run: |
           dotnet publish src/Pizza.App -c Release -o artifacts/previa/Pizza
           dotnet publish src/Pizza.Worker -c Release -o artifacts/previa/Pizza
+          dotnet publish src/Pizza.Docs -c Release -o artifacts/previa/Docs
+
+      # ADR-034: o motor do Jumbo vem do MSI oficial, com versão e SHA-256 fixos (tools/baixar-motor.ps1).
+      - name: Baixar motor de documentos
+        shell: pwsh
+        run: ./tools/baixar-motor.ps1 -Destino artifacts/previa/motor
+
+      # packaging/*.json declara o que entra em cada edição; o script falha com arquivo faltando ou fora do manifesto.
+      - name: Montar Brotinho e Jumbo
+        shell: pwsh
+        run: |
+          ./tools/montar-edicao.ps1 -Edicao brotinho -Saida artifacts/previa/Brotinho
+          ./tools/montar-edicao.ps1 -Edicao jumbo -Saida artifacts/previa/Jumbo
 
       - name: Empacotar
         id: pacote
         shell: pwsh
         run: |
           $tag = $env:GITHUB_REF_NAME
-          Remove-Item artifacts/previa/Pizza/*.pdb
-          Copy-Item LICENSE, THIRD-PARTY-NOTICES.md artifacts/previa/Pizza
-          $zip = "artifacts/previa/Pizza-$tag-win-x64.zip"
-          Compress-Archive artifacts/previa/Pizza/* $zip
-          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  $(Split-Path $zip -Leaf)" | Out-File artifacts/previa/SHA256SUMS -Encoding ascii
-          "zip=$zip" | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
+          $sums = foreach ($edicao in 'Brotinho', 'Jumbo') {
+            $zip = "artifacts/previa/Pizza-$edicao-$tag.zip"
+            Compress-Archive "artifacts/previa/$edicao/*" $zip
+            "$((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant())  $(Split-Path $zip -Leaf)"
+          }
+          $sums | Out-File artifacts/previa/SHA256SUMS -Encoding ascii
+          "tag=$tag" | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
 
+      # O syft lê só o Brotinho: o Jumbo acrescenta apenas o Pizza.Docs (sem pacote NuGet próprio) e o motor, que
+      # entra pelo build/native-deps.json.
       - name: SBOM (CycloneDX)
         uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
-          path: artifacts/previa/Pizza
+          path: artifacts/previa/Brotinho
           format: cyclonedx-json
           output-file: artifacts/previa/sbom.cdx.json
           upload-artifact: false
           upload-release-assets: false
 
       # As DLLs nativas baixadas pelo build (build/native-deps.json) não aparecem para o syft.
-      - name: SBOM (dependências nativas)
+      - name: SBOM por edição (dependências nativas)
         shell: pwsh
-        run: ./tools/sbom-nativos.ps1 -Sbom artifacts/previa/sbom.cdx.json
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $brotinho = "artifacts/previa/Pizza-Brotinho-$tag.sbom.cdx.json"
+          $jumbo = "artifacts/previa/Pizza-Jumbo-$tag.sbom.cdx.json"
+          Move-Item artifacts/previa/sbom.cdx.json $brotinho
+          Copy-Item $brotinho $jumbo
+          ./tools/sbom-nativos.ps1 -Sbom $brotinho -Escopo previa
+          ./tools/sbom-nativos.ps1 -Sbom $jumbo -Escopo previa, jumbo
 
       - name: Atestado de proveniência
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: ${{ steps.pacote.outputs.zip }}
+          subject-path: artifacts/previa/Pizza-*.zip
 
       - name: Publicar como pré-lançamento
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          PIZZA_RELEASE_ZIP: ${{ steps.pacote.outputs.zip }}
         run: |
           $tag = $env:GITHUB_REF_NAME
           gh release create $tag --prerelease --verify-tag --title "Pizza $tag" --notes-file .github/previa-notas.md `
-            $env:PIZZA_RELEASE_ZIP artifacts/previa/SHA256SUMS artifacts/previa/sbom.cdx.json
+            "artifacts/previa/Pizza-Brotinho-$tag.zip" "artifacts/previa/Pizza-Jumbo-$tag.zip" artifacts/previa/SHA256SUMS `
+            "artifacts/previa/Pizza-Brotinho-$tag.sbom.cdx.json" "artifacts/previa/Pizza-Jumbo-$tag.sbom.cdx.json"
