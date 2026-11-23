@@ -32,12 +32,11 @@ internal static class WebpMetadata
             }
             else if (type.SequenceEqual("EXIF"u8))
             {
-                if (!extended || seenExif) throw Invalid();
-                seenExif = true;
+                // Só o primeiro EXIF de um WebP estendido conta; os demais, e um bloco que cresceria, saem inteiros.
                 var prefix = data.StartsWith("Exif\0\0"u8) ? 6 : 0;
-                var technical = TechnicalExif.Keep(data[prefix..]);
-                if (prefix + technical.Length > data.Length) throw Invalid();
-                if (technical.Length != 0)
+                var technical = !extended || seenExif ? [] : TechnicalExif.Keep(data[prefix..]);
+                seenExif = true;
+                if (technical.Length != 0 && prefix + technical.Length <= data.Length)
                 {
                     if (prefix == 0) WriteChunk(output, type, technical);
                     else WriteChunk(output, type, [.. "Exif\0\0"u8, .. technical]);

@@ -8,25 +8,30 @@ internal static class TechnicalExif
     private const int EntrySize = 12;
     private static ReadOnlySpan<ushort> TechnicalTags => [0x0112, 0x011a, 0x011b, 0x0128];
 
+    /// <summary>
+    /// Nunca falha: um EXIF fora do padrão só perde o que não dá para ler com segurança.
+    /// Estrutura inválida descarta o bloco inteiro; campo técnico inválido ou repetido descarta só o campo.
+    /// Descartar nunca vaza dado (PRIV-30); o custo é a imagem perder a orientação ou a densidade.
+    /// </summary>
     public static byte[] Keep(ReadOnlySpan<byte> tiff)
     {
         var little = tiff.StartsWith("II"u8);
         if (tiff.Length < 8 || (!little && !tiff.StartsWith("MM"u8)) || Read16(tiff[2..], little) != 42)
         {
-            throw new InvalidDataException("Cabeçalho EXIF inválido.");
+            return [];
         }
 
         var offset = Read32(tiff[4..], little);
         if (offset < 8 || offset > tiff.Length - 6)
         {
-            throw new InvalidDataException("Diretório EXIF inválido.");
+            return [];
         }
 
         var directory = tiff[(int)offset..];
         var entries = Read16(directory, little);
         if (entries > (directory.Length - 6) / EntrySize)
         {
-            throw new InvalidDataException("Diretório EXIF incompleto.");
+            return [];
         }
 
         Span<Field> fields = stackalloc Field[4];
@@ -44,7 +49,7 @@ internal static class TechnicalExif
             var rational = tag is 1 or 2;
             if (fields[tag].Type != 0 || Read32(entry[4..], little) != 1 || type != (rational ? 5 : 3))
             {
-                throw new InvalidDataException("Campo técnico EXIF inválido.");
+                continue;
             }
 
             if (rational)
@@ -52,27 +57,23 @@ internal static class TechnicalExif
                 var position = Read32(entry[8..], little);
                 if (position < 8 || position > tiff.Length - 8)
                 {
-                    throw new InvalidDataException("Resolução EXIF incompleta.");
+                    continue;
                 }
 
                 var value = tiff[(int)position..];
                 var denominator = Read32(value[4..], little);
-                if (denominator == 0)
+                if (denominator != 0)
                 {
-                    throw new InvalidDataException("Resolução EXIF inválida.");
+                    fields[tag] = new(type, Read32(value, little), denominator);
                 }
-
-                fields[tag] = new(type, Read32(value, little), denominator);
             }
             else
             {
                 var value = Read16(entry[8..], little);
-                if (value < 1 || value > (tag == 0 ? 8 : 3))
+                if (value >= 1 && value <= (tag == 0 ? 8 : 3))
                 {
-                    throw new InvalidDataException("Orientação ou unidade EXIF inválida.");
+                    fields[tag] = new(type, value, 0);
                 }
-
-                fields[tag] = new(type, value, 0);
             }
         }
 

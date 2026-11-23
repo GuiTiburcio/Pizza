@@ -39,11 +39,10 @@ internal static class PngMetadata
             hasData |= type.SequenceEqual("IDAT"u8);
             if (type.SequenceEqual("eXIf"u8))
             {
-                if (hasExif) throw new InvalidDataException("PNG com mais de um bloco EXIF.");
+                // Só o primeiro eXIf conta; um bloco que cresceria na reescrita no buffer sai inteiro.
+                var clean = hasExif ? [] : TechnicalExif.Keep(remaining.Slice(8, (int)length));
                 hasExif = true;
-                var clean = TechnicalExif.Keep(remaining.Slice(8, (int)length));
-                if (clean.Length > length) throw new InvalidDataException("Layout dos campos técnicos EXIF inválido.");
-                if (clean.Length != 0)
+                if (clean.Length != 0 && clean.Length <= length)
                 {
                     var chunk = image.AsSpan(destination, clean.Length + ChunkOverhead);
                     BinaryPrimitives.WriteUInt32BigEndian(chunk, (uint)clean.Length);

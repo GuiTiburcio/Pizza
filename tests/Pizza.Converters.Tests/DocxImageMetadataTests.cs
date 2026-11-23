@@ -20,6 +20,36 @@ public sealed class DocxImageMetadataTests
         Assert.Equal(tiff, TechnicalExif.Keep(tiff));
     }
 
+    [Theory]
+    // Orientação 0 (gravada por algumas câmeras) e unidade 2: só a unidade fica.
+    [InlineData("49492A0008000000020012010300010000000000000028010300010000000200000000000000", "49492A0008000000010028010300010000000200000000000000")]
+    // Orientação repetida: vale a primeira.
+    [InlineData("49492A00080000000200120103000100000006000000120103000100000003000000000000000000", "49492A0008000000010012010300010000000600000000000000")]
+    // Orientação com contagem 2: descartada.
+    [InlineData("49492A000800000001001201030002000000060006000000000000", "")]
+    // Cabeçalho que não é TIFF: o EXIF inteiro sai.
+    [InlineData("4D4D002B0000000800000000", "")]
+    // Diretório fora do bloco.
+    [InlineData("49492A00FF000000", "")]
+    public void Exif_invalido_descarta_o_campo_ou_o_bloco_sem_erro(string input, string expected)
+    {
+        Assert.Equal(Convert.FromHexString(expected), TechnicalExif.Keep(Convert.FromHexString(input)));
+    }
+
+    [Fact]
+    public void Jpeg_com_dois_blocos_exif_fica_so_com_os_campos_tecnicos_do_primeiro()
+    {
+        using var pixels = Image.Black(8, 8);
+        var jpg = pixels.JpegsaveBuffer(keep: Enums.ForeignKeep.None);
+        var exif = Convert.FromHexString("FFE1004A4578696600004D4D002A000000080003011200030000000100060000011A00050000000100000032013B0002000000080000003A0000000000000060000000014669637469636100");
+        var technical = Convert.FromHexString("FFE1003645786966000049492A000800000002001201030001000000060000001A0105000100000026000000000000006000000001000000");
+        var afterJfif = 4 + BinaryPrimitives.ReadUInt16BigEndian(jpg.AsSpan(4));
+        byte[] input = [.. jpg[..afterJfif], .. exif, .. exif, .. jpg[afterJfif..]];
+        byte[] expected = [.. jpg[..afterJfif], .. technical, .. jpg[afterJfif..]];
+
+        Assert.Equal(expected, JpegMetadata.Remove(input));
+    }
+
     [Fact]
     public void Gif_preserva_repeticao_e_quadros_sem_comentario()
     {

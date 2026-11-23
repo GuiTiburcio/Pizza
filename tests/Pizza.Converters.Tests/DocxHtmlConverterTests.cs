@@ -306,15 +306,16 @@ public sealed class DocxHtmlConverterTests
     }
 
     [Fact]
-    public void Png_embutido_truncado_retorna_erro_sem_html()
+    public void Png_embutido_truncado_vira_aviso_sem_os_bytes_da_imagem()
     {
+        // Uma imagem danificada não derruba o documento, e nenhum byte dela (nem o autor) chega à saída.
         var (input, _) = PngComAutorEDpi();
         var (error, html) = Convert(RichDocx(
-            "<w:p>" + Drawing("rIdI") + "</w:p>",
+            "<w:p><w:r><w:t>antes</w:t></w:r>" + Drawing("rIdI") + "</w:p>",
             relations: [("rIdI", "image", "media/image1.png", false)],
             media: ("word/media/image1.png", input[..^6])));
-        Assert.Equal("CORRUPTED", error);
-        Assert.Null(html);
+        Assert.Null(error);
+        Assert.Equal("<p>antes[imagem danificada não incluída]</p>\n", Body(html!));
     }
 
     [Fact]

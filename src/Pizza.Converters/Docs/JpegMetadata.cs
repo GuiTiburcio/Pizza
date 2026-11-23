@@ -55,12 +55,12 @@ internal static class JpegMetadata
                     output.Write([0, 0]);
                     break;
                 case 0xe1 when data.StartsWith(Exif):
-                    if (seenExif) throw new InvalidDataException("JPEG com mais de um bloco EXIF.");
+                    // Só o primeiro bloco EXIF conta para os leitores; os seguintes saem inteiros.
+                    if (seenExif) break;
                     seenExif = true;
                     var retained = TechnicalExif.Keep(data[Exif.Length..]);
-                    if (Exif.Length + retained.Length > data.Length)
-                        throw new InvalidDataException("Layout dos campos técnicos EXIF inválido.");
-                    if (retained.Length != 0)
+                    // A escrita no próprio buffer exige que o bloco novo não cresça; se crescer, o EXIF sai.
+                    if (retained.Length != 0 && Exif.Length + retained.Length <= data.Length)
                     {
                         Header(output, marker, Exif.Length + retained.Length);
                         output.Write(Exif);
