@@ -81,6 +81,9 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
         Spare engine;
         lock (_gate)
         {
+            // SEC-20: um motor só fica perigoso quando recebe um documento. Nenhum documento entra (nem numa reserva
+            // já aquecida) enquanto sobrar a pasta de outro job no mesmo AppContainer.
+            RequireNoLeftovers();
             engine = _spare is { } spare && !spare.Process.WaitForExit(0) ? spare : StartSpare();
             if (!ReferenceEquals(engine, _spare))
             {
@@ -108,20 +111,26 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
             {
                 WarmUp();
             }
-            catch (IOException)
+            catch (Exception)
             {
+                // Sem reserva, o próximo documento inicia o motor na hora.
             }
+        }
+    }
+
+    private void RequireNoLeftovers()
+    {
+        _leftovers.RemoveAll(DeleteJobFolder);
+        if (_leftovers.Count > 0)
+        {
+            throw new IOException("A pasta de um documento anterior ainda não saiu; o motor não recebe documentos.");
         }
     }
 
     private Spare StartSpare()
     {
         // SEC-20, falhar fechado: o motor novo usa o mesmo AppContainer e leria a cópia que sobrou de outro job.
-        _leftovers.RemoveAll(DeleteJobFolder);
-        if (_leftovers.Count > 0)
-        {
-            throw new IOException("A pasta de um documento anterior ainda não saiu; o motor não inicia.");
-        }
+        RequireNoLeftovers();
 
         var sid = SandboxedProcess.EnsureProfile(profile);
         if (!_granted)
@@ -190,7 +199,12 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
             {
                 Directory.Delete(folder, recursive: true);
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            catch (UnauthorizedAccessException)
+            {
+                // O processo isolado pode deixar arquivo somente leitura ou com ACL que nega a exclusão.
+                Unprotect(folder);
+            }
+            catch (IOException)
             {
                 // Um antivírus pode segurar o arquivo por instantes.
                 Thread.Sleep(50);
@@ -198,6 +212,37 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
         }
 
         return !Directory.Exists(folder);
+    }
+
+    /// <summary>
+    /// Tira o atributo somente leitura e troca a ACL explícita pela herdada da pasta do AppContainer. A pessoa é a
+    /// dona dos arquivos criados pelo processo isolado e, como dona, sempre pode reescrever a ACL.
+    /// </summary>
+    private static void Unprotect(string folder)
+    {
+        foreach (var entry in new DirectoryInfo(folder).EnumerateFileSystemInfos("*", new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0, IgnoreInaccessible = true }).Append(new DirectoryInfo(folder)))
+        {
+            try
+            {
+                entry.Attributes = FileAttributes.Normal | (entry.Attributes & FileAttributes.Directory);
+                if (entry is FileInfo file)
+                {
+                    var security = new System.Security.AccessControl.FileSecurity();
+                    security.SetAccessRuleProtection(isProtected: false, preserveInheritance: false);
+                    file.SetAccessControl(security);
+                }
+                else if (entry is DirectoryInfo directory)
+                {
+                    var security = new System.Security.AccessControl.DirectorySecurity();
+                    security.SetAccessRuleProtection(isProtected: false, preserveInheritance: false);
+                    directory.SetAccessControl(security);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+            {
+                // Segue para os outros; a próxima tentativa de apagar diz se bastou.
+            }
+        }
     }
 
     /// <summary>Remove letras que tenham sobrado de uma queda e ainda apontem para o motor. Chamado ao abrir o Pizza.</summary>
@@ -276,14 +321,8 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
                 continue;
             }
 
-            try
-            {
-                Directory.Delete(folder, recursive: true);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                // Tenta de novo na próxima vez que o Pizza abrir.
-            }
+            // Inclusive arquivo protegido pelo processo isolado. O que ainda sobrar tenta de novo na próxima abertura.
+            DeleteJobFolder(folder);
         }
     }
 
