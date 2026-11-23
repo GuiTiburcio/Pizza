@@ -41,6 +41,8 @@ internal sealed record AlacChannelLayout(uint Mask, uint Tag, int[] Order)
         };
         // 5.1 com side surround (0x60F) tem o mesmo layout Apple do 5.1 com back (0x3F): pares side e back viram Ls/Rs.
         var sideSurround51 = channels == 6 && mask == 0x60f;
-        return layout is not null && (mask == layout.Mask || sideSurround51 || (mask == 0 && channels <= 2)) ? layout : null;
+        // Mono marcado como esquerdo (FL, 0x1) é o mesmo canal único do layout Apple mono.
+        var monoLeft = channels == 1 && mask == 0x1;
+        return layout is not null && (mask == layout.Mask || sideSurround51 || monoLeft || (mask == 0 && channels <= 2)) ? layout : null;
     }
 }

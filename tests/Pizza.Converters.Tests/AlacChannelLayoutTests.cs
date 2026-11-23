@@ -16,6 +16,18 @@ public class AlacChannelLayoutTests
     }
 
     [Theory]
+    [InlineData(0x4u)]
+    [InlineData(0x1u)]
+    public void Mono_como_centro_ou_como_esquerdo_usa_o_layout_Apple_mono(uint mask)
+    {
+        // WAV extensible mono costuma vir com a máscara FL (0x1); o layout Apple mono é um canal só (FC, 0x4).
+        var layout = AlacChannelLayout.Find(1, mask);
+        Assert.NotNull(layout);
+        Assert.Equal((100u << 16) | 1, layout.Tag);
+    }
+
+    [Theory]
+    [InlineData(1, 0x2u)]
     [InlineData(6, 0u)]
     [InlineData(6, 0x60eu)]
     [InlineData(6, 0x1u)]
