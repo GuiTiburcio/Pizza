@@ -1,0 +1,24 @@
+{
+  "esquema": 1,
+  "edicao": "jumbo",
+  "descricao": "Pizza Jumbo (ADR-034): o Brotinho inteiro, mais o Pizza.Docs e a pasta motor\\ com o LibreOffice extraído do MSI oficial por tools/baixar-motor.ps1 (versão e SHA-256 fixos).",
+  "herda": [ "brotinho" ],
+  "proibidos": [],
+  "entradas": [
+    {
+      "origem": "docs",
+      "arquivos": [
+        "Pizza.Docs.exe",
+        "Pizza.Docs.dll",
+        "Pizza.Docs.deps.json",
+        "Pizza.Docs.runtimeconfig.json"
+      ]
+    },
+    {
+      "origem": "motor",
+      "destino": "motor",
+      "arvore": true,
+      "exige": [ "program/mergedlo.dll" ]
+    }
+  ]
+}
