@@ -184,6 +184,23 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
     /// ADR-034: o LibreOffice confere cada pasta acima do motor, e o AppContainer não lista nenhuma delas. Na raiz
     /// de uma letra não há pasta acima. A letra não avisa o Explorer e existe só durante a conversão.
     /// </summary>
+    public static void DiagLog(string text)
+    {
+        if (Environment.GetEnvironmentVariable("DIAG_OUT") is not { Length: > 0 } dir)
+        {
+            return;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(dir);
+            File.AppendAllText(Path.Combine(dir, "drives.txt"), $"{DateTime.UtcNow:HH:mm:ss.fff} t{Environment.CurrentManagedThreadId} {text}{Environment.NewLine}");
+        }
+        catch (IOException)
+        {
+        }
+    }
+
     private static string MapEngine(string engineRoot)
     {
         var buffer = new char[16];
@@ -192,6 +209,7 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
             var drive = $"{letter}:";
             if (QueryDosDeviceW(drive, buffer, buffer.Length) == 0 && DefineDosDeviceW(RawTargetPath | NoBroadcastSystem, drive, Target(engineRoot)))
             {
+                DiagLog("map " + drive);
                 return drive;
             }
         }
@@ -200,8 +218,11 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
     }
 
     /// <summary>Só remove a letra se ela ainda apontar para o motor; uma letra de outro programa fica intacta.</summary>
-    private static void Unmap(string drive, string engineRoot) =>
-        DefineDosDeviceW(RawTargetPath | RemoveDefinition | ExactMatchOnRemove | NoBroadcastSystem, drive, Target(engineRoot));
+    private static void Unmap(string drive, string engineRoot)
+    {
+        var ok = DefineDosDeviceW(RawTargetPath | RemoveDefinition | ExactMatchOnRemove | NoBroadcastSystem, drive, Target(engineRoot));
+        DiagLog("unmap " + drive + " ok=" + ok);
+    }
 
     private static string Target(string engineRoot) => @"\??\" + RealFolder(engineRoot);
 

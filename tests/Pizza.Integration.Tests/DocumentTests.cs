@@ -97,7 +97,9 @@ public sealed class DocumentTests : IDisposable
         File.Delete(marker);
         var source = Write("macro.odt", OdtWithOpenMacro(marker));
 
+        Snapshot("macro-antes");
         var result = Engine().Run(source, "document.pdf", "pdf");
+        Snapshot("macro-depois:" + result.ErrorCode);
 
         Assert.Null(result.ErrorCode);
         Assert.False(File.Exists(marker));
@@ -222,6 +224,14 @@ public sealed class DocumentTests : IDisposable
 
         Assert.Equal("UNSUPPORTED", result.ErrorCode);
         Assert.False(File.Exists(Path.Combine(_folder, "lista (1).docx")));
+    }
+
+    // TEMPORÁRIO (diagnóstico): letras que apontam para o motor e processos Pizza.Docs vivos.
+    private static void Snapshot(string tag)
+    {
+        var drives = string.Join(",", DocumentEngine.DrivesFor(JumboFactAttribute.Engine!));
+        var processes = string.Join(",", System.Diagnostics.Process.GetProcessesByName("Pizza.Docs").Select(p => p.Id));
+        DocumentEngine.DiagLog($"snapshot {tag} letras=[{drives}] docs=[{processes}]");
     }
 
     private DocumentEngine Engine(string? engineRoot = null, string profile = Profile, TimeSpan? spareIdle = null)

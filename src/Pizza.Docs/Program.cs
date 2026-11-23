@@ -9,6 +9,8 @@ namespace Pizza.Docs;
 
 internal static class Program
 {
+    private static string EngineDir = "";
+
     private const int InvalidArguments = 2;
     private const int ProtocolViolation = 3;
     private const int EngineUnavailable = 4;
@@ -46,6 +48,7 @@ internal static class Program
             return InvalidArguments;
         }
 
+        EngineDir = engine;
         Diag.Init(work);
         Diag.Mark("main");
         using var reader = OpenHandle(long.Parse(input, CultureInfo.InvariantCulture), FileAccess.Read);
@@ -144,9 +147,11 @@ internal static class Program
 
         Diag.Mark("copied");
         Diag.Mark("lok-begin");
+        Diag.Mark("engine-dir-before:" + Directory.Exists(EngineDir) + "/" + File.Exists(Path.Combine(EngineDir, "mergedlo.dll")));
 
         var error = LibreOfficeKit.Convert(source, result, target.Filter);
         Diag.Mark("lok-end:" + (error ?? "null"));
+        Diag.Mark("engine-dir-after:" + Directory.Exists(EngineDir) + "/" + File.Exists(Path.Combine(EngineDir, "mergedlo.dll")));
         if (error is null)
         {
             // O destino é fechado antes da resposta: depois de "done", nada mais é escrito.

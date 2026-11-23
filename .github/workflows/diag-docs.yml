@@ -55,11 +55,11 @@ jobs:
             if ($code -ne 0) {
               $fails++
               Write-Host "::group::FALHA rodada $i - saida do teste"
-              Get-Content $log | Write-Host
+              Get-Content $log | Select-String -Pattern 'Failed |Assert|Actual|Expected|Error|WORKER' | Write-Host
               Write-Host '::endgroup::'
               Write-Host "::group::FALHA rodada $i - diag"
               if (Test-Path $out) {
-                Get-ChildItem $out -Filter 'diag-*.txt' -Recurse | Sort-Object Name | ForEach-Object { Write-Host "--- $($_.Name)"; Get-Content $_.FullName | Write-Host }
+                Get-ChildItem $out -Recurse -File | Sort-Object Name | ForEach-Object { Write-Host "--- $($_.Name)"; Get-Content $_.FullName | Write-Host }
               } else { Write-Host 'sem diag-out' }
               Write-Host '::endgroup::'
             }
