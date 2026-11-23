@@ -134,6 +134,23 @@ public sealed class SandboxTests(SandboxFixture fixture) : IDisposable
         Assert.True(process.WaitForExit(10_000));
     }
 
+    [Fact]
+    public void Descartar_espera_o_processo_sair_e_o_handle_fechado_nao_e_mais_usado()
+    {
+        // SEC-20: quem descarta pode apagar a pasta do processo logo em seguida. Depois do Dispose, Kill, espera e
+        // pausa não tocam no handle fechado, cujo número pode já ser de outro objeto do residente.
+        var worker = StartWorker();
+        var process = Process.GetProcessById(worker.ProcessId);
+
+        worker.Dispose();
+
+        Assert.True(process.WaitForExit(0));
+        worker.Kill();
+        worker.Suspend();
+        worker.Resume();
+        Assert.True(worker.WaitForExit(0));
+    }
+
     private SandboxedProcess StartWorker() => SandboxedProcess.Start(fixture.WorkerPath, SandboxFixture.Profile);
 
     private Dictionary<string, string> RunProbeInSandbox()

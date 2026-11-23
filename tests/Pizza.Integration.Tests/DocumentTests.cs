@@ -219,6 +219,35 @@ public sealed class DocumentTests : IDisposable
     }
 
     [JumboFact]
+    public void Pasta_que_nao_sai_impede_o_proximo_motor_ate_ser_apagada()
+    {
+        // SEC-20, falhar fechado: se a pasta do job cancelado não puder ser apagada, nenhum motor novo do mesmo
+        // AppContainer inicia (ele leria a cópia). Quando a pasta sai, o motor volta a converter.
+        var source = Write("travado.docx", Docx(string.Concat(Enumerable.Repeat("Documento longo para cancelar. ", 40_000))));
+        var engine = Engine();
+        var work = DocumentEngine.WorkFolder(Profile);
+        using var cancel = new CancellationTokenSource();
+        var run = Task.Run(() => engine.Run(source, "document.pdf", "pdf", cancel.Token));
+        var deadline = DateTime.UtcNow.AddMinutes(1);
+        while (Copies(work).Length == 0 && !run.IsCompleted && DateTime.UtcNow < deadline)
+        {
+            Thread.Sleep(5);
+        }
+
+        var lockFile = new FileStream(Path.Combine(Path.GetDirectoryName(Copies(work).Single())!, "trava.txt"), FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        cancel.Cancel();
+        Assert.Equal(ConversionRunner.Cancelled, run.GetAwaiter().GetResult().ErrorCode);
+
+        Assert.Throws<IOException>(() => engine.Run(Write("bloqueado.docx", Docx("Não pode converter.")), "document.pdf", "pdf"));
+        Assert.False(File.Exists(Path.Combine(_folder, "bloqueado.pdf")));
+
+        lockFile.Dispose();
+        var result = engine.Run(Write("liberado.docx", Docx("Pode converter.")), "document.pdf", "pdf");
+        Assert.Null(result.ErrorCode);
+        Assert.Empty(Copies(work));
+    }
+
+    [JumboFact]
     public void Entrada_acima_do_teto_e_recusada_antes_da_copia()
     {
         // SEC-40: 2 GB + 1 byte, em arquivo esparso (não ocupa o disco). O motor recusa pelo tamanho, sem copiar nada.

@@ -28,6 +28,9 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
     private Spare? _spare;
     private bool _granted;
 
+    // Pastas de job que não saíram ao liberar o motor (SEC-20): nenhum motor novo do perfil inicia enquanto houver uma.
+    private readonly List<string> _leftovers = [];
+
     /// <summary>
     /// Inicia um motor de reserva, se ainda não houver um: ele carrega o LibreOffice enquanto a pessoa escolhe a
     /// fatia. É usado por um único documento (S-02) e sai sozinho depois de <see cref="SpareIdle"/>.
@@ -41,7 +44,7 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
                 return;
             }
 
-            _spare?.Release(engineRoot);
+            _spare?.Release(engineRoot, _leftovers);
             var started = StartSpare();
             _spare = started;
 
@@ -55,7 +58,7 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
     {
         lock (_gate)
         {
-            _spare?.Release(engineRoot);
+            _spare?.Release(engineRoot, _leftovers);
             _spare = null;
         }
     }
@@ -67,7 +70,7 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
             if (ReferenceEquals(_spare, spare))
             {
                 _spare = null;
-                spare.Release(engineRoot);
+                spare.Release(engineRoot, _leftovers);
             }
         }
     }
@@ -81,7 +84,7 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
             engine = _spare is { } spare && !spare.Process.WaitForExit(0) ? spare : StartSpare();
             if (!ReferenceEquals(engine, _spare))
             {
-                _spare?.Release(engineRoot);
+                _spare?.Release(engineRoot, _leftovers);
             }
 
             _spare = null;
@@ -94,15 +97,32 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
         }
         finally
         {
-            engine.Release(engineRoot);
+            lock (_gate)
+            {
+                engine.Release(engineRoot, _leftovers);
+            }
 
-            // Quem converte um documento costuma converter outro em seguida.
-            WarmUp();
+            // Quem converte um documento costuma converter outro em seguida. Sem reserva (sobra de pasta ou letra
+            // ocupada), o próximo documento tenta de novo; o resultado deste não muda.
+            try
+            {
+                WarmUp();
+            }
+            catch (IOException)
+            {
+            }
         }
     }
 
     private Spare StartSpare()
     {
+        // SEC-20, falhar fechado: o motor novo usa o mesmo AppContainer e leria a cópia que sobrou de outro job.
+        _leftovers.RemoveAll(DeleteJobFolder);
+        if (_leftovers.Count > 0)
+        {
+            throw new IOException("A pasta de um documento anterior ainda não saiu; o motor não inicia.");
+        }
+
         var sid = SandboxedProcess.EnsureProfile(profile);
         if (!_granted)
         {
@@ -139,7 +159,7 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
 
         public Timer? Expiry { get; set; }
 
-        public void Release(string engineRoot)
+        public void Release(string engineRoot, List<string> leftovers)
         {
             if (_released)
             {
@@ -149,17 +169,20 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
             _released = true;
             Expiry?.Dispose();
 
-            // SEC-20: o motor encerrado à força não apaga a cópia do documento. O residente espera o processo sair
-            // (até lá ele segura os arquivos) e apaga a pasta antes de qualquer outro motor do mesmo AppContainer.
-            process.Kill();
+            // SEC-20: o motor encerrado à força não apaga a cópia do documento. O Dispose (aqui ou já no runner)
+            // encerra e espera o processo sair; então a pasta sai antes de qualquer outro motor do mesmo AppContainer.
             process.Dispose();
-            DeleteJobFolder(folder);
+            if (!DeleteJobFolder(folder))
+            {
+                leftovers.Add(folder);
+            }
             Unmap(drive, engineRoot);
             CloseDesktop(desktop);
         }
     }
 
-    private static void DeleteJobFolder(string folder)
+    /// <summary>Apaga a pasta do job; devolve se ela não existe mais.</summary>
+    private static bool DeleteJobFolder(string folder)
     {
         for (var attempt = 0; attempt < 20 && Directory.Exists(folder); attempt++)
         {
@@ -169,10 +192,12 @@ public sealed unsafe partial class DocumentEngine(string docsPath, string engine
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                // Um antivírus pode segurar o arquivo por instantes; o que sobrar sai no CleanWorkFolder ao abrir.
+                // Um antivírus pode segurar o arquivo por instantes.
                 Thread.Sleep(50);
             }
         }
+
+        return !Directory.Exists(folder);
     }
 
     /// <summary>Remove letras que tenham sobrado de uma queda e ainda apontem para o motor. Chamado ao abrir o Pizza.</summary>
