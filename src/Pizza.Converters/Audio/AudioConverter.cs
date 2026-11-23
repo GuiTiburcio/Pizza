@@ -462,7 +462,8 @@ public sealed class AudioConverter(string id) : IConverter
         var pcm = MediaFoundation.CreateMediaType();
         try
         {
-            var bits = reader.Info.Bits >= 24 ? 24u : 16u;
+            // O PCM suporta 16 ou 24 bits. Uma origem ALAC de 20 bits precisa do contêiner de 24 bits.
+            var bits = reader.Info.Bits > 16 ? 24u : 16u;
             // Não pedir máscara aqui: o decoder usa quad/7.1 padrão para 4/8 canais e o
             // SourceReader misturaria antes da permutação se pedíssemos 4.0/7.1 wide.
             SetPcm(pcm, (uint)reader.Info.SampleRate, (uint)reader.Info.Channels, bits);

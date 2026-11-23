@@ -25,7 +25,7 @@ SEC-20/26: só a família Áudio carrega a DLL, por caminho absoluto sob os bin�
 
 ## Critérios de aceite
 
-- Trechos 1–4095 quadros, 4096 e 4097; PCM 16/24 bits, taxas suportadas, mono/estéreo/multicanal e silêncio real preservados byte a byte após releitura.
+- Trechos 1–4095 quadros, 4096 e 4097; PCM 16/24 bits, taxas suportadas, mono/estéreo/multicanal e silêncio real preservados byte a byte após releitura. Na opção Original, as 20 posições úteis de uma origem ALAC de 20 bits são preservadas ao usar PCM de 24 bits no WAV, FLAC ou M4A sem perda.
 - Teste concorrente que reproduza o contexto da suíte, não somente rodadas isoladas.
 - Duração, canais, ordem e cauda exatos; nenhuma finalização via codificador ALAC do Windows.
 - Conversão no Worker, probe, cancelamento/limites e teste de família de DLLs.

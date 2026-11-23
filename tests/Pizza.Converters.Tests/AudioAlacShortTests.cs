@@ -4,10 +4,14 @@ namespace Pizza.Converters.Tests;
 
 public partial class AudioConverterTests
 {
-    [MediaFact]
-    public void Alac_32_bits_multicanal_nao_reduz_para_16_antes_de_gravar_24()
+    [MediaTheory]
+    [InlineData(20)]
+    [InlineData(32)]
+    public void Alac_multicanal_nao_reduz_para_16_antes_de_gravar_24(int depth)
     {
         var values = new[] { 0x12345600, -0x23456700, 0x34567800, -0x45678900, 0x56789a00, -0x6789ab00 };
+        var shift = 32 - depth;
+        for (var i = 0; i < values.Length; i++) values[i] = (values[i] >> shift) << shift;
         var wave24 = PatternWave(24, 48000, 1, 0, 6);
         var wave32 = new byte[68 + 24];
         wave24.AsSpan(0, 68).CopyTo(wave32);
@@ -22,16 +26,16 @@ public partial class AudioConverterTests
         Assert.Null(encodeError);
         var outer = container.AsSpan().IndexOf("alac"u8);
         var inner = outer + 4 + container.AsSpan(outer + 4).IndexOf("alac"u8);
-        BinaryPrimitives.WriteUInt16BigEndian(container.AsSpan(outer + 22), 32);
-        container[inner + 13] = 32; // ALACSpecificConfig.bitDepth
-        var packet = new byte[52]; // quatro cabeçalhos de55bits +6 amostras32bits + END3bits.
+        BinaryPrimitives.WriteUInt16BigEndian(container.AsSpan(outer + 22), (ushort)depth);
+        container[inner + 13] = (byte)depth; // ALACSpecificConfig.bitDepth
+        var packet = new byte[(4 * 55 + 6 * depth + 3 + 7) / 8];
         var bit = 0;
         var apple = new[] { values[2], values[0], values[1], values[4], values[5], values[3] };
         var channel = 0;
         foreach (var group in new[] { (0u, 1), (1u, 2), (1u, 2), (0u, 1) })
         {
             Write(group.Item1, 3); Write(0, 4); Write(0, 12); Write(9, 4); Write(1, 32);
-            for (var i = 0; i < group.Item2; i++) Write(unchecked((uint)apple[channel++]), 32);
+            for (var i = 0; i < group.Item2; i++) Write(unchecked((uint)(apple[channel++] >> shift)), depth);
         }
         Write(7, 3);
         BinaryPrimitives.WriteUInt32BigEndian(container.AsSpan(inner + 20), (uint)packet.Length);
@@ -42,6 +46,22 @@ public partial class AudioConverterTests
         Assert.Null(actualError);
         Assert.Equal(24, Inspect(actual).Bits);
         Assert.Equal(Pcm(expected), Pcm(actual));
+        if (depth == 20)
+        {
+            var (roundtripError, reencoded) = Run("audio.m4a", container, ("bitrate", "lossless"));
+            Assert.Null(roundtripError);
+            Assert.Equal(24, Inspect(reencoded).Bits);
+            var (decodeError, decoded) = Run("audio.wav", reencoded);
+            Assert.Null(decodeError);
+            Assert.Equal(Pcm(expected), Pcm(decoded));
+            var (flacError, flac) = Run("audio.flac", container);
+            Assert.Null(flacError);
+            Assert.Equal(24, Inspect(flac).Bits);
+            var (flacDecodeError, flacDecoded) = Run("audio.wav", flac);
+            Assert.Null(flacDecodeError);
+            Assert.Equal(Pcm(expected), Pcm(flacDecoded));
+        }
+
         void Write(uint value, int count)
         {
             for (var shift = count - 1; shift >= 0; shift--, bit++) packet[bit / 8] |= (byte)(((value >> shift) & 1) << (7 - bit % 8));
