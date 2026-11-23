@@ -8,10 +8,21 @@ $root = Split-Path -Parent $PSScriptRoot
 $cache = Join-Path $root 'artifacts\deps\alac-apple'
 $archive = Join-Path $cache 'source.zip'
 New-Item -ItemType Directory -Force -Path $cache, $Output | Out-Null
+function Get-Sha256([string]$Path) { (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant() }
+# Cache com hash divergente (corrompido ou adulterado): apaga e baixa de novo uma única vez.
+if ((Test-Path -LiteralPath $archive) -and (Get-Sha256 $archive) -ne $hash) { Remove-Item -LiteralPath $archive -Force }
 if (-not (Test-Path -LiteralPath $archive)) {
-    Invoke-WebRequest "https://codeload.github.com/macosforge/alac/zip/$commit" -OutFile $archive
+    # Baixa para um temporário exclusivo e só move para o cache depois de conferir o SHA-256.
+    $download = Join-Path $cache ('source-' + [Guid]::NewGuid().ToString('N') + '.tmp')
+    try {
+        Invoke-WebRequest "https://codeload.github.com/macosforge/alac/zip/$commit" -OutFile $download
+        if ((Get-Sha256 $download) -ne $hash) { throw 'Fonte ALAC baixada com hash divergente do fixado; nada foi guardado no cache.' }
+        Move-Item -LiteralPath $download -Destination $archive
+    }
+    finally {
+        if (Test-Path -LiteralPath $download) { Remove-Item -LiteralPath $download -Force }
+    }
 }
-if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $hash) { throw 'Fonte ALAC com hash divergente.' }
 $locator = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 $installation = & $locator -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
 if ($LASTEXITCODE -ne 0 -or -not $installation) { throw 'Compilador Microsoft C++ x64 não encontrado.' }
