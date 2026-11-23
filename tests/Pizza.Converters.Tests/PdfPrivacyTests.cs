@@ -14,7 +14,7 @@ public sealed unsafe class PdfPrivacyTests
             "<< /Type /Catalog /Pages 2 0 R /Metadata 4 0 R /PrivateAlias 4 0 R >>",
             "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] >>",
-            $"<< /Type /Metadata /Subtype << /Author (PizzaAuditPerson) >> /Length {xmp.Length} >>\nstream\n{xmp}\nendstream");
+            $"<< /Type /Metadata /Subtype << /Author (PizzaPessoaSintetica) >> /Length {xmp.Length} >>\nstream\n{xmp}\nendstream");
         var output = RotateBytes(bytes);
         Assert.DoesNotContain("PizzaAudit", PdfInspection.Of(output).Everything);
         fixed (byte* source = output)
@@ -40,7 +40,7 @@ public sealed unsafe class PdfPrivacyTests
     }
 
     [Theory]
-    [InlineData("<!DOCTYPE x [<!ENTITY a 'PizzaAuditPerson'>]><x>&a;</x>", false, "CORRUPTED")]
+    [InlineData("<!DOCTYPE x [<!ENTITY a 'PizzaPessoaSintetica'>]><x>&a;</x>", false, "CORRUPTED")]
     [InlineData("<broken>", false, "CORRUPTED")]
     [InlineData("<x/>", true, "LIMIT_EXCEEDED")]
     public void Xmp_inseguro_ou_com_expansao_excessiva_e_recusado(string xml, bool oversized, string expected)
@@ -77,7 +77,7 @@ public sealed unsafe class PdfPrivacyTests
             "<< /Type /Catalog /Pages 2 0 R /StructTreeRoot << /Type /StructTreeRoot /K << /Type /OBJR /Obj 4 0 R >> >> >>",
             "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] /Annots [4 0 R] >>",
-            $"<< {(hasType ? "/Type /Annot" : "")} /Subtype /Text /Rect [0 0 10 10] /T (PizzaAuditPerson) /Contents (PizzaAuditComment) /AP << /N 5 0 R >> >>",
+            $"<< {(hasType ? "/Type /Annot" : "")} /Subtype /Text /Rect [0 0 10 10] /T (PizzaPessoaSintetica) /Contents (PizzaAuditComment) /AP << /N 5 0 R >> >>",
             "<< /Length 12 >>\nstream\nPizzaAuditAP\nendstream");
         var inspection = Rotate(bytes);
         Assert.DoesNotContain("PizzaAudit", inspection.Everything);
@@ -91,7 +91,7 @@ public sealed unsafe class PdfPrivacyTests
     [InlineData(true, true)]
     public void Titulo_apenas_no_xmp_e_preservado_sem_autor(bool compressed, bool infoTitle)
     {
-        const string xmp = "<rdf:RDF xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#' xmlns:dc='http://purl.org/dc/elements/1.1/'><rdf:Description><dc:title><rdf:Alt><rdf:li xml:lang='x-default'>XmpTechnicalTitle</rdf:li></rdf:Alt></dc:title><dc:creator>PizzaAuditPerson</dc:creator></rdf:Description></rdf:RDF>";
+        const string xmp = "<rdf:RDF xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#' xmlns:dc='http://purl.org/dc/elements/1.1/'><rdf:Description><dc:title><rdf:Alt><rdf:li xml:lang='x-default'>XmpTechnicalTitle</rdf:li></rdf:Alt></dc:title><dc:creator>PizzaPessoaSintetica</dc:creator></rdf:Description></rdf:RDF>";
         var data = Encoding.UTF8.GetBytes(xmp);
         if (compressed)
         {
@@ -109,7 +109,7 @@ public sealed unsafe class PdfPrivacyTests
             "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] >>",
             $"<< /Type /Metadata /Subtype /XML /Length {data.Length} {(compressed ? "/Filter /FlateDecode" : "")} >>\nstream\n{Encoding.Latin1.GetString(data)}\nendstream",
-            "<< /Title (InfoTechnicalTitle) /Author (PizzaAuditPerson) >>");
+            "<< /Title (InfoTechnicalTitle) /Author (PizzaPessoaSintetica) >>");
         if (infoTitle)
         {
             bytes = Encoding.Latin1.GetBytes(Encoding.Latin1.GetString(bytes).Replace("/Root 1 0 R >>", "/Root 1 0 R /Info 5 0 R >>", StringComparison.Ordinal));
