@@ -1,4 +1,4 @@
-# ADR-041 — Vidro líquido no disco (opção de aparência)
+# ADR-042 — Vidro líquido no disco (opção de aparência)
 
 - **Status:** Proposta, em 21/11/2026. Depende da aprovação do mantenedor na prancha [`propostas/vidro-liquido.svg`](../propostas/vidro-liquido.svg) (VL-1). **Nenhum código de `src/` é escrito antes dessa aprovação.** Estende os ADR-023 e ADR-027 sem substituí-los.
 - **Data:** 2026-11-21
