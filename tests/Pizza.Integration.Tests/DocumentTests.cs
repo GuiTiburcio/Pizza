@@ -26,6 +26,14 @@ public sealed class DocumentTests : IDisposable
     public DocumentTests()
     {
         Directory.CreateDirectory(_folder);
+        // TEMPORÁRIO (diagnóstico): liga as marcas do Pizza.Docs.
+        var diagWork = DocumentEngine.WorkFolder(Profile);
+        foreach (var old in Directory.GetFiles(diagWork, "diag-*.txt"))
+        {
+            File.Delete(old);
+        }
+
+        File.WriteAllText(Path.Combine(diagWork, "diag-docs.on"), "");
         var repository = new DirectoryInfo(AppContext.BaseDirectory);
         while (!File.Exists(Path.Combine(repository!.FullName, "Pizza.slnx")))
         {
@@ -49,6 +57,16 @@ public sealed class DocumentTests : IDisposable
         foreach (var engine in _engines)
         {
             engine.Dispose();
+        }
+
+        // TEMPORÁRIO (diagnóstico): guarda as marcas antes de apagar o perfil.
+        if (Environment.GetEnvironmentVariable("DIAG_OUT") is { Length: > 0 } diagOut)
+        {
+            Directory.CreateDirectory(diagOut);
+            foreach (var diag in Directory.GetFiles(DocumentEngine.WorkFolder(Profile), "diag-*.txt"))
+            {
+                File.Copy(diag, Path.Combine(diagOut, DateTime.UtcNow.Ticks + "-" + Path.GetFileName(diag)), overwrite: true);
+            }
         }
 
         SandboxedProcess.DeleteProfile(Profile);

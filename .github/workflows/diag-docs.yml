@@ -1,0 +1,69 @@
+name: diag-docs
+# TEMPORÁRIO: diagnóstico do WORKER_CRASHED do Pizza.Docs. Não entra no PR.
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        default: '10'
+      rounds:
+        default: '10'
+  push:
+    branches: [diag/docs-crash]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  loop:
+    runs-on: windows-2025
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+      - run: dotnet restore Pizza.slnx
+      - run: dotnet build Pizza.slnx -c Release --no-restore
+      - name: Baixar motor de documentos
+        shell: pwsh
+        run: |
+          $motor = Join-Path $env:RUNNER_TEMP 'motor'
+          ./tools/baixar-motor.ps1 -Destino $motor
+          "PIZZA_MOTOR=$motor" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+      - name: Laço da classe DocumentTests
+        shell: pwsh
+        run: |
+          $rounds = 10
+          $fails = 0
+          $out = Join-Path $env:RUNNER_TEMP 'diag-out'
+          $env:DIAG_OUT = $out
+          for ($i = 1; $i -le $rounds; $i++) {
+            if (Test-Path $out) { Remove-Item $out -Recurse -Force }
+            $log = Join-Path $env:RUNNER_TEMP "round-$i.txt"
+            dotnet test tests/Pizza.Integration.Tests -c Release --no-build --filter "FullyQualifiedName~Pizza.Integration.Tests.DocumentTests" --logger "console;verbosity=normal" 2>&1 | Tee-Object -FilePath $log | Out-Null
+            $code = $LASTEXITCODE
+            $summary = (Select-String -Path $log -Pattern 'Total tests|Passed:|Failed:|Skipped:' | ForEach-Object { $_.Line.Trim() }) -join ' | '
+            Write-Host "rodada $i exit=$code $summary"
+            if ($code -ne 0) {
+              $fails++
+              Write-Host "::group::FALHA rodada $i - saida do teste"
+              Get-Content $log | Write-Host
+              Write-Host '::endgroup::'
+              Write-Host "::group::FALHA rodada $i - diag"
+              if (Test-Path $out) {
+                Get-ChildItem $out -Filter 'diag-*.txt' -Recurse | Sort-Object Name | ForEach-Object { Write-Host "--- $($_.Name)"; Get-Content $_.FullName | Write-Host }
+              } else { Write-Host 'sem diag-out' }
+              Write-Host '::endgroup::'
+            }
+          }
+          Write-Host "RESULTADO shard=${{ matrix.shard }} falhas=$fails de $rounds"
+          "falhas=$fails de $rounds" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          if ($fails -gt 0) { exit 1 }

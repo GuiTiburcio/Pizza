@@ -46,6 +46,8 @@ internal static class Program
             return InvalidArguments;
         }
 
+        Diag.Init(work);
+        Diag.Mark("main");
         using var reader = OpenHandle(long.Parse(input, CultureInfo.InvariantCulture), FileAccess.Read);
         using var writer = OpenHandle(long.Parse(output, CultureInfo.InvariantCulture), FileAccess.Write);
         var folder = Path.Combine(work, Guid.NewGuid().ToString("N"));
@@ -53,23 +55,26 @@ internal static class Program
         {
             if (!StartEngine(engine, work, folder))
             {
-                return EngineUnavailable;
+                return Diag.Ret(EngineUnavailable);
             }
+
+            Diag.Mark("engine-ok");
 
             // Ninguém pediu dentro do prazo: o motor de reserva sai e leva a pasta junto.
             using var expiry = new Timer(_ => Exit(folder), null, TimeSpan.FromSeconds(int.Parse(idle, CultureInfo.InvariantCulture)), Timeout.InfiniteTimeSpan);
             while (IpcFraming.ReadFrame(reader) is { } frame)
             {
                 var message = IpcCodec.Parse(frame);
+                Diag.Mark("frame:" + message.Type);
                 if (message.Type == IpcType.Convert)
                 {
                     expiry.Change(Timeout.Infinite, Timeout.Infinite);
                     IpcFraming.WriteFrame(writer, IpcCodec.Serialize(Convert(message, folder)));
-                    return 0;
+                    return Diag.Ret(0);
                 }
             }
 
-            return 0;
+            return Diag.Ret(0);
         }
         catch (IpcProtocolException)
         {
@@ -137,7 +142,11 @@ internal static class Program
             original.CopyTo(copy);
         }
 
+        Diag.Mark("copied");
+        Diag.Mark("lok-begin");
+
         var error = LibreOfficeKit.Convert(source, result, target.Filter);
+        Diag.Mark("lok-end:" + (error ?? "null"));
         if (error is null)
         {
             // O destino é fechado antes da resposta: depois de "done", nada mais é escrito.
