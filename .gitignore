@@ -12,6 +12,7 @@ TestResults/
 coverage*/
 *.trx
 BenchmarkDotNet.Artifacts/
+.playwright-mcp/
 
 # IDEs
 .vs/
@@ -38,6 +39,10 @@ Desktop.ini
 *.p12
 *.snk
 .env
+.env.*
+!.env.example
+.envrc
+!.envrc.example
 
 # Worktrees e sessões locais
 .claude/worktrees/
