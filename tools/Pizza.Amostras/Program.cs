@@ -41,9 +41,9 @@ var frames = Enumerable.Range(0, 3).Select(index => Image.Black(120, 80).NewFrom
     .Mutate(m => m.DrawRect([255, 255, 255], 10 + (index * 35), 30, 20, 20, fill: true))).ToArray();
 var strip = Image.Arrayjoin(frames, across: 1).Mutate(m =>
 {
-    m.Set("page-height", 80);
-    m.Set("delay", new[] { 500, 500, 500 });
-    m.Set("loop", 0);
+    m.Set(GValue.GIntType, "page-height", 80);
+    m.Set(GValue.ArrayIntType, "delay", new[] { 500, 500, 500 });
+    m.Set(GValue.GIntType, "loop", 0);
 });
 File.WriteAllBytes(Out("animado-3-quadros.gif"), strip.GifsaveBuffer(keep: Enums.ForeignKeep.None));
 File.WriteAllBytes(Out("animado-3-quadros.webp"), strip.WebpsaveBuffer(lossless: true, keep: Enums.ForeignKeep.None));
