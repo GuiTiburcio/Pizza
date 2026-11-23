@@ -21,6 +21,8 @@ WAV recebe a máscara real do PCM. O encoder FLAC Windows não oferece uma forma
 
 Regra de 5.1: as máscaras 0x3F (back) e 0x60F (side surround) mapeiam Ls/Rs para o mesmo layout Apple de 5.1 (tag 124); fonte multicanal sem máscara continua `UNSUPPORTED`.
 
+A ausência de `chan` é aceita pela especificação ALAC, mas, com mais de dois canais, indica canais sem papéis de alto-falante definidos. O candidato recusa esse caso em vez de supor uma ordem 5.1 ou 7.1. É uma limitação de entrada conhecida. Uma implementação futura pode oferecer uma saída de canais discretos ou uma escolha explícita de layout. [Descrição do cookie ALAC](https://github.com/macosforge/alac/blob/c38887c5c5e64a4b31108733bd79ca9b2496d987/ALACMagicCookieDescription.txt)
+
 SEC-20/26: só a família Áudio carrega a DLL, por caminho absoluto sob os binários do Worker, antes de ativar MicrosoftSignedOnly. Isso permite a dependência explicitamente aprovada sem desativar a política posteriormente ou liberar outros codecs de terceiros. O probe pode preceder a conversão no mesmo processo; a preparação da dependência deve ocorrer antes da política também nesse caminho. O residente não carrega a DLL. Job, memória, orçamento de saída, timeout, handles e isolamento sem rede permanecem.
 
 ## Critérios de aceite
