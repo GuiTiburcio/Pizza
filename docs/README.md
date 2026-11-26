@@ -35,7 +35,7 @@ Cada pasta nasce da anterior. O produto define o que vale; as decisões registra
 | [4-entrega](4-entrega/) | [Fase 4](4-entrega/FASE-4.md), [Fase 5](4-entrega/FASE-5.md), [Fase 6](4-entrega/FASE-6.md), [lançamento do Brotinho](4-entrega/BROTINHO-LANCAMENTO.md) e [validação do piloto](4-entrega/VALIDACAO-PILOTO.md) |
 | [5-operacao](5-operacao/) | [Como usar](5-operacao/USO.md), [instalar e configurar](5-operacao/INSTALACAO.md) e [guia de TI (GPO e Intune)](5-operacao/TI-GPO.md) |
 | [6-seguranca](6-seguranca/) | [Auditoria de segurança](6-seguranca/AUDITORIA-SEGURANCA.md) |
-| [7-melhoria](7-melhoria/TI-360.md) | [Processo TI 360](7-melhoria/TI-360.md) e as [ideias descartadas](7-melhoria/ideias-descartadas/README.md), com o motivo de cada uma |
+| [7-melhoria](7-melhoria/TI-360.md) | [Processo TI 360](7-melhoria/TI-360.md), a [validação e governança](7-melhoria/VALIDACAO-E-GOVERNANCA.md) das frentes e as [ideias descartadas](7-melhoria/ideias-descartadas/README.md), com o motivo de cada uma |
 
 ## Fora da pasta `docs`
 

@@ -19,6 +19,12 @@ Leia e siga [CLAUDE.md](CLAUDE.md) antes de alterar qualquer parte do projeto. A
 - **Subagentes do Claude (exceção autorizada pelo mantenedor em 20/11/2026)**: Quando o Claude Code principal os dispara com um `TAREFA.md`, podem implementar na pasta de worktrees ao lado do repositório (`Pizza\2-ramos\<faixa>\<tarefa>` (faixas `base`, `jumbo`, `projeto` e `revisao`; ramo `<faixa>/<tarefa>`)), vários em paralelo, um por worktree. Valem os mesmos limites do Antigravity: não fazem merge na `main`, não alteram invariantes `SEC-*`/`PRIV-*` e não editam fora do próprio worktree. Entregam commits no ramo e um `RESULTADO.md`. O contrato está na skill `tarefa-worktree`.
 - **Antigravity**: Executa nos worktrees. Cria e mantém worktrees na pasta de worktrees ao lado do repositório (`Pizza\2-ramos\<faixa>\<tarefa>` (faixas `base`, `jumbo`, `projeto` e `revisao`; ramo `<faixa>/<tarefa>`)); compila, testa e roda o app para validar; implementa a tarefa recebida. Não faz merge na `main`, não altera invariantes `SEC-*`/`PRIV-*`, não edita fora do próprio worktree.
 
+## Autonomia de validação e continuidade
+
+Autorização do mantenedor em 21/11/2026: o Codex pode selecionar e aplicar as skills pertinentes ao contexto do Pizza, apoiar planejamento e governança e retomar trabalho inconclusivo do Claude/Antigravity. Não é necessário perguntar qual skill utilizar em cada tarefa. Aplicar o protocolo de [validação e governança](docs/7-melhoria/VALIDACAO-E-GOVERNANCA.md).
+
+Usar uma frente própria com objetivo e critério de pronto. Preservar worktrees ocupados ou bloqueados e não assumir que um ramo antigo continua livre. Não executar testes de integração concorrentes que compartilhem perfil AppContainer, diretórios ou letras de unidade. A autonomia não transfere aceite visual, não permite enfraquecer invariantes, contornar alertas de segurança ou publicar com verificações reprovadas. Achados de segurança exigem aviso com evidência, impacto, contenção e correção recomendada.
+
 ## Comunicação
 
 A pedido do mantenedor, use a skill [caveman](.agents/skills/caveman/SKILL.md) nas respostas sobre este projeto, respeitando estritamente o Bloco de Precedência acima. Responda em português, com concisão e clareza. Preserve números, unidades, comandos, erros, ressalvas e informações de segurança.
