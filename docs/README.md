@@ -34,7 +34,7 @@ Cada pasta nasce da anterior. O produto define o que vale; as decisões registra
 | [3-design/imagens](3-design/imagens/) | Imagens usadas pelo README e pela documentação |
 | [4-entrega](4-entrega/) | [Fase 4](4-entrega/FASE-4.md), [Fase 5](4-entrega/FASE-5.md), [Fase 6](4-entrega/FASE-6.md), [lançamento do Brotinho](4-entrega/BROTINHO-LANCAMENTO.md) e [validação do piloto](4-entrega/VALIDACAO-PILOTO.md) |
 | [5-operacao](5-operacao/) | [Como usar](5-operacao/USO.md), [instalar e configurar](5-operacao/INSTALACAO.md) e [guia de TI (GPO e Intune)](5-operacao/TI-GPO.md) |
-| [6-seguranca](6-seguranca/) | [Auditoria de segurança](6-seguranca/AUDITORIA-SEGURANCA.md) |
+| [6-seguranca](6-seguranca/) | [Auditoria de segurança](6-seguranca/AUDITORIA-SEGURANCA.md) e [configuração e acesso](6-seguranca/CONFIGURACAO-E-ACESSO.md) |
 | [7-melhoria](7-melhoria/TI-360.md) | [Processo TI 360](7-melhoria/TI-360.md) e as [ideias descartadas](7-melhoria/ideias-descartadas/README.md), com o motivo de cada uma |
 
 ## Fora da pasta `docs`
