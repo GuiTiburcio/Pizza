@@ -29,10 +29,10 @@ Cada pasta nasce da anterior. O produto define o que vale; as decisões registra
 | --- | --- |
 | [1-produto](1-produto/) | [Visão do projeto](1-produto/PIZZA-PROJETO.md), [SPECS](1-produto/SPECS.md) (requisitos; as emendas da §2.1 prevalecem), [roteiro](1-produto/ROADMAP.md) e [macOS e Linux](1-produto/PORTABILIDADE.md) |
 | [2-decisoes](2-decisoes/README.md) | ADRs numerados (`NNN-titulo.md`) com o contexto, a decisão e as consequências |
-| [3-design/dossie](3-design/dossie/README.md) | Artefato do Claude Design: pranchas, fluxos e wireframes |
+| [3-design/dossie](3-design/dossie/README.md) | Pranchas, fluxos, wireframes e [fundamentos para apresentação](3-design/dossie/FUNDAMENTOS-DO-PIZZA.md) |
 | [3-design/propostas](3-design/propostas/) | Propostas de design e planos ainda em discussão |
 | [3-design/imagens](3-design/imagens/) | Imagens usadas pelo README e pela documentação |
-| [4-entrega](4-entrega/) | [Fase 4](4-entrega/FASE-4.md), [Fase 5](4-entrega/FASE-5.md), [Fase 6](4-entrega/FASE-6.md), [lançamento do Brotinho](4-entrega/BROTINHO-LANCAMENTO.md) e [validação do piloto](4-entrega/VALIDACAO-PILOTO.md) |
+| [4-entrega](4-entrega/) | [Fase 4](4-entrega/FASE-4.md), [Fase 5](4-entrega/FASE-5.md), [Fase 6](4-entrega/FASE-6.md), [lançamento do Brotinho](4-entrega/BROTINHO-LANCAMENTO.md), [validação do piloto](4-entrega/VALIDACAO-PILOTO.md) e [previsão de entrega](4-entrega/PREVISAO-DE-ENTREGA.md) |
 | [5-operacao](5-operacao/) | [Como usar](5-operacao/USO.md), [instalar e configurar](5-operacao/INSTALACAO.md) e [guia de TI (GPO e Intune)](5-operacao/TI-GPO.md) |
 | [6-seguranca](6-seguranca/) | [Auditoria de segurança](6-seguranca/AUDITORIA-SEGURANCA.md) |
 | [7-melhoria](7-melhoria/TI-360.md) | [Processo TI 360](7-melhoria/TI-360.md) e as [ideias descartadas](7-melhoria/ideias-descartadas/README.md), com o motivo de cada uma |
