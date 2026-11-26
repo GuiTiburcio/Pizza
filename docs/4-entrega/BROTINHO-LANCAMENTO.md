@@ -11,13 +11,15 @@ Decisão do mantenedor em 14/11/2026: concluir e validar Imagem, PDF, Documento 
 
 Cada aprovação registra SHA, execução de CI, versão do Windows, data e resultado. Aprovação antiga não se transfere automaticamente a outro build. Não há lançamento enquanto houver defeito conhecido de perda de conteúdo, alteração do original ou redução de qualidade sem consentimento.
 
+Use a [matriz manual com amostras sintéticas](MATRIZ-LANCAMENTO.md) para executar e registrar cada caso no candidato.
+
 ## Quatro abas
 
 | Aba | Escopo implementado a validar no Brotinho | Evidência e pendências |
 | --- | --- | --- |
 | Imagem | JPG, PNG, WEBP, AVIF, TIFF, ICO, GIF e Imagem → PDF, conforme catálogo | O mantenedor já confirmou uso funcional. Repetir matriz no candidato final, incluindo qualidade, dimensões, orientação, metadados e transparência quando suportados. GIF é estático nesta etapa. |
 | PDF | Juntar, dividir e girar | Conferir ordem, número de páginas, rotações, texto/imagens e remoção de conteúdo ativo. Senhas e demais conversões não são prometidas por esta matriz. |
-| Documento | DOCX → TXT/HTML e XLSX → CSV | Conferir texto, acentos, listas, tabelas, links e imagens conforme cada destino. HTML teve correções de listas e quebras de código no PR #88, aprovado no CI e integrado. Neutralização de fórmulas CSV integrada no PR #90, com regressões aprovadas. Markdown é futuro; renderização Office → PDF pertence ao Jumbo. |
+| Documento | DOCX → TXT/HTML/Markdown e XLSX → CSV | Conferir texto, acentos, listas, tabelas, links e imagens conforme cada destino. Neutralização de fórmulas CSV integrada no PR #90, com regressões aprovadas. Renderização Office → PDF pertence ao Jumbo. |
 | Áudio | MP3, M4A/AAC ou ALAC, FLAC e WAV; opções de canais, taxa, profundidade e volume | Regressões ALAC e WAV mono de 24 bits corrigidas e verificadas no PR #84; confirmação de bitrate no PR #95, com prévias aprovadas pelo mantenedor. Repetir a matriz manual no candidato final, incluindo efeitos, reamostragem e destinos com perda. |
 
 O escopo corresponde aos conversores realmente oferecidos. Formatos futuros não devem aparecer como funcionais. Não reduzir esta matriz nem esconder um formato com defeito para declarar a aba concluída sem decisão do mantenedor.
